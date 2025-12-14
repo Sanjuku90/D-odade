@@ -4,11 +4,13 @@ services:
     runtime: node
     buildCommand: npm install
     startCommand: npm start
+    disk:
+      name: data
+      mountPath: /opt/render/project/src
+      sizeGB: 1
     envVars:
       - key: NODE_ENV
         value: production
-      - key: DATABASE_URL
-        sync: false
       - key: SESSION_SECRET
         generateValue: true
       - key: ADMIN_ACCESS_CODE

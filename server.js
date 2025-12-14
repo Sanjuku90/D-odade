@@ -1,9 +1,8 @@
 const express = require('express');
 const session = require('express-session');
-const pgSession = require('connect-pg-simple')(session);
 const bcrypt = require('bcryptjs');
 const crypto = require('crypto');
-const { Pool } = require('pg');
+const Database = require('better-sqlite3');
 const path = require('path');
 
 const app = express();
@@ -11,9 +10,7 @@ const PORT = process.env.PORT || 5000;
 
 app.set('trust proxy', 1);
 
-const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
-});
+const db = new Database('questinvest.db');
 
 const SESSION_SECRET = process.env.SESSION_SECRET || crypto.randomBytes(32).toString('hex');
 const DEPOSIT_ADDRESS = process.env.DEPOSIT_ADDRESS || 'TAB1oeEKDS5NATwFAaUrTioDU9djX7anyS';
@@ -25,10 +22,6 @@ app.use(express.urlencoded({ extended: true }));
 app.use(express.static(path.join(__dirname, 'public')));
 
 app.use(session({
-  store: new pgSession({
-    pool: pool,
-    tableName: 'session'
-  }),
   secret: SESSION_SECRET,
   resave: false,
   saveUninitialized: false,
@@ -44,115 +37,85 @@ app.use((req, res, next) => {
   next();
 });
 
-async function initDB() {
-  const client = await pool.connect();
-  try {
-    await client.query(`
-      CREATE TABLE IF NOT EXISTS "session" (
-        "sid" varchar NOT NULL COLLATE "default",
-        "sess" json NOT NULL,
-        "expire" timestamp(6) NOT NULL,
-        PRIMARY KEY ("sid")
-      );
-      CREATE INDEX IF NOT EXISTS "IDX_session_expire" ON "session" ("expire");
-    `);
+function initDB() {
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS users (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      email TEXT UNIQUE NOT NULL,
+      password TEXT NOT NULL,
+      balance REAL DEFAULT 0,
+      deposit_amount REAL DEFAULT 0,
+      deposit_address TEXT,
+      referral_code TEXT UNIQUE,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    );
+  `);
 
-    await client.query(`
-      CREATE TABLE IF NOT EXISTS users (
-        id SERIAL PRIMARY KEY,
-        email VARCHAR(255) UNIQUE NOT NULL,
-        password VARCHAR(255) NOT NULL,
-        balance DECIMAL(10, 2) DEFAULT 0,
-        deposit_amount DECIMAL(10, 2) DEFAULT 0,
-        deposit_address VARCHAR(255),
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-      );
-    `);
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS deposits (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id INTEGER REFERENCES users(id),
+      amount REAL NOT NULL,
+      tx_hash TEXT,
+      status TEXT DEFAULT 'pending',
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    );
+  `);
 
-    await client.query(`
-      CREATE TABLE IF NOT EXISTS deposits (
-        id SERIAL PRIMARY KEY,
-        user_id INTEGER REFERENCES users(id),
-        amount DECIMAL(10, 2) NOT NULL,
-        tx_hash VARCHAR(255),
-        status VARCHAR(50) DEFAULT 'pending',
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-      );
-    `);
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS admins (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      email TEXT UNIQUE NOT NULL,
+      password TEXT NOT NULL,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    );
+  `);
 
-    await client.query(`
-      CREATE TABLE IF NOT EXISTS admins (
-        id SERIAL PRIMARY KEY,
-        email VARCHAR(255) UNIQUE NOT NULL,
-        password VARCHAR(255) NOT NULL,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-      );
-    `);
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS quests (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      title TEXT NOT NULL,
+      description TEXT,
+      reward_percentage REAL DEFAULT 15
+    );
+  `);
 
-    await client.query(`
-      CREATE TABLE IF NOT EXISTS quests (
-        id SERIAL PRIMARY KEY,
-        title VARCHAR(255) NOT NULL,
-        description TEXT,
-        reward_percentage DECIMAL(5, 2) DEFAULT 15
-      );
-    `);
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS user_quests (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id INTEGER REFERENCES users(id),
+      quest_id INTEGER REFERENCES quests(id),
+      completed_date DATE,
+      reward_earned REAL DEFAULT 0,
+      UNIQUE(user_id, quest_id, completed_date)
+    );
+  `);
 
-    await client.query(`
-      CREATE TABLE IF NOT EXISTS user_quests (
-        id SERIAL PRIMARY KEY,
-        user_id INTEGER REFERENCES users(id),
-        quest_id INTEGER REFERENCES quests(id),
-        completed_date DATE,
-        reward_earned DECIMAL(10, 2) DEFAULT 0,
-        UNIQUE(user_id, quest_id, completed_date)
-      );
-    `);
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS referrals (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      referrer_id INTEGER REFERENCES users(id),
+      referred_id INTEGER REFERENCES users(id),
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      UNIQUE(referred_id)
+    );
+  `);
 
-    // Table pour les parrainages
-    await client.query(`
-      CREATE TABLE IF NOT EXISTS referrals (
-        id SERIAL PRIMARY KEY,
-        referrer_id INTEGER REFERENCES users(id),
-        referred_id INTEGER REFERENCES users(id),
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        UNIQUE(referred_id)
-      );
-    `);
-
-    // Ajouter colonne referral_code si elle n'existe pas
-    await client.query(`
-      DO $$ 
-      BEGIN 
-        IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'users' AND column_name = 'referral_code') THEN
-          ALTER TABLE users ADD COLUMN referral_code VARCHAR(10) UNIQUE;
-        END IF;
-      END $$;
-    `);
-
-    const questCount = await client.query('SELECT COUNT(*) FROM quests');
-    if (parseInt(questCount.rows[0].count) === 0) {
-      await client.query(`
-        INSERT INTO quests (title, description, reward_percentage) VALUES
-        ('Partager sur les réseaux', 'Partagez notre plateforme sur vos réseaux sociaux', 45),
-        ('Regarder une vidéo', 'Regardez une vidéo promotionnelle de 30 secondes', 45),
-        ('Inviter un ami', 'Invitez un ami à rejoindre la plateforme', 45);
-      `);
-    }
-
-    const adminCount = await client.query('SELECT COUNT(*) FROM admins');
-    if (parseInt(adminCount.rows[0].count) === 0) {
-      const hashedAdminPassword = await bcrypt.hash(ADMIN_PASSWORD, 10);
-      await client.query(
-        'INSERT INTO admins (email, password) VALUES ($1, $2)',
-        [ADMIN_EMAIL, hashedAdminPassword]
-      );
-    }
-
-    console.log('Database initialized successfully');
-  } finally {
-    client.release();
+  const questCount = db.prepare('SELECT COUNT(*) as count FROM quests').get();
+  if (questCount.count === 0) {
+    const insertQuest = db.prepare('INSERT INTO quests (title, description, reward_percentage) VALUES (?, ?, ?)');
+    insertQuest.run('Partager sur les réseaux', 'Partagez notre plateforme sur vos réseaux sociaux', 45);
+    insertQuest.run('Regarder une vidéo', 'Regardez une vidéo promotionnelle de 30 secondes', 45);
+    insertQuest.run('Inviter un ami', 'Invitez un ami à rejoindre la plateforme', 45);
   }
+
+  const adminCount = db.prepare('SELECT COUNT(*) as count FROM admins').get();
+  if (adminCount.count === 0) {
+    const hashedAdminPassword = bcrypt.hashSync(ADMIN_PASSWORD, 10);
+    db.prepare('INSERT INTO admins (email, password) VALUES (?, ?)').run(ADMIN_EMAIL, hashedAdminPassword);
+  }
+
+  console.log('Database initialized successfully');
 }
 
 function generateDepositAddress() {
@@ -194,46 +157,30 @@ app.post('/api/register', async (req, res) => {
     return res.status(400).json({ error: 'Email et mot de passe requis' });
   }
 
-  const client = await pool.connect();
   try {
-    await client.query('BEGIN');
-
     const hashedPassword = await bcrypt.hash(password, 10);
     const depositAddress = generateDepositAddress();
     const userReferralCode = generateReferralCode();
     
-    const result = await client.query(
-      'INSERT INTO users (email, password, deposit_address, referral_code) VALUES ($1, $2, $3, $4) RETURNING id, email, deposit_address',
-      [email, hashedPassword, depositAddress, userReferralCode]
-    );
+    const result = db.prepare(
+      'INSERT INTO users (email, password, deposit_address, referral_code) VALUES (?, ?, ?, ?)'
+    ).run(email, hashedPassword, depositAddress, userReferralCode);
 
-    // Si un code de parrainage a été fourni, enregistrer le parrainage
     if (referral_code && referral_code.trim()) {
-      const referrer = await client.query(
-        'SELECT id FROM users WHERE referral_code = $1',
-        [referral_code.trim().toUpperCase()]
-      );
+      const referrer = db.prepare('SELECT id FROM users WHERE referral_code = ?').get(referral_code.trim().toUpperCase());
       
-      if (referrer.rows.length > 0) {
-        await client.query(
-          'INSERT INTO referrals (referrer_id, referred_id) VALUES ($1, $2)',
-          [referrer.rows[0].id, result.rows[0].id]
-        );
+      if (referrer) {
+        db.prepare('INSERT INTO referrals (referrer_id, referred_id) VALUES (?, ?)').run(referrer.id, result.lastInsertRowid);
       }
     }
 
-    await client.query('COMMIT');
-
-    req.session.userId = result.rows[0].id;
-    res.json({ success: true, user: { email: result.rows[0].email } });
+    req.session.userId = result.lastInsertRowid;
+    res.json({ success: true, user: { email } });
   } catch (err) {
-    await client.query('ROLLBACK');
-    if (err.code === '23505') {
+    if (err.code === 'SQLITE_CONSTRAINT_UNIQUE') {
       return res.status(400).json({ error: 'Cet email existe déjà' });
     }
     res.status(500).json({ error: 'Erreur serveur' });
-  } finally {
-    client.release();
   }
 });
 
@@ -241,13 +188,12 @@ app.post('/api/login', async (req, res) => {
   const { email, password } = req.body;
 
   try {
-    const result = await pool.query('SELECT * FROM users WHERE email = $1', [email]);
+    const user = db.prepare('SELECT * FROM users WHERE email = ?').get(email);
     
-    if (result.rows.length === 0) {
+    if (!user) {
       return res.status(401).json({ error: 'Email ou mot de passe incorrect' });
     }
 
-    const user = result.rows[0];
     const validPassword = await bcrypt.compare(password, user.password);
 
     if (!validPassword) {
@@ -266,21 +212,13 @@ app.post('/api/logout', (req, res) => {
   res.json({ success: true });
 });
 
-app.get('/api/user', requireAuth, async (req, res) => {
+app.get('/api/user', requireAuth, (req, res) => {
   try {
-    const result = await pool.query(
-      'SELECT id, email, balance, deposit_amount, created_at, referral_code FROM users WHERE id = $1',
-      [req.session.userId]
-    );
-    const user = result.rows[0];
+    const user = db.prepare('SELECT id, email, balance, deposit_amount, created_at, referral_code FROM users WHERE id = ?').get(req.session.userId);
     user.deposit_address = DEPOSIT_ADDRESS;
     
-    // Compter le nombre de filleuls
-    const referralsCount = await pool.query(
-      'SELECT COUNT(*) FROM referrals WHERE referrer_id = $1',
-      [req.session.userId]
-    );
-    user.referrals_count = parseInt(referralsCount.rows[0].count);
+    const referralsCount = db.prepare('SELECT COUNT(*) as count FROM referrals WHERE referrer_id = ?').get(req.session.userId);
+    user.referrals_count = referralsCount.count;
     
     res.json(user);
   } catch (err) {
@@ -296,17 +234,17 @@ app.put('/api/user/email', requireAuth, async (req, res) => {
   }
 
   try {
-    const user = await pool.query('SELECT * FROM users WHERE id = $1', [req.session.userId]);
-    const validPassword = await bcrypt.compare(current_password, user.rows[0].password);
+    const user = db.prepare('SELECT * FROM users WHERE id = ?').get(req.session.userId);
+    const validPassword = await bcrypt.compare(current_password, user.password);
 
     if (!validPassword) {
       return res.status(401).json({ error: 'Mot de passe incorrect' });
     }
 
-    await pool.query('UPDATE users SET email = $1 WHERE id = $2', [new_email, req.session.userId]);
+    db.prepare('UPDATE users SET email = ? WHERE id = ?').run(new_email, req.session.userId);
     res.json({ success: true });
   } catch (err) {
-    if (err.code === '23505') {
+    if (err.code === 'SQLITE_CONSTRAINT_UNIQUE') {
       return res.status(400).json({ error: 'Cet email existe deja' });
     }
     res.status(500).json({ error: 'Erreur serveur' });
@@ -325,22 +263,22 @@ app.put('/api/user/password', requireAuth, async (req, res) => {
   }
 
   try {
-    const user = await pool.query('SELECT * FROM users WHERE id = $1', [req.session.userId]);
-    const validPassword = await bcrypt.compare(current_password, user.rows[0].password);
+    const user = db.prepare('SELECT * FROM users WHERE id = ?').get(req.session.userId);
+    const validPassword = await bcrypt.compare(current_password, user.password);
 
     if (!validPassword) {
       return res.status(401).json({ error: 'Mot de passe actuel incorrect' });
     }
 
     const hashedPassword = await bcrypt.hash(new_password, 10);
-    await pool.query('UPDATE users SET password = $1 WHERE id = $2', [hashedPassword, req.session.userId]);
+    db.prepare('UPDATE users SET password = ? WHERE id = ?').run(hashedPassword, req.session.userId);
     res.json({ success: true });
   } catch (err) {
     res.status(500).json({ error: 'Erreur serveur' });
   }
 });
 
-app.post('/api/deposit', requireAuth, async (req, res) => {
+app.post('/api/deposit', requireAuth, (req, res) => {
   const { amount, tx_hash } = req.body;
   const minDeposit = 30;
 
@@ -353,10 +291,7 @@ app.post('/api/deposit', requireAuth, async (req, res) => {
   }
 
   try {
-    await pool.query(
-      'INSERT INTO deposits (user_id, amount, tx_hash, status) VALUES ($1, $2, $3, $4)',
-      [req.session.userId, amount, tx_hash.trim(), 'pending']
-    );
+    db.prepare('INSERT INTO deposits (user_id, amount, tx_hash, status) VALUES (?, ?, ?, ?)').run(req.session.userId, amount, tx_hash.trim(), 'pending');
 
     res.json({ success: true, message: 'Transaction soumise, en attente de validation par l\'admin' });
   } catch (err) {
@@ -364,181 +299,137 @@ app.post('/api/deposit', requireAuth, async (req, res) => {
   }
 });
 
-app.get('/api/quests', requireAuth, async (req, res) => {
+app.get('/api/quests', requireAuth, (req, res) => {
   try {
     const today = new Date().toISOString().split('T')[0];
     
-    const quests = await pool.query(`
+    const quests = db.prepare(`
       SELECT q.*, 
-        CASE WHEN uq.id IS NOT NULL THEN true ELSE false END as completed
+        CASE WHEN uq.id IS NOT NULL THEN 1 ELSE 0 END as completed
       FROM quests q
       LEFT JOIN user_quests uq ON q.id = uq.quest_id 
-        AND uq.user_id = $1 
-        AND uq.completed_date = $2
+        AND uq.user_id = ? 
+        AND uq.completed_date = ?
       ORDER BY q.id
-    `, [req.session.userId, today]);
+    `).all(req.session.userId, today);
 
-    const completedCount = await pool.query(
-      'SELECT COUNT(*) FROM user_quests WHERE user_id = $1 AND completed_date = $2',
-      [req.session.userId, today]
-    );
+    const completedCount = db.prepare('SELECT COUNT(*) as count FROM user_quests WHERE user_id = ? AND completed_date = ?').get(req.session.userId, today);
 
-    // Compter le nombre de filleuls pour savoir si la quête 2 est débloquée
-    const referralsCount = await pool.query(
-      'SELECT COUNT(*) FROM referrals WHERE referrer_id = $1',
-      [req.session.userId]
-    );
-    const hasReferral = parseInt(referralsCount.rows[0].count) >= 1;
+    const referralsCount = db.prepare('SELECT COUNT(*) as count FROM referrals WHERE referrer_id = ?').get(req.session.userId);
+    const hasReferral = referralsCount.count >= 1;
 
-    // Ajouter les informations de verrouillage
-    const questsWithStatus = quests.rows.map((quest, index) => {
+    const questsWithStatus = quests.map((quest, index) => {
       let locked = false;
       let lockReason = '';
       
-      // Quête 2 et suivantes: vérifier si la quête précédente est complétée
       if (index > 0) {
-        const previousQuest = quests.rows[index - 1];
+        const previousQuest = quests[index - 1];
         if (!previousQuest.completed) {
           locked = true;
           lockReason = 'Complétez d\'abord la quête précédente';
         }
       }
       
-      // Quête 2 spécifiquement: vérifier le parrainage
       if (index === 1 && !hasReferral) {
         locked = true;
         lockReason = 'Invitez au moins 1 personne pour débloquer';
       }
       
-      return { ...quest, locked, lockReason };
+      return { ...quest, completed: !!quest.completed, locked, lockReason };
     });
 
     res.json({
       quests: questsWithStatus,
-      completedToday: parseInt(completedCount.rows[0].count),
+      completedToday: completedCount.count,
       totalQuests: 3,
-      referralsCount: parseInt(referralsCount.rows[0].count)
+      referralsCount: referralsCount.count
     });
   } catch (err) {
     res.status(500).json({ error: 'Erreur serveur' });
   }
 });
 
-app.post('/api/quests/:id/complete', requireAuth, async (req, res) => {
+app.post('/api/quests/:id/complete', requireAuth, (req, res) => {
   const questId = parseInt(req.params.id);
   const today = new Date().toISOString().split('T')[0];
 
-  const client = await pool.connect();
   try {
-    const user = await client.query(
-      'SELECT deposit_amount FROM users WHERE id = $1',
-      [req.session.userId]
-    );
+    const user = db.prepare('SELECT deposit_amount FROM users WHERE id = ?').get(req.session.userId);
 
-    if (parseFloat(user.rows[0].deposit_amount) < 30) {
+    if (parseFloat(user.deposit_amount) < 30) {
       return res.status(400).json({ error: 'Vous devez avoir un dépôt minimum de 30$ pour compléter les quêtes' });
     }
 
-    const existing = await client.query(
-      'SELECT * FROM user_quests WHERE user_id = $1 AND quest_id = $2 AND completed_date = $3',
-      [req.session.userId, questId, today]
-    );
+    const existing = db.prepare('SELECT * FROM user_quests WHERE user_id = ? AND quest_id = ? AND completed_date = ?').get(req.session.userId, questId, today);
 
-    if (existing.rows.length > 0) {
+    if (existing) {
       return res.status(400).json({ error: 'Quête déjà complétée aujourd\'hui' });
     }
 
-    const quest = await client.query('SELECT * FROM quests WHERE id = $1', [questId]);
-    if (quest.rows.length === 0) {
+    const quest = db.prepare('SELECT * FROM quests WHERE id = ?').get(questId);
+    if (!quest) {
       return res.status(404).json({ error: 'Quête non trouvée' });
     }
 
-    // Vérifier que les quêtes doivent être complétées dans l'ordre
-    // Récupérer toutes les quêtes pour déterminer l'ordre
-    const allQuests = await client.query('SELECT id FROM quests ORDER BY id');
-    const questIds = allQuests.rows.map(q => q.id);
+    const allQuests = db.prepare('SELECT id FROM quests ORDER BY id').all();
+    const questIds = allQuests.map(q => q.id);
     const questIndex = questIds.indexOf(questId);
 
-    // Si ce n'est pas la première quête, vérifier que la quête précédente est complétée aujourd'hui
     if (questIndex > 0) {
       const previousQuestId = questIds[questIndex - 1];
-      const previousCompleted = await client.query(
-        'SELECT * FROM user_quests WHERE user_id = $1 AND quest_id = $2 AND completed_date = $3',
-        [req.session.userId, previousQuestId, today]
-      );
+      const previousCompleted = db.prepare('SELECT * FROM user_quests WHERE user_id = ? AND quest_id = ? AND completed_date = ?').get(req.session.userId, previousQuestId, today);
       
-      if (previousCompleted.rows.length === 0) {
+      if (!previousCompleted) {
         return res.status(400).json({ error: 'Vous devez d\'abord compléter la quête précédente' });
       }
     }
 
-    // Pour la quête 2 (index 1), vérifier qu'au moins 1 parrainage a été fait
     if (questIndex === 1) {
-      const referralsCount = await client.query(
-        'SELECT COUNT(*) FROM referrals WHERE referrer_id = $1',
-        [req.session.userId]
-      );
+      const referralsCount = db.prepare('SELECT COUNT(*) as count FROM referrals WHERE referrer_id = ?').get(req.session.userId);
       
-      if (parseInt(referralsCount.rows[0].count) < 1) {
+      if (referralsCount.count < 1) {
         return res.status(400).json({ error: 'Vous devez inviter au moins 1 personne pour compléter cette quête' });
       }
     }
 
-    const depositAmount = parseFloat(user.rows[0].deposit_amount);
-    const rewardPercentage = parseFloat(quest.rows[0].reward_percentage);
+    const depositAmount = parseFloat(user.deposit_amount);
+    const rewardPercentage = parseFloat(quest.reward_percentage);
     const reward = (depositAmount * rewardPercentage) / 100;
 
-    await client.query('BEGIN');
+    const transaction = db.transaction(() => {
+      db.prepare('INSERT INTO user_quests (user_id, quest_id, completed_date, reward_earned) VALUES (?, ?, ?, ?)').run(req.session.userId, questId, today, reward);
+      db.prepare('UPDATE users SET balance = balance + ? WHERE id = ?').run(reward, req.session.userId);
+    });
 
-    await client.query(
-      'INSERT INTO user_quests (user_id, quest_id, completed_date, reward_earned) VALUES ($1, $2, $3, $4)',
-      [req.session.userId, questId, today, reward]
-    );
+    transaction();
 
-    await client.query(
-      'UPDATE users SET balance = balance + $1 WHERE id = $2',
-      [reward, req.session.userId]
-    );
-
-    await client.query('COMMIT');
-
-    const updatedUser = await client.query(
-      'SELECT balance FROM users WHERE id = $1',
-      [req.session.userId]
-    );
+    const updatedUser = db.prepare('SELECT balance FROM users WHERE id = ?').get(req.session.userId);
 
     res.json({ 
       success: true, 
       reward: reward,
-      newBalance: updatedUser.rows[0].balance
+      newBalance: updatedUser.balance
     });
   } catch (err) {
-    await client.query('ROLLBACK');
     res.status(500).json({ error: 'Erreur serveur' });
-  } finally {
-    client.release();
   }
 });
 
-app.get('/api/history', requireAuth, async (req, res) => {
+app.get('/api/history', requireAuth, (req, res) => {
   try {
-    const deposits = await pool.query(
-      'SELECT amount, status, tx_hash, created_at FROM deposits WHERE user_id = $1 ORDER BY created_at DESC LIMIT 10',
-      [req.session.userId]
-    );
+    const deposits = db.prepare('SELECT amount, status, tx_hash, created_at FROM deposits WHERE user_id = ? ORDER BY created_at DESC LIMIT 10').all(req.session.userId);
 
-    const questRewards = await pool.query(
-      `SELECT uq.reward_earned, uq.completed_date, q.title 
-       FROM user_quests uq 
-       JOIN quests q ON uq.quest_id = q.id 
-       WHERE uq.user_id = $1 
-       ORDER BY uq.completed_date DESC LIMIT 10`,
-      [req.session.userId]
-    );
+    const questRewards = db.prepare(`
+      SELECT uq.reward_earned, uq.completed_date, q.title 
+      FROM user_quests uq 
+      JOIN quests q ON uq.quest_id = q.id 
+      WHERE uq.user_id = ? 
+      ORDER BY uq.completed_date DESC LIMIT 10
+    `).all(req.session.userId);
 
     res.json({
-      deposits: deposits.rows,
-      questRewards: questRewards.rows
+      deposits,
+      questRewards
     });
   } catch (err) {
     res.status(500).json({ error: 'Erreur serveur' });
@@ -547,7 +438,7 @@ app.get('/api/history', requireAuth, async (req, res) => {
 
 const ADMIN_ACCESS_CODE = process.env.ADMIN_ACCESS_CODE || '1289';
 
-app.post('/api/admin/login', async (req, res) => {
+app.post('/api/admin/login', (req, res) => {
   const { code } = req.body;
 
   if (code === ADMIN_ACCESS_CODE) {
@@ -567,76 +458,62 @@ app.get('/api/admin/check', (req, res) => {
   res.json({ isAdmin: !!req.session.adminId });
 });
 
-app.get('/api/admin/deposits', requireAdmin, async (req, res) => {
+app.get('/api/admin/deposits', requireAdmin, (req, res) => {
   try {
-    const deposits = await pool.query(`
+    const deposits = db.prepare(`
       SELECT d.*, u.email as user_email 
       FROM deposits d 
       JOIN users u ON d.user_id = u.id 
       ORDER BY d.created_at DESC
-    `);
-    res.json(deposits.rows);
+    `).all();
+    res.json(deposits);
   } catch (err) {
     res.status(500).json({ error: 'Erreur serveur' });
   }
 });
 
-app.post('/api/admin/deposits/:id/approve', requireAdmin, async (req, res) => {
+app.post('/api/admin/deposits/:id/approve', requireAdmin, (req, res) => {
   const depositId = req.params.id;
 
-  const client = await pool.connect();
   try {
-    const deposit = await client.query('SELECT * FROM deposits WHERE id = $1', [depositId]);
+    const deposit = db.prepare('SELECT * FROM deposits WHERE id = ?').get(depositId);
     
-    if (deposit.rows.length === 0) {
+    if (!deposit) {
       return res.status(404).json({ error: 'Dépôt non trouvé' });
     }
 
-    if (deposit.rows[0].status !== 'pending') {
+    if (deposit.status !== 'pending') {
       return res.status(400).json({ error: 'Ce dépôt a déjà été traité' });
     }
 
-    await client.query('BEGIN');
+    const transaction = db.transaction(() => {
+      db.prepare('UPDATE deposits SET status = ? WHERE id = ?').run('confirmed', depositId);
+      db.prepare('UPDATE users SET deposit_amount = deposit_amount + ?, balance = balance + ? WHERE id = ?').run(deposit.amount, deposit.amount, deposit.user_id);
+    });
 
-    await client.query(
-      'UPDATE deposits SET status = $1 WHERE id = $2',
-      ['confirmed', depositId]
-    );
-
-    await client.query(
-      'UPDATE users SET deposit_amount = deposit_amount + $1, balance = balance + $1 WHERE id = $2',
-      [deposit.rows[0].amount, deposit.rows[0].user_id]
-    );
-
-    await client.query('COMMIT');
+    transaction();
 
     res.json({ success: true, message: 'Dépôt approuvé' });
   } catch (err) {
-    await client.query('ROLLBACK');
     res.status(500).json({ error: 'Erreur serveur' });
-  } finally {
-    client.release();
   }
 });
 
-app.post('/api/admin/deposits/:id/reject', requireAdmin, async (req, res) => {
+app.post('/api/admin/deposits/:id/reject', requireAdmin, (req, res) => {
   const depositId = req.params.id;
 
   try {
-    const deposit = await pool.query('SELECT * FROM deposits WHERE id = $1', [depositId]);
+    const deposit = db.prepare('SELECT * FROM deposits WHERE id = ?').get(depositId);
     
-    if (deposit.rows.length === 0) {
+    if (!deposit) {
       return res.status(404).json({ error: 'Dépôt non trouvé' });
     }
 
-    if (deposit.rows[0].status !== 'pending') {
+    if (deposit.status !== 'pending') {
       return res.status(400).json({ error: 'Ce dépôt a déjà été traité' });
     }
 
-    await pool.query(
-      'UPDATE deposits SET status = $1 WHERE id = $2',
-      ['rejected', depositId]
-    );
+    db.prepare('UPDATE deposits SET status = ? WHERE id = ?').run('rejected', depositId);
 
     res.json({ success: true, message: 'Dépôt rejeté' });
   } catch (err) {
@@ -652,11 +529,7 @@ app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
-initDB().then(() => {
-  app.listen(PORT, '0.0.0.0', () => {
-    console.log(`Server running on http://0.0.0.0:${PORT}`);
-  });
-}).catch(err => {
-  console.error('Failed to initialize database:', err);
-  process.exit(1);
+initDB();
+app.listen(PORT, '0.0.0.0', () => {
+  console.log(`Server running on http://0.0.0.0:${PORT}`);
 });
