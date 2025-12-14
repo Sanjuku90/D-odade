@@ -62,14 +62,19 @@
           </div>
 
           <div class="card deposit-card">
-            <h3>Effectuer un Dépôt</h3>
+            <h3>Soumettre un Dépôt</h3>
             <p class="min-deposit">Dépôt minimum: <strong>$30</strong></p>
+            <p class="deposit-instructions">1. Envoyez vos fonds à l'adresse ci-dessous<br>2. Entrez le montant et le hash de transaction</p>
             <form id="deposit-form">
               <div class="form-group">
                 <label>Montant ($)</label>
                 <input type="number" name="amount" min="30" step="0.01" required>
               </div>
-              <button type="submit" class="btn btn-primary">Déposer</button>
+              <div class="form-group">
+                <label>Hash de Transaction</label>
+                <input type="text" name="tx_hash" placeholder="Ex: 0x123abc..." required>
+              </div>
+              <button type="submit" class="btn btn-primary">Soumettre</button>
             </form>
             <p class="error-msg" id="deposit-error"></p>
             <p class="success-msg" id="deposit-success"></p>
@@ -77,11 +82,12 @@
 
           <div class="card address-card">
             <h3>Adresse de Dépôt</h3>
-            <p class="address-label">Votre adresse unique:</p>
+            <p class="address-label">Envoyez vos fonds à cette adresse:</p>
             <div class="address-box">
               <code id="deposit-address">...</code>
               <button class="btn btn-small" onclick="copyAddress()">Copier</button>
             </div>
+            <p class="address-note">Conservez le hash de transaction pour soumettre votre dépôt</p>
           </div>
 
           <div class="card quests-card">

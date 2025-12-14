@@ -76,6 +76,7 @@ function setupEventListeners() {
     e.preventDefault();
     const formData = new FormData(e.target);
     const amount = formData.get('amount');
+    const tx_hash = formData.get('tx_hash');
 
     document.getElementById('deposit-error').textContent = '';
     document.getElementById('deposit-success').textContent = '';
@@ -84,22 +85,20 @@ function setupEventListeners() {
       const res = await fetch('/api/deposit', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ amount })
+        body: JSON.stringify({ amount, tx_hash })
       });
 
       const result = await res.json();
       if (res.ok) {
-        document.getElementById('deposit-success').textContent = 'Dépôt effectué avec succès!';
+        document.getElementById('deposit-success').textContent = 'Transaction soumise! En attente de validation.';
         e.target.reset();
-        loadUserData();
-        loadQuests();
         loadHistory();
-        showToast('Dépôt de $' + amount + ' effectué!', 'success');
+        showToast('Transaction soumise avec succès!', 'success');
       } else {
         document.getElementById('deposit-error').textContent = result.error;
       }
     } catch (err) {
-      document.getElementById('deposit-error').textContent = 'Erreur de dépôt';
+      document.getElementById('deposit-error').textContent = 'Erreur de soumission';
     }
   });
 }
@@ -204,12 +203,19 @@ async function loadHistory() {
       const data = await res.json();
       const historyList = document.getElementById('history-list');
       
+      const statusLabels = {
+        'pending': 'En attente',
+        'confirmed': 'Confirmé',
+        'rejected': 'Rejeté'
+      };
+      
       const allHistory = [
         ...data.deposits.map(d => ({
-          type: 'Dépôt',
+          type: 'Dépôt - ' + (statusLabels[d.status] || d.status),
           amount: '+$' + parseFloat(d.amount).toFixed(2),
           date: new Date(d.created_at).toLocaleDateString('fr-FR'),
-          positive: true
+          positive: d.status === 'confirmed',
+          pending: d.status === 'pending'
         })),
         ...data.questRewards.map(q => ({
           type: q.title,
@@ -228,7 +234,7 @@ async function loadHistory() {
               <span class="type">${item.type}</span>
               <span style="color: var(--text-muted); font-size: 0.8rem;"> - ${item.date}</span>
             </div>
-            <span class="amount ${item.positive ? 'positive' : ''}">${item.amount}</span>
+            <span class="amount ${item.positive ? 'positive' : ''} ${item.pending ? 'pending' : ''}">${item.amount}</span>
           </div>
         `).join('');
       }
