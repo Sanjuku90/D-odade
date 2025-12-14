@@ -103,6 +103,27 @@ async function initDB() {
       );
     `);
 
+    // Table pour les parrainages
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS referrals (
+        id SERIAL PRIMARY KEY,
+        referrer_id INTEGER REFERENCES users(id),
+        referred_id INTEGER REFERENCES users(id),
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE(referred_id)
+      );
+    `);
+
+    // Ajouter colonne referral_code si elle n'existe pas
+    await client.query(`
+      DO $$ 
+      BEGIN 
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'users' AND column_name = 'referral_code') THEN
+          ALTER TABLE users ADD COLUMN referral_code VARCHAR(10) UNIQUE;
+        END IF;
+      END $$;
+    `);
+
     const questCount = await client.query('SELECT COUNT(*) FROM quests');
     if (parseInt(questCount.rows[0].count) === 0) {
       await client.query(`
@@ -137,6 +158,15 @@ function generateDepositAddress() {
   return address;
 }
 
+function generateReferralCode() {
+  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+  let code = '';
+  for (let i = 0; i < 8; i++) {
+    code += chars[Math.floor(Math.random() * chars.length)];
+  }
+  return code;
+}
+
 function requireAuth(req, res, next) {
   if (!req.session.userId) {
     return res.status(401).json({ error: 'Non authentifié' });
@@ -152,28 +182,52 @@ function requireAdmin(req, res, next) {
 }
 
 app.post('/api/register', async (req, res) => {
-  const { email, password } = req.body;
+  const { email, password, referral_code } = req.body;
   
   if (!email || !password) {
     return res.status(400).json({ error: 'Email et mot de passe requis' });
   }
 
+  const client = await pool.connect();
   try {
+    await client.query('BEGIN');
+
     const hashedPassword = await bcrypt.hash(password, 10);
     const depositAddress = generateDepositAddress();
+    const userReferralCode = generateReferralCode();
     
-    const result = await pool.query(
-      'INSERT INTO users (email, password, deposit_address) VALUES ($1, $2, $3) RETURNING id, email, deposit_address',
-      [email, hashedPassword, depositAddress]
+    const result = await client.query(
+      'INSERT INTO users (email, password, deposit_address, referral_code) VALUES ($1, $2, $3, $4) RETURNING id, email, deposit_address',
+      [email, hashedPassword, depositAddress, userReferralCode]
     );
+
+    // Si un code de parrainage a été fourni, enregistrer le parrainage
+    if (referral_code && referral_code.trim()) {
+      const referrer = await client.query(
+        'SELECT id FROM users WHERE referral_code = $1',
+        [referral_code.trim().toUpperCase()]
+      );
+      
+      if (referrer.rows.length > 0) {
+        await client.query(
+          'INSERT INTO referrals (referrer_id, referred_id) VALUES ($1, $2)',
+          [referrer.rows[0].id, result.rows[0].id]
+        );
+      }
+    }
+
+    await client.query('COMMIT');
 
     req.session.userId = result.rows[0].id;
     res.json({ success: true, user: { email: result.rows[0].email } });
   } catch (err) {
+    await client.query('ROLLBACK');
     if (err.code === '23505') {
       return res.status(400).json({ error: 'Cet email existe déjà' });
     }
     res.status(500).json({ error: 'Erreur serveur' });
+  } finally {
+    client.release();
   }
 });
 
@@ -209,11 +263,19 @@ app.post('/api/logout', (req, res) => {
 app.get('/api/user', requireAuth, async (req, res) => {
   try {
     const result = await pool.query(
-      'SELECT id, email, balance, deposit_amount, created_at FROM users WHERE id = $1',
+      'SELECT id, email, balance, deposit_amount, created_at, referral_code FROM users WHERE id = $1',
       [req.session.userId]
     );
     const user = result.rows[0];
     user.deposit_address = DEPOSIT_ADDRESS;
+    
+    // Compter le nombre de filleuls
+    const referralsCount = await pool.query(
+      'SELECT COUNT(*) FROM referrals WHERE referrer_id = $1',
+      [req.session.userId]
+    );
+    user.referrals_count = parseInt(referralsCount.rows[0].count);
+    
     res.json(user);
   } catch (err) {
     res.status(500).json({ error: 'Erreur serveur' });
@@ -315,10 +377,41 @@ app.get('/api/quests', requireAuth, async (req, res) => {
       [req.session.userId, today]
     );
 
+    // Compter le nombre de filleuls pour savoir si la quête 2 est débloquée
+    const referralsCount = await pool.query(
+      'SELECT COUNT(*) FROM referrals WHERE referrer_id = $1',
+      [req.session.userId]
+    );
+    const hasReferral = parseInt(referralsCount.rows[0].count) >= 1;
+
+    // Ajouter les informations de verrouillage
+    const questsWithStatus = quests.rows.map((quest, index) => {
+      let locked = false;
+      let lockReason = '';
+      
+      // Quête 2 et suivantes: vérifier si la quête précédente est complétée
+      if (index > 0) {
+        const previousQuest = quests.rows[index - 1];
+        if (!previousQuest.completed) {
+          locked = true;
+          lockReason = 'Complétez d\'abord la quête précédente';
+        }
+      }
+      
+      // Quête 2 spécifiquement: vérifier le parrainage
+      if (index === 1 && !hasReferral) {
+        locked = true;
+        lockReason = 'Invitez au moins 1 personne pour débloquer';
+      }
+      
+      return { ...quest, locked, lockReason };
+    });
+
     res.json({
-      quests: quests.rows,
+      quests: questsWithStatus,
       completedToday: parseInt(completedCount.rows[0].count),
-      totalQuests: 3
+      totalQuests: 3,
+      referralsCount: parseInt(referralsCount.rows[0].count)
     });
   } catch (err) {
     res.status(500).json({ error: 'Erreur serveur' });
@@ -326,7 +419,7 @@ app.get('/api/quests', requireAuth, async (req, res) => {
 });
 
 app.post('/api/quests/:id/complete', requireAuth, async (req, res) => {
-  const questId = req.params.id;
+  const questId = parseInt(req.params.id);
   const today = new Date().toISOString().split('T')[0];
 
   const client = await pool.connect();
@@ -352,6 +445,37 @@ app.post('/api/quests/:id/complete', requireAuth, async (req, res) => {
     const quest = await client.query('SELECT * FROM quests WHERE id = $1', [questId]);
     if (quest.rows.length === 0) {
       return res.status(404).json({ error: 'Quête non trouvée' });
+    }
+
+    // Vérifier que les quêtes doivent être complétées dans l'ordre
+    // Récupérer toutes les quêtes pour déterminer l'ordre
+    const allQuests = await client.query('SELECT id FROM quests ORDER BY id');
+    const questIds = allQuests.rows.map(q => q.id);
+    const questIndex = questIds.indexOf(questId);
+
+    // Si ce n'est pas la première quête, vérifier que la quête précédente est complétée aujourd'hui
+    if (questIndex > 0) {
+      const previousQuestId = questIds[questIndex - 1];
+      const previousCompleted = await client.query(
+        'SELECT * FROM user_quests WHERE user_id = $1 AND quest_id = $2 AND completed_date = $3',
+        [req.session.userId, previousQuestId, today]
+      );
+      
+      if (previousCompleted.rows.length === 0) {
+        return res.status(400).json({ error: 'Vous devez d\'abord compléter la quête précédente' });
+      }
+    }
+
+    // Pour la quête 2 (index 1), vérifier qu'au moins 1 parrainage a été fait
+    if (questIndex === 1) {
+      const referralsCount = await client.query(
+        'SELECT COUNT(*) FROM referrals WHERE referrer_id = $1',
+        [req.session.userId]
+      );
+      
+      if (parseInt(referralsCount.rows[0].count) < 1) {
+        return res.status(400).json({ error: 'Vous devez inviter au moins 1 personne pour compléter cette quête' });
+      }
     }
 
     const depositAmount = parseFloat(user.rows[0].deposit_amount);
