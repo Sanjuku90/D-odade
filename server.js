@@ -7,16 +7,18 @@ const { Pool } = require('pg');
 const path = require('path');
 
 const app = express();
-const PORT = 5000;
+const PORT = process.env.PORT || 5000;
+
+app.set('trust proxy', 1);
 
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
 });
 
 const SESSION_SECRET = process.env.SESSION_SECRET || crypto.randomBytes(32).toString('hex');
-const DEPOSIT_ADDRESS = 'TAB1oeEKDS5NATwFAaUrTioDU9djX7anyS';
-const ADMIN_EMAIL = 'admin@questinvest.com';
-const ADMIN_PASSWORD = 'admin123';
+const DEPOSIT_ADDRESS = process.env.DEPOSIT_ADDRESS || 'TAB1oeEKDS5NATwFAaUrTioDU9djX7anyS';
+const ADMIN_EMAIL = process.env.ADMIN_EMAIL || 'admin@questinvest.com';
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'admin123';
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
@@ -30,7 +32,11 @@ app.use(session({
   secret: SESSION_SECRET,
   resave: false,
   saveUninitialized: false,
-  cookie: { maxAge: 30 * 24 * 60 * 60 * 1000 }
+  cookie: { 
+    maxAge: 30 * 24 * 60 * 60 * 1000,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax'
+  }
 }));
 
 app.use((req, res, next) => {
@@ -539,7 +545,7 @@ app.get('/api/history', requireAuth, async (req, res) => {
   }
 });
 
-const ADMIN_ACCESS_CODE = '1289';
+const ADMIN_ACCESS_CODE = process.env.ADMIN_ACCESS_CODE || '1289';
 
 app.post('/api/admin/login', async (req, res) => {
   const { code } = req.body;
