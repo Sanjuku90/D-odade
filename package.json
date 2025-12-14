@@ -1,0 +1,17 @@
+{
+  "name": "quest-invest",
+  "version": "1.0.0",
+  "description": "Investment platform with daily quests",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js"
+  },
+  "dependencies": {
+    "bcryptjs": "^2.4.3",
+    "connect-pg-simple": "^9.0.1",
+    "express": "^4.22.1",
+    "express-session": "^1.18.2",
+    "pg": "^8.11.3"
+  }
+}
