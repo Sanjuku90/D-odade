@@ -1067,74 +1067,229 @@ footer {
 }
 
 @media (max-width: 768px) {
+  .container {
+    padding: 0 16px;
+  }
+  
   .dashboard-grid {
     grid-template-columns: 1fr;
   }
   
   .balance-amount {
-    font-size: 2.25rem;
+    font-size: 2rem;
   }
   
   .auth-container {
-    margin: 40px auto;
-    padding: 0 16px;
+    margin: 24px auto;
+    padding: 0 12px;
   }
   
   .auth-form {
-    padding: 28px;
+    padding: 24px 20px;
   }
   
-  .card {
-    padding: 22px;
-  }
-  
-  .admin-title {
+  .auth-form h2 {
     font-size: 1.5rem;
   }
   
-  .admin-filters {
+  .auth-tabs {
     gap: 8px;
   }
   
+  .tab-btn {
+    padding: 12px 8px;
+    font-size: 0.9rem;
+  }
+  
+  .card {
+    padding: 20px;
+    border-radius: 16px;
+  }
+  
+  .admin-title {
+    font-size: 1.35rem;
+  }
+  
+  .admin-filters {
+    gap: 6px;
+  }
+  
   .filter-btn {
-    padding: 10px 16px;
-    font-size: 0.85rem;
+    padding: 8px 14px;
+    font-size: 0.8rem;
+  }
+  
+  .admin-table th,
+  .admin-table td {
+    padding: 12px 10px;
+    font-size: 0.8rem;
   }
   
   .dashboard-nav {
     padding: 6px;
+    gap: 4px;
   }
   
   .dash-tab {
-    padding: 10px 16px;
-    font-size: 0.85rem;
+    padding: 10px 14px;
+    font-size: 0.8rem;
   }
   
   .stats-grid {
     grid-template-columns: 1fr;
+    gap: 12px;
+  }
+  
+  .stat-card {
+    padding: 18px;
+  }
+  
+  .stat-icon {
+    width: 48px;
+    height: 48px;
+    font-size: 1.25rem;
+  }
+  
+  .stat-value {
+    font-size: 1.25rem;
   }
   
   .overview-grid {
     grid-template-columns: 1fr;
+    gap: 16px;
   }
   
   .quests-grid {
     grid-template-columns: 1fr;
+    gap: 14px;
+  }
+  
+  .quest-card {
+    padding: 20px;
   }
   
   .deposit-layout {
     grid-template-columns: 1fr;
+    gap: 16px;
   }
   
   .profile-layout {
     grid-template-columns: 1fr;
+    gap: 16px;
+  }
+  
+  .profile-avatar {
+    width: 80px;
+    height: 80px;
+    font-size: 2rem;
   }
   
   .welcome-banner {
-    padding: 24px;
+    padding: 20px;
+    border-radius: 16px;
+    margin-bottom: 20px;
   }
   
   .welcome-content h2 {
-    font-size: 1.35rem;
+    font-size: 1.25rem;
+  }
+  
+  .welcome-content p {
+    font-size: 0.9rem;
+  }
+  
+  .view-header h2 {
+    font-size: 1.4rem;
+  }
+  
+  .view-header p {
+    font-size: 0.9rem;
+  }
+  
+  .form-group input {
+    padding: 12px 14px;
+    font-size: 0.95rem;
+  }
+  
+  .btn {
+    padding: 12px 20px;
+    font-size: 0.95rem;
+  }
+  
+  .address-box {
+    padding: 12px;
+    flex-direction: column;
+    gap: 10px;
+  }
+  
+  .address-box code {
+    font-size: 0.7rem;
+    text-align: center;
+  }
+  
+  .quest-item {
+    flex-direction: column;
+    gap: 12px;
+    text-align: center;
+  }
+  
+  .history-item {
+    flex-direction: column;
+    gap: 8px;
+    align-items: flex-start;
+  }
+  
+  header {
+    padding: 12px 0;
+  }
+  
+  .logo {
+    font-size: 1.4rem;
+  }
+  
+  nav button {
+    padding: 8px 14px;
+    font-size: 0.85rem;
+  }
+  
+  main {
+    padding: 24px 0;
+  }
+  
+  footer {
+    padding: 20px 0;
+    font-size: 0.8rem;
+  }
+  
+  .toast {
+    left: 16px;
+    right: 16px;
+    bottom: 16px;
+    text-align: center;
+  }
+}
+
+@media (max-width: 480px) {
+  .dashboard-nav {
+    flex-wrap: nowrap;
+    -webkit-overflow-scrolling: touch;
+  }
+  
+  .dash-tab {
+    padding: 8px 12px;
+    font-size: 0.75rem;
+  }
+  
+  .stat-card {
+    padding: 16px;
+  }
+  
+  .stat-icon {
+    width: 44px;
+    height: 44px;
+  }
+  
+  .auth-form {
+    padding: 20px 16px;
   }
 }
