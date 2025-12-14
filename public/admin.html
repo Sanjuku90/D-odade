@@ -21,14 +21,10 @@
           <form id="admin-login-form" class="auth-form">
             <h2>Connexion Admin</h2>
             <div class="form-group">
-              <label>Email</label>
-              <input type="email" name="email" required>
+              <label>Code d'acces</label>
+              <input type="password" name="code" required placeholder="Entrez le code">
             </div>
-            <div class="form-group">
-              <label>Mot de passe</label>
-              <input type="password" name="password" required>
-            </div>
-            <button type="submit" class="btn btn-primary">Se connecter</button>
+            <button type="submit" class="btn btn-primary">Acceder</button>
             <p class="error-msg" id="admin-login-error"></p>
           </form>
         </div>
@@ -86,8 +82,7 @@
         e.preventDefault();
         const formData = new FormData(e.target);
         const data = {
-          email: formData.get('email'),
-          password: formData.get('password')
+          code: formData.get('code')
         };
 
         try {

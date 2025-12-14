@@ -363,27 +363,16 @@ app.get('/api/history', requireAuth, async (req, res) => {
   }
 });
 
+const ADMIN_ACCESS_CODE = '1289';
+
 app.post('/api/admin/login', async (req, res) => {
-  const { email, password } = req.body;
+  const { code } = req.body;
 
-  try {
-    const result = await pool.query('SELECT * FROM admins WHERE email = $1', [email]);
-    
-    if (result.rows.length === 0) {
-      return res.status(401).json({ error: 'Email ou mot de passe incorrect' });
-    }
-
-    const admin = result.rows[0];
-    const validPassword = await bcrypt.compare(password, admin.password);
-
-    if (!validPassword) {
-      return res.status(401).json({ error: 'Email ou mot de passe incorrect' });
-    }
-
-    req.session.adminId = admin.id;
+  if (code === ADMIN_ACCESS_CODE) {
+    req.session.adminId = 1;
     res.json({ success: true });
-  } catch (err) {
-    res.status(500).json({ error: 'Erreur serveur' });
+  } else {
+    return res.status(401).json({ error: 'Code d\'accès incorrect' });
   }
 });
 
