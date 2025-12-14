@@ -3,7 +3,41 @@ let currentUser = null;
 document.addEventListener('DOMContentLoaded', () => {
   checkAuth();
   setupEventListeners();
+  setupLandingListeners();
 });
+
+function setupLandingListeners() {
+  const getStartedBtn = document.getElementById('get-started-btn');
+  const learnMoreBtn = document.getElementById('learn-more-btn');
+  const joinNowBtn = document.getElementById('join-now-btn');
+  const signupCtaBtn = document.getElementById('signup-cta-btn');
+  const backToLanding = document.getElementById('back-to-landing');
+
+  if (getStartedBtn) {
+    getStartedBtn.addEventListener('click', () => showAuth());
+  }
+  if (learnMoreBtn) {
+    learnMoreBtn.addEventListener('click', () => {
+      document.getElementById('features').scrollIntoView({ behavior: 'smooth' });
+    });
+  }
+  if (joinNowBtn) {
+    joinNowBtn.addEventListener('click', () => showAuth('register'));
+  }
+  if (signupCtaBtn) {
+    signupCtaBtn.addEventListener('click', () => showAuth('register'));
+  }
+  if (backToLanding) {
+    backToLanding.addEventListener('click', () => showLanding());
+  }
+}
+
+function showLanding() {
+  document.getElementById('landing-section').classList.remove('hidden');
+  document.getElementById('auth-section').classList.add('hidden');
+  document.getElementById('dashboard-section').classList.add('hidden');
+  document.getElementById('nav-links').innerHTML = '<button onclick="showAuth()">Connexion</button>';
+}
 
 function setupEventListeners() {
   document.querySelectorAll('.tab-btn').forEach(btn => {
@@ -191,20 +225,29 @@ async function checkAuth() {
     if (res.ok) {
       showDashboard();
     } else {
-      showAuth();
+      showLanding();
     }
   } catch (err) {
-    showAuth();
+    showLanding();
   }
 }
 
-function showAuth() {
+function showAuth(tab = 'login') {
+  document.getElementById('landing-section').classList.add('hidden');
   document.getElementById('auth-section').classList.remove('hidden');
   document.getElementById('dashboard-section').classList.add('hidden');
   document.getElementById('nav-links').innerHTML = '';
+  
+  if (tab === 'register') {
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.querySelector('.tab-btn[data-tab="register"]').classList.add('active');
+    document.getElementById('login-form').classList.add('hidden');
+    document.getElementById('register-form').classList.remove('hidden');
+  }
 }
 
 function showDashboard() {
+  document.getElementById('landing-section').classList.add('hidden');
   document.getElementById('auth-section').classList.add('hidden');
   document.getElementById('dashboard-section').classList.remove('hidden');
   document.getElementById('nav-links').innerHTML = '<button onclick="logout()">Deconnexion</button>';
