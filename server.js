@@ -209,12 +209,64 @@ app.post('/api/logout', (req, res) => {
 app.get('/api/user', requireAuth, async (req, res) => {
   try {
     const result = await pool.query(
-      'SELECT id, email, balance, deposit_amount FROM users WHERE id = $1',
+      'SELECT id, email, balance, deposit_amount, created_at FROM users WHERE id = $1',
       [req.session.userId]
     );
     const user = result.rows[0];
     user.deposit_address = DEPOSIT_ADDRESS;
     res.json(user);
+  } catch (err) {
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+});
+
+app.put('/api/user/email', requireAuth, async (req, res) => {
+  const { new_email, current_password } = req.body;
+
+  if (!new_email || !current_password) {
+    return res.status(400).json({ error: 'Email et mot de passe requis' });
+  }
+
+  try {
+    const user = await pool.query('SELECT * FROM users WHERE id = $1', [req.session.userId]);
+    const validPassword = await bcrypt.compare(current_password, user.rows[0].password);
+
+    if (!validPassword) {
+      return res.status(401).json({ error: 'Mot de passe incorrect' });
+    }
+
+    await pool.query('UPDATE users SET email = $1 WHERE id = $2', [new_email, req.session.userId]);
+    res.json({ success: true });
+  } catch (err) {
+    if (err.code === '23505') {
+      return res.status(400).json({ error: 'Cet email existe deja' });
+    }
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+});
+
+app.put('/api/user/password', requireAuth, async (req, res) => {
+  const { current_password, new_password } = req.body;
+
+  if (!current_password || !new_password) {
+    return res.status(400).json({ error: 'Mots de passe requis' });
+  }
+
+  if (new_password.length < 6) {
+    return res.status(400).json({ error: 'Le nouveau mot de passe doit avoir au moins 6 caracteres' });
+  }
+
+  try {
+    const user = await pool.query('SELECT * FROM users WHERE id = $1', [req.session.userId]);
+    const validPassword = await bcrypt.compare(current_password, user.rows[0].password);
+
+    if (!validPassword) {
+      return res.status(401).json({ error: 'Mot de passe actuel incorrect' });
+    }
+
+    const hashedPassword = await bcrypt.hash(new_password, 10);
+    await pool.query('UPDATE users SET password = $1 WHERE id = $2', [hashedPassword, req.session.userId]);
+    res.json({ success: true });
   } catch (err) {
     res.status(500).json({ error: 'Erreur serveur' });
   }

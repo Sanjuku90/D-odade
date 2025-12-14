@@ -1,3 +1,5 @@
+let currentUser = null;
+
 document.addEventListener('DOMContentLoaded', () => {
   checkAuth();
   setupEventListeners();
@@ -17,6 +19,17 @@ function setupEventListeners() {
         document.getElementById('login-form').classList.add('hidden');
         document.getElementById('register-form').classList.remove('hidden');
       }
+    });
+  });
+
+  document.querySelectorAll('.dash-tab').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const view = btn.dataset.view;
+      document.querySelectorAll('.dash-tab').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      
+      document.querySelectorAll('.dashboard-view').forEach(v => v.classList.add('hidden'));
+      document.getElementById(view + '-view').classList.remove('hidden');
     });
   });
 
@@ -93,12 +106,81 @@ function setupEventListeners() {
         document.getElementById('deposit-success').textContent = 'Transaction soumise! En attente de validation.';
         e.target.reset();
         loadHistory();
-        showToast('Transaction soumise avec succès!', 'success');
+        showToast('Transaction soumise avec succes!', 'success');
       } else {
         document.getElementById('deposit-error').textContent = result.error;
       }
     } catch (err) {
       document.getElementById('deposit-error').textContent = 'Erreur de soumission';
+    }
+  });
+
+  document.getElementById('change-email-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const formData = new FormData(e.target);
+    
+    document.getElementById('email-error').textContent = '';
+    document.getElementById('email-success').textContent = '';
+
+    try {
+      const res = await fetch('/api/user/email', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          new_email: formData.get('new_email'),
+          current_password: formData.get('current_password')
+        })
+      });
+
+      const result = await res.json();
+      if (res.ok) {
+        document.getElementById('email-success').textContent = 'Email mis a jour!';
+        e.target.reset();
+        loadUserData();
+        showToast('Email mis a jour!', 'success');
+      } else {
+        document.getElementById('email-error').textContent = result.error;
+      }
+    } catch (err) {
+      document.getElementById('email-error').textContent = 'Erreur de mise a jour';
+    }
+  });
+
+  document.getElementById('change-password-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const formData = new FormData(e.target);
+    
+    document.getElementById('password-error').textContent = '';
+    document.getElementById('password-success').textContent = '';
+
+    const newPassword = formData.get('new_password');
+    const confirmPassword = formData.get('confirm_password');
+
+    if (newPassword !== confirmPassword) {
+      document.getElementById('password-error').textContent = 'Les mots de passe ne correspondent pas';
+      return;
+    }
+
+    try {
+      const res = await fetch('/api/user/password', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          current_password: formData.get('current_password'),
+          new_password: newPassword
+        })
+      });
+
+      const result = await res.json();
+      if (res.ok) {
+        document.getElementById('password-success').textContent = 'Mot de passe change!';
+        e.target.reset();
+        showToast('Mot de passe change!', 'success');
+      } else {
+        document.getElementById('password-error').textContent = result.error;
+      }
+    } catch (err) {
+      document.getElementById('password-error').textContent = 'Erreur de mise a jour';
     }
   });
 }
@@ -125,7 +207,7 @@ function showAuth() {
 function showDashboard() {
   document.getElementById('auth-section').classList.add('hidden');
   document.getElementById('dashboard-section').classList.remove('hidden');
-  document.getElementById('nav-links').innerHTML = '<button onclick="logout()">Déconnexion</button>';
+  document.getElementById('nav-links').innerHTML = '<button onclick="logout()">Deconnexion</button>';
   
   loadUserData();
   loadQuests();
@@ -137,9 +219,17 @@ async function loadUserData() {
     const res = await fetch('/api/user');
     if (res.ok) {
       const user = await res.json();
+      currentUser = user;
       document.getElementById('user-balance').textContent = parseFloat(user.balance).toFixed(2);
       document.getElementById('user-deposit').textContent = parseFloat(user.deposit_amount).toFixed(2);
       document.getElementById('deposit-address').textContent = user.deposit_address;
+      
+      document.getElementById('profile-email').textContent = user.email;
+      document.getElementById('profile-initial').textContent = user.email.charAt(0).toUpperCase();
+      
+      if (user.created_at) {
+        document.getElementById('profile-date').textContent = new Date(user.created_at).toLocaleDateString('fr-FR');
+      }
     }
   } catch (err) {
     console.error('Error loading user data');
@@ -153,23 +243,49 @@ async function loadQuests() {
       const data = await res.json();
       document.getElementById('quests-completed').textContent = data.completedToday;
       
-      const questsList = document.getElementById('quests-list');
-      questsList.innerHTML = data.quests.map(quest => `
-        <div class="quest-item ${quest.completed ? 'completed' : ''}">
-          <div class="quest-info">
-            <h4>${quest.title}</h4>
-            <p>${quest.description}</p>
+      const questsCompleted2 = document.getElementById('quests-completed-2');
+      if (questsCompleted2) {
+        questsCompleted2.textContent = data.completedToday;
+      }
+      
+      const progressFill = document.getElementById('quests-progress-fill');
+      if (progressFill) {
+        progressFill.style.width = ((data.completedToday / 3) * 100) + '%';
+      }
+      
+      const questsListFull = document.getElementById('quests-list');
+      questsListFull.innerHTML = data.quests.map(quest => `
+        <div class="quest-card ${quest.completed ? 'completed' : ''}">
+          <div class="quest-header">
+            <span class="quest-badge">${quest.completed ? 'Terminee' : 'Disponible'}</span>
+            <span class="quest-reward-badge">+${quest.reward_percentage}%</span>
           </div>
-          <div>
-            <span class="quest-reward">+${quest.reward_percentage}%</span>
+          <h4>${quest.title}</h4>
+          <p>${quest.description}</p>
+          <button class="btn btn-quest" 
+            onclick="completeQuest(${quest.id})" 
+            ${quest.completed ? 'disabled' : ''}>
+            ${quest.completed ? 'Completee' : 'Completer la quete'}
+          </button>
+        </div>
+      `).join('');
+      
+      const quickQuests = document.getElementById('quick-quests');
+      if (quickQuests) {
+        quickQuests.innerHTML = data.quests.slice(0, 2).map(quest => `
+          <div class="quest-item ${quest.completed ? 'completed' : ''}">
+            <div class="quest-info">
+              <h4>${quest.title}</h4>
+              <p>${quest.description}</p>
+            </div>
             <button class="btn btn-quest" 
               onclick="completeQuest(${quest.id})" 
               ${quest.completed ? 'disabled' : ''}>
-              ${quest.completed ? 'Terminée' : 'Compléter'}
+              ${quest.completed ? 'Fait' : '+${quest.reward_percentage}%'}
             </button>
           </div>
-        </div>
-      `).join('');
+        `).join('');
+      }
     }
   } catch (err) {
     console.error('Error loading quests');
@@ -184,7 +300,7 @@ async function completeQuest(questId) {
 
     const result = await res.json();
     if (res.ok) {
-      showToast(`Quête complétée! +$${parseFloat(result.reward).toFixed(2)}`, 'success');
+      showToast(`Quete completee! +$${parseFloat(result.reward).toFixed(2)}`, 'success');
       loadUserData();
       loadQuests();
       loadHistory();
@@ -192,7 +308,7 @@ async function completeQuest(questId) {
       showToast(result.error, 'error');
     }
   } catch (err) {
-    showToast('Erreur lors de la complétion de la quête', 'error');
+    showToast('Erreur lors de la completion de la quete', 'error');
   }
 }
 
@@ -205,13 +321,13 @@ async function loadHistory() {
       
       const statusLabels = {
         'pending': 'En attente',
-        'confirmed': 'Confirmé',
-        'rejected': 'Rejeté'
+        'confirmed': 'Confirme',
+        'rejected': 'Rejete'
       };
       
       const allHistory = [
         ...data.deposits.map(d => ({
-          type: 'Dépôt - ' + (statusLabels[d.status] || d.status),
+          type: 'Depot - ' + (statusLabels[d.status] || d.status),
           amount: '+$' + parseFloat(d.amount).toFixed(2),
           date: new Date(d.created_at).toLocaleDateString('fr-FR'),
           positive: d.status === 'confirmed',
@@ -226,13 +342,13 @@ async function loadHistory() {
       ];
 
       if (allHistory.length === 0) {
-        historyList.innerHTML = '<p style="color: var(--text-muted); text-align: center;">Aucun historique</p>';
+        historyList.innerHTML = '<p class="empty-state">Aucun historique pour le moment</p>';
       } else {
-        historyList.innerHTML = allHistory.map(item => `
+        historyList.innerHTML = allHistory.slice(0, 5).map(item => `
           <div class="history-item">
             <div>
               <span class="type">${item.type}</span>
-              <span style="color: var(--text-muted); font-size: 0.8rem;"> - ${item.date}</span>
+              <span class="date">${item.date}</span>
             </div>
             <span class="amount ${item.positive ? 'positive' : ''} ${item.pending ? 'pending' : ''}">${item.amount}</span>
           </div>
@@ -256,7 +372,7 @@ async function logout() {
 function copyAddress() {
   const address = document.getElementById('deposit-address').textContent;
   navigator.clipboard.writeText(address).then(() => {
-    showToast('Adresse copiée!', 'success');
+    showToast('Adresse copiee!', 'success');
   });
 }
 
