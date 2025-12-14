@@ -107,9 +107,9 @@ async function initDB() {
     if (parseInt(questCount.rows[0].count) === 0) {
       await client.query(`
         INSERT INTO quests (title, description, reward_percentage) VALUES
-        ('Partager sur les réseaux', 'Partagez notre plateforme sur vos réseaux sociaux', 15),
-        ('Regarder une vidéo', 'Regardez une vidéo promotionnelle de 30 secondes', 15),
-        ('Inviter un ami', 'Invitez un ami à rejoindre la plateforme', 15);
+        ('Partager sur les réseaux', 'Partagez notre plateforme sur vos réseaux sociaux', 45),
+        ('Regarder une vidéo', 'Regardez une vidéo promotionnelle de 30 secondes', 45),
+        ('Inviter un ami', 'Invitez un ami à rejoindre la plateforme', 45);
       `);
     }
 
