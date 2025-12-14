@@ -18,77 +18,277 @@
     <main class="container">
       <div id="landing-section" class="section">
         <div class="hero">
-          <div class="hero-content">
-            <h1 class="hero-title">Gagnez jusqu'à <span class="highlight">135%</span> par jour</h1>
-            <p class="hero-subtitle">Complétez 3 quêtes simples quotidiennes et multipliez vos gains</p>
-            <div class="hero-buttons">
-              <button class="btn btn-primary btn-large" id="get-started-btn">Commencer maintenant</button>
-              <button class="btn btn-outline btn-large" id="learn-more-btn">En savoir plus</button>
+          <div class="hero-badge">La plateforme N°1 de gains passifs</div>
+          <h1 class="hero-title">Transformez <span class="highlight">30$</span> en <span class="highlight">+1000$</span> par mois</h1>
+          <p class="hero-subtitle">Rejoignez plus de 15 000 investisseurs qui gagnent chaque jour grâce à nos quêtes simples et rapides</p>
+          <div class="hero-buttons">
+            <button class="btn btn-primary btn-large" id="get-started-btn">Commencer à gagner</button>
+            <button class="btn btn-outline btn-large" id="learn-more-btn">Comment ça marche ?</button>
+          </div>
+          <div class="hero-stats">
+            <div class="hero-stat">
+              <span class="hero-stat-value">15K+</span>
+              <span class="hero-stat-label">Utilisateurs actifs</span>
             </div>
+            <div class="hero-stat">
+              <span class="hero-stat-value">$2.5M</span>
+              <span class="hero-stat-label">Distribués</span>
+            </div>
+            <div class="hero-stat">
+              <span class="hero-stat-value">135%</span>
+              <span class="hero-stat-label">Rendement quotidien</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="trust-section">
+          <p class="trust-title">Ils nous font confiance</p>
+          <div class="trust-logos">
+            <span class="trust-logo">TrustPilot ⭐⭐⭐⭐⭐</span>
+            <span class="trust-logo">Blockchain Verified</span>
+            <span class="trust-logo">SSL Secured</span>
+            <span class="trust-logo">24/7 Support</span>
           </div>
         </div>
 
         <div class="features" id="features">
           <h2 class="section-title">Comment ça marche ?</h2>
+          <p class="section-subtitle">3 étapes simples pour commencer à gagner</p>
           <div class="features-grid">
             <div class="feature-card">
-              <div class="feature-icon">1</div>
+              <div class="feature-step">Étape 1</div>
+              <div class="feature-icon">💰</div>
               <h3>Déposez</h3>
-              <p>Effectuez un dépôt minimum de 30$ en USDT (TRC20)</p>
+              <p>Effectuez un dépôt minimum de 30$ en USDT (TRC20). Votre capital est sécurisé et traçable sur la blockchain.</p>
             </div>
             <div class="feature-card">
-              <div class="feature-icon">2</div>
+              <div class="feature-step">Étape 2</div>
+              <div class="feature-icon">🎯</div>
               <h3>Complétez les quêtes</h3>
-              <p>3 quêtes simples par jour : partager, regarder, inviter</p>
+              <p>3 quêtes ultra-simples par jour : partager sur les réseaux, regarder une vidéo, inviter un ami. Moins de 5 minutes !</p>
             </div>
             <div class="feature-card">
-              <div class="feature-icon">3</div>
-              <h3>Gagnez 45% par quête</h3>
-              <p>Chaque quête vous rapporte 45% de votre dépôt</p>
+              <div class="feature-step">Étape 3</div>
+              <div class="feature-icon">🚀</div>
+              <h3>Récoltez vos gains</h3>
+              <p>Chaque quête vous rapporte 45% de votre dépôt. 3 quêtes = 135% de gains quotidiens garantis !</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="calculator-section">
+          <h2 class="section-title">Calculez vos gains</h2>
+          <p class="section-subtitle">Voyez combien vous pouvez gagner avec QuestInvest</p>
+          <div class="calculator-container">
+            <div class="calculator-card">
+              <div class="calculator-input-group">
+                <label>Montant de votre dépôt ($)</label>
+                <input type="number" id="calc-deposit" value="100" min="30" class="calculator-input">
+              </div>
+              <div class="calculator-results">
+                <div class="calc-result">
+                  <span class="calc-label">Gain par quête (45%)</span>
+                  <span class="calc-value" id="calc-per-quest">$45.00</span>
+                </div>
+                <div class="calc-result featured">
+                  <span class="calc-label">Gain quotidien (3 quêtes)</span>
+                  <span class="calc-value" id="calc-daily">$135.00</span>
+                </div>
+                <div class="calc-result">
+                  <span class="calc-label">Gain hebdomadaire</span>
+                  <span class="calc-value" id="calc-weekly">$945.00</span>
+                </div>
+                <div class="calc-result highlight">
+                  <span class="calc-label">Gain mensuel estimé</span>
+                  <span class="calc-value" id="calc-monthly">$4,050.00</span>
+                </div>
+              </div>
+              <button class="btn btn-primary" id="calc-start-btn">Commencer avec ce montant</button>
             </div>
           </div>
         </div>
 
         <div class="rewards-section">
-          <h2 class="section-title">Vos gains potentiels</h2>
+          <h2 class="section-title">Nos offres</h2>
+          <p class="section-subtitle">Choisissez le plan qui vous convient</p>
           <div class="rewards-grid">
             <div class="reward-card">
-              <span class="reward-deposit">Dépôt: $30</span>
-              <span class="reward-daily">Gain quotidien: <strong>$40.50</strong></span>
-              <span class="reward-monthly">Gain mensuel: <strong>$1,215</strong></span>
+              <div class="plan-header">
+                <h3>Starter</h3>
+                <div class="plan-price">$30</div>
+                <span class="plan-period">dépôt minimum</span>
+              </div>
+              <ul class="plan-features">
+                <li>✓ Accès aux 3 quêtes quotidiennes</li>
+                <li>✓ 45% de gains par quête</li>
+                <li>✓ Support par email</li>
+                <li>✓ Retrait sous 24h</li>
+              </ul>
+              <div class="plan-earnings">
+                <span>Gains potentiels</span>
+                <strong>$40.50/jour</strong>
+              </div>
             </div>
             <div class="reward-card featured">
               <span class="reward-badge">Populaire</span>
-              <span class="reward-deposit">Dépôt: $100</span>
-              <span class="reward-daily">Gain quotidien: <strong>$135</strong></span>
-              <span class="reward-monthly">Gain mensuel: <strong>$4,050</strong></span>
+              <div class="plan-header">
+                <h3>Pro</h3>
+                <div class="plan-price">$100</div>
+                <span class="plan-period">dépôt recommandé</span>
+              </div>
+              <ul class="plan-features">
+                <li>✓ Accès aux 3 quêtes quotidiennes</li>
+                <li>✓ 45% de gains par quête</li>
+                <li>✓ Support prioritaire 24/7</li>
+                <li>✓ Retrait instantané</li>
+                <li>✓ Bonus de parrainage x2</li>
+              </ul>
+              <div class="plan-earnings">
+                <span>Gains potentiels</span>
+                <strong>$135/jour</strong>
+              </div>
             </div>
             <div class="reward-card">
-              <span class="reward-deposit">Dépôt: $500</span>
-              <span class="reward-daily">Gain quotidien: <strong>$675</strong></span>
-              <span class="reward-monthly">Gain mensuel: <strong>$20,250</strong></span>
+              <div class="plan-header">
+                <h3>VIP</h3>
+                <div class="plan-price">$500+</div>
+                <span class="plan-period">investisseurs sérieux</span>
+              </div>
+              <ul class="plan-features">
+                <li>✓ Accès aux 3 quêtes quotidiennes</li>
+                <li>✓ 45% de gains par quête</li>
+                <li>✓ Manager de compte dédié</li>
+                <li>✓ Retrait instantané illimité</li>
+                <li>✓ Bonus de parrainage x3</li>
+                <li>✓ Accès anticipé aux nouvelles fonctionnalités</li>
+              </ul>
+              <div class="plan-earnings">
+                <span>Gains potentiels</span>
+                <strong>$675+/jour</strong>
+              </div>
             </div>
           </div>
         </div>
 
         <div class="referral-section">
           <div class="referral-content">
-            <h2>Programme de Parrainage</h2>
-            <p>Invitez vos amis et débloquez des quêtes bonus. Plus vous parrainez, plus vous gagnez !</p>
-            <button class="btn btn-primary" id="join-now-btn">Rejoindre maintenant</button>
+            <div class="referral-icon">🎁</div>
+            <h2>Programme de Parrainage Exclusif</h2>
+            <p>Gagnez encore plus en invitant vos amis ! Chaque filleul actif débloque des quêtes bonus et augmente vos revenus passifs.</p>
+            <div class="referral-benefits">
+              <div class="referral-benefit">
+                <span class="benefit-icon">👥</span>
+                <span>1 filleul = Quête bonus débloquée</span>
+              </div>
+              <div class="referral-benefit">
+                <span class="benefit-icon">💎</span>
+                <span>5 filleuls = Commission sur leurs gains</span>
+              </div>
+              <div class="referral-benefit">
+                <span class="benefit-icon">🏆</span>
+                <span>10 filleuls = Statut Ambassador</span>
+              </div>
+            </div>
+            <button class="btn btn-primary btn-large" id="join-now-btn">Obtenir mon lien de parrainage</button>
+          </div>
+        </div>
+
+        <div class="testimonials-section">
+          <h2 class="section-title">Ce que disent nos membres</h2>
+          <div class="testimonials-grid">
+            <div class="testimonial-card">
+              <div class="testimonial-stars">⭐⭐⭐⭐⭐</div>
+              <p class="testimonial-text">"J'étais sceptique au début, mais après 2 semaines j'ai déjà retiré plus de 500$. Les quêtes prennent vraiment 5 minutes max !"</p>
+              <div class="testimonial-author">
+                <div class="author-avatar">M</div>
+                <div class="author-info">
+                  <span class="author-name">Marie L.</span>
+                  <span class="author-date">Membre depuis 3 mois</span>
+                </div>
+              </div>
+            </div>
+            <div class="testimonial-card">
+              <div class="testimonial-stars">⭐⭐⭐⭐⭐</div>
+              <p class="testimonial-text">"Le programme de parrainage est incroyable. J'ai invité 8 amis et maintenant je gagne plus de 200$ par jour sans effort."</p>
+              <div class="testimonial-author">
+                <div class="author-avatar">K</div>
+                <div class="author-info">
+                  <span class="author-name">Karim B.</span>
+                  <span class="author-date">Membre depuis 6 mois</span>
+                </div>
+              </div>
+            </div>
+            <div class="testimonial-card">
+              <div class="testimonial-stars">⭐⭐⭐⭐⭐</div>
+              <p class="testimonial-text">"Interface super simple, paiements rapides, support réactif. Je recommande à 100% pour un revenu complémentaire."</p>
+              <div class="testimonial-author">
+                <div class="author-avatar">S</div>
+                <div class="author-info">
+                  <span class="author-name">Sophie D.</span>
+                  <span class="author-date">Membre depuis 2 mois</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="faq-section">
+          <h2 class="section-title">Questions fréquentes</h2>
+          <div class="faq-list">
+            <div class="faq-item">
+              <div class="faq-question" onclick="toggleFaq(this)">
+                <span>Comment fonctionne le système de quêtes ?</span>
+                <span class="faq-toggle">+</span>
+              </div>
+              <div class="faq-answer">
+                <p>Chaque jour, 3 quêtes simples sont disponibles : partager sur les réseaux sociaux, regarder une vidéo promotionnelle, et inviter un ami. Chaque quête complétée vous rapporte 45% de votre dépôt initial.</p>
+              </div>
+            </div>
+            <div class="faq-item">
+              <div class="faq-question" onclick="toggleFaq(this)">
+                <span>Comment effectuer un dépôt ?</span>
+                <span class="faq-toggle">+</span>
+              </div>
+              <div class="faq-answer">
+                <p>Les dépôts se font en USDT (TRC20). Après inscription, vous recevrez une adresse de dépôt unique. Envoyez vos fonds, soumettez le hash de transaction, et votre compte sera crédité après validation.</p>
+              </div>
+            </div>
+            <div class="faq-item">
+              <div class="faq-question" onclick="toggleFaq(this)">
+                <span>Combien de temps pour recevoir mes gains ?</span>
+                <span class="faq-toggle">+</span>
+              </div>
+              <div class="faq-answer">
+                <p>Les gains sont crédités instantanément sur votre compte après chaque quête. Les retraits sont traités sous 24 heures pour les comptes Starter, et instantanément pour les comptes Pro et VIP.</p>
+              </div>
+            </div>
+            <div class="faq-item">
+              <div class="faq-question" onclick="toggleFaq(this)">
+                <span>Y a-t-il des frais cachés ?</span>
+                <span class="faq-toggle">+</span>
+              </div>
+              <div class="faq-answer">
+                <p>Non, QuestInvest est 100% transparent. Aucun frais sur les dépôts, aucun frais de gestion. Seuls les frais réseau blockchain standard s'appliquent lors des retraits.</p>
+              </div>
+            </div>
           </div>
         </div>
 
         <div class="cta-section">
-          <h2>Prêt à commencer ?</h2>
-          <p>Rejoignez des milliers d'investisseurs qui gagnent chaque jour</p>
-          <button class="btn btn-primary btn-large" id="signup-cta-btn">Créer mon compte gratuitement</button>
+          <div class="cta-content">
+            <h2>Prêt à transformer votre avenir financier ?</h2>
+            <p>Rejoignez des milliers d'investisseurs qui gagnent chaque jour. Inscription gratuite, commencez en moins de 2 minutes.</p>
+            <div class="cta-buttons">
+              <button class="btn btn-primary btn-large" id="signup-cta-btn">Créer mon compte gratuitement</button>
+            </div>
+            <p class="cta-note">🔒 Vos données sont sécurisées et ne seront jamais partagées</p>
+          </div>
         </div>
       </div>
 
       <div id="auth-section" class="section hidden">
         <div class="auth-container">
-          <button class="btn btn-back" id="back-to-landing">← Retour</button>
+          <button class="btn btn-back" id="back-to-landing">← Retour à l'accueil</button>
           <div class="auth-tabs">
             <button class="tab-btn active" data-tab="login">Connexion</button>
             <button class="tab-btn" data-tab="register">Inscription</button>
@@ -288,7 +488,27 @@
 
     <footer>
       <div class="container">
-        <p>2024 QuestInvest - Investissez intelligemment</p>
+        <div class="footer-content">
+          <div class="footer-brand">
+            <h3 class="logo">QuestInvest</h3>
+            <p>La plateforme de gains passifs la plus simple et efficace.</p>
+          </div>
+          <div class="footer-links">
+            <h4>Liens rapides</h4>
+            <a href="#features">Comment ça marche</a>
+            <a href="#" onclick="showAuth()">Connexion</a>
+            <a href="#" onclick="showAuth('register')">Inscription</a>
+          </div>
+          <div class="footer-links">
+            <h4>Support</h4>
+            <a href="#">Centre d'aide</a>
+            <a href="#">Contact</a>
+            <a href="#">FAQ</a>
+          </div>
+        </div>
+        <div class="footer-bottom">
+          <p>© 2024 QuestInvest - Tous droits réservés</p>
+        </div>
       </div>
     </footer>
   </div>
@@ -296,5 +516,34 @@
   <div id="toast" class="toast hidden"></div>
 
   <script src="app.js"></script>
+  <script>
+    function toggleFaq(element) {
+      const faqItem = element.parentElement;
+      const isOpen = faqItem.classList.contains('open');
+      document.querySelectorAll('.faq-item').forEach(item => item.classList.remove('open'));
+      if (!isOpen) faqItem.classList.add('open');
+    }
+
+    const calcDeposit = document.getElementById('calc-deposit');
+    if (calcDeposit) {
+      calcDeposit.addEventListener('input', updateCalculator);
+      updateCalculator();
+    }
+
+    function updateCalculator() {
+      const deposit = parseFloat(document.getElementById('calc-deposit').value) || 0;
+      const perQuest = deposit * 0.45;
+      const daily = perQuest * 3;
+      const weekly = daily * 7;
+      const monthly = daily * 30;
+
+      document.getElementById('calc-per-quest').textContent = '$' + perQuest.toFixed(2);
+      document.getElementById('calc-daily').textContent = '$' + daily.toFixed(2);
+      document.getElementById('calc-weekly').textContent = '$' + weekly.toFixed(2);
+      document.getElementById('calc-monthly').textContent = '$' + monthly.toLocaleString('en-US', {minimumFractionDigits: 2});
+    }
+
+    document.getElementById('calc-start-btn')?.addEventListener('click', () => showAuth('register'));
+  </script>
 </body>
 </html>
