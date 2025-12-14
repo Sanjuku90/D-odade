@@ -2,6 +2,7 @@ const express = require('express');
 const session = require('express-session');
 const pgSession = require('connect-pg-simple')(session);
 const bcrypt = require('bcryptjs');
+const crypto = require('crypto');
 const { Pool } = require('pg');
 const path = require('path');
 
@@ -12,6 +13,8 @@ const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
 });
 
+const SESSION_SECRET = process.env.SESSION_SECRET || crypto.randomBytes(32).toString('hex');
+
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(express.static(path.join(__dirname, 'public')));
@@ -21,7 +24,7 @@ app.use(session({
     pool: pool,
     tableName: 'session'
   }),
-  secret: process.env.SESSION_SECRET || 'quest-invest-secret-key-2024',
+  secret: SESSION_SECRET,
   resave: false,
   saveUninitialized: false,
   cookie: { maxAge: 30 * 24 * 60 * 60 * 1000 }
@@ -194,30 +197,33 @@ app.post('/api/deposit', requireAuth, async (req, res) => {
     return res.status(400).json({ error: `Le dépôt minimum est de ${minDeposit}$` });
   }
 
+  const client = await pool.connect();
   try {
-    await pool.query('BEGIN');
+    await client.query('BEGIN');
     
-    await pool.query(
+    await client.query(
       'INSERT INTO deposits (user_id, amount, status) VALUES ($1, $2, $3)',
       [req.session.userId, amount, 'confirmed']
     );
 
-    await pool.query(
+    await client.query(
       'UPDATE users SET deposit_amount = deposit_amount + $1, balance = balance + $1 WHERE id = $2',
       [amount, req.session.userId]
     );
 
-    await pool.query('COMMIT');
+    await client.query('COMMIT');
 
-    const result = await pool.query(
+    const result = await client.query(
       'SELECT balance, deposit_amount FROM users WHERE id = $1',
       [req.session.userId]
     );
 
     res.json({ success: true, ...result.rows[0] });
   } catch (err) {
-    await pool.query('ROLLBACK');
+    await client.query('ROLLBACK');
     res.status(500).json({ error: 'Erreur serveur' });
+  } finally {
+    client.release();
   }
 });
 
@@ -254,8 +260,9 @@ app.post('/api/quests/:id/complete', requireAuth, async (req, res) => {
   const questId = req.params.id;
   const today = new Date().toISOString().split('T')[0];
 
+  const client = await pool.connect();
   try {
-    const user = await pool.query(
+    const user = await client.query(
       'SELECT deposit_amount FROM users WHERE id = $1',
       [req.session.userId]
     );
@@ -264,7 +271,7 @@ app.post('/api/quests/:id/complete', requireAuth, async (req, res) => {
       return res.status(400).json({ error: 'Vous devez avoir un dépôt minimum de 30$ pour compléter les quêtes' });
     }
 
-    const existing = await pool.query(
+    const existing = await client.query(
       'SELECT * FROM user_quests WHERE user_id = $1 AND quest_id = $2 AND completed_date = $3',
       [req.session.userId, questId, today]
     );
@@ -273,7 +280,7 @@ app.post('/api/quests/:id/complete', requireAuth, async (req, res) => {
       return res.status(400).json({ error: 'Quête déjà complétée aujourd\'hui' });
     }
 
-    const quest = await pool.query('SELECT * FROM quests WHERE id = $1', [questId]);
+    const quest = await client.query('SELECT * FROM quests WHERE id = $1', [questId]);
     if (quest.rows.length === 0) {
       return res.status(404).json({ error: 'Quête non trouvée' });
     }
@@ -282,21 +289,21 @@ app.post('/api/quests/:id/complete', requireAuth, async (req, res) => {
     const rewardPercentage = parseFloat(quest.rows[0].reward_percentage);
     const reward = (depositAmount * rewardPercentage) / 100;
 
-    await pool.query('BEGIN');
+    await client.query('BEGIN');
 
-    await pool.query(
+    await client.query(
       'INSERT INTO user_quests (user_id, quest_id, completed_date, reward_earned) VALUES ($1, $2, $3, $4)',
       [req.session.userId, questId, today, reward]
     );
 
-    await pool.query(
+    await client.query(
       'UPDATE users SET balance = balance + $1 WHERE id = $2',
       [reward, req.session.userId]
     );
 
-    await pool.query('COMMIT');
+    await client.query('COMMIT');
 
-    const updatedUser = await pool.query(
+    const updatedUser = await client.query(
       'SELECT balance FROM users WHERE id = $1',
       [req.session.userId]
     );
@@ -307,8 +314,10 @@ app.post('/api/quests/:id/complete', requireAuth, async (req, res) => {
       newBalance: updatedUser.rows[0].balance
     });
   } catch (err) {
-    await pool.query('ROLLBACK');
+    await client.query('ROLLBACK');
     res.status(500).json({ error: 'Erreur serveur' });
+  } finally {
+    client.release();
   }
 });
 
