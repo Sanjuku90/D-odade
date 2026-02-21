@@ -365,9 +365,21 @@ app.get('/api/quests', requireAuth, (req, res) => {
         }
       }
       
-      if (index === 1 && !hasReferral) {
+      // Check if it's the second day for this user
+      const user = db.prepare('SELECT created_at FROM users WHERE id = ?').get(req.session.userId);
+      const createdDate = new Date(user.created_at);
+      const todayDate = new Date();
+      const diffTime = Math.abs(todayDate - createdDate);
+      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+      
+      if (index === 1 && diffDays < 2) {
         locked = true;
-        lockReason = 'Invitez au moins 1 personne pour débloquer';
+        lockReason = 'Disponible à partir du deuxième jour';
+      }
+      
+      if (index === 1 && diffDays >= 2 && !hasReferral) {
+        locked = true;
+        lockReason = 'Invitez au moins 1 personne pour débloquer (Quête du jour 2)';
       }
       
       return { ...quest, completed: !!quest.completed, locked, lockReason };
@@ -420,10 +432,20 @@ app.post('/api/quests/:id/complete', requireAuth, (req, res) => {
     }
 
     if (questIndex === 1) {
+      const userRecord = db.prepare('SELECT created_at FROM users WHERE id = ?').get(req.session.userId);
+      const createdDate = new Date(userRecord.created_at);
+      const todayDate = new Date();
+      const diffTime = Math.abs(todayDate - createdDate);
+      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+      if (diffDays < 2) {
+        return res.status(400).json({ error: 'Cette quête n\'est disponible qu\'à partir du deuxième jour' });
+      }
+
       const referralsCount = db.prepare('SELECT COUNT(*) as count FROM referrals WHERE referrer_id = ?').get(req.session.userId);
       
       if (referralsCount.count < 1) {
-        return res.status(400).json({ error: 'Vous devez inviter au moins 1 personne pour compléter cette quête' });
+        return res.status(400).json({ error: 'Vous devez inviter au moins 1 personne pour compléter cette quête du jour 2' });
       }
     }
 
