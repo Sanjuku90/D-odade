@@ -304,7 +304,7 @@ app.put('/api/user/password', requireAuth, async (req, res) => {
 
 app.post('/api/deposit', requireAuth, (req, res) => {
   const { amount, tx_hash } = req.body;
-  const minDeposit = 30;
+  const minDeposit = 90;
 
   if (!amount || parseFloat(amount) < minDeposit) {
     return res.status(400).json({ error: `Le dépôt minimum est de ${minDeposit}$` });
@@ -380,8 +380,8 @@ app.post('/api/quests/:id/complete', requireAuth, (req, res) => {
   try {
     const user = db.prepare('SELECT deposit_amount FROM users WHERE id = ?').get(req.session.userId);
 
-    if (parseFloat(user.deposit_amount) < 30) {
-      return res.status(400).json({ error: 'Vous devez avoir un dépôt minimum de 30$ pour compléter les quêtes' });
+    if (parseFloat(user.deposit_amount) < 90) {
+      return res.status(400).json({ error: 'Vous devez avoir un dépôt minimum de 90$ pour compléter les quêtes' });
     }
 
     const existing = db.prepare('SELECT * FROM user_quests WHERE user_id = ? AND quest_id = ? AND completed_date = ?').get(req.session.userId, questId, today);
