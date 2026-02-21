@@ -3,14 +3,16 @@ services:
     name: questinvest
     runtime: node
     buildCommand: npm install
-    startCommand: npm start
+    startCommand: node server.js
     disk:
       name: data
-      mountPath: /opt/render/project/src
+      mountPath: /var/lib/questinvest
       sizeGB: 1
     envVars:
       - key: NODE_ENV
         value: production
+      - key: DATABASE_PATH
+        value: /var/lib/questinvest/questinvest.db
       - key: SESSION_SECRET
         generateValue: true
       - key: ADMIN_ACCESS_CODE

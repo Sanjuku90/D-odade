@@ -10,7 +10,8 @@ const PORT = process.env.PORT || 5000;
 
 app.set('trust proxy', 1);
 
-const db = new Database('questinvest.db');
+const dbPath = process.env.DATABASE_PATH || 'questinvest.db';
+const db = new Database(dbPath);
 
 const SESSION_SECRET = process.env.SESSION_SECRET || crypto.randomBytes(32).toString('hex');
 const DEPOSIT_ADDRESS = process.env.DEPOSIT_ADDRESS || 'TAB1oeEKDS5NATwFAaUrTioDU9djX7anyS';
