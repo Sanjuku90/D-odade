@@ -105,9 +105,9 @@ function initDB() {
   const questCount = db.prepare('SELECT COUNT(*) as count FROM quests').get();
   if (questCount.count === 0) {
     const insertQuest = db.prepare('INSERT INTO quests (title, description, reward_percentage) VALUES (?, ?, ?)');
-    insertQuest.run('Partager sur les réseaux', 'Partagez notre plateforme sur vos réseaux sociaux', 45);
-    insertQuest.run('Regarder une vidéo', 'Regardez une vidéo promotionnelle de 30 secondes', 45);
-    insertQuest.run('Inviter un ami', 'Invitez un ami à rejoindre la plateforme', 45);
+    insertQuest.run('Partager sur les réseaux', 'Partagez notre plateforme sur vos réseaux sociaux', 15);
+    insertQuest.run('Regarder une vidéo', 'Regardez une vidéo promotionnelle de 30 secondes', 15);
+    insertQuest.run('Inviter un ami', 'Invitez un ami à rejoindre la plateforme', 15);
   }
 
   const adminCount = db.prepare('SELECT COUNT(*) as count FROM admins').get();
