@@ -162,6 +162,12 @@ app.post('/api/register', async (req, res) => {
     const depositAddress = generateDepositAddress();
     const userReferralCode = generateReferralCode();
     
+    // Check if user already exists
+    const existingUser = db.prepare('SELECT id FROM users WHERE email = ?').get(email);
+    if (existingUser) {
+      return res.status(400).json({ error: 'Cet email existe déjà' });
+    }
+
     const result = db.prepare(
       'INSERT INTO users (email, password, deposit_address, referral_code) VALUES (?, ?, ?, ?)'
     ).run(email, hashedPassword, depositAddress, userReferralCode);
@@ -175,17 +181,26 @@ app.post('/api/register', async (req, res) => {
     }
 
     req.session.userId = result.lastInsertRowid;
-    res.json({ success: true, user: { email } });
+    // Explicitly save the session
+    req.session.save((err) => {
+      if (err) {
+        console.error('Session save error:', err);
+        return res.status(500).json({ error: 'Erreur lors de la création de la session' });
+      }
+      res.json({ success: true, user: { email } });
+    });
   } catch (err) {
-    if (err.code === 'SQLITE_CONSTRAINT_UNIQUE') {
-      return res.status(400).json({ error: 'Cet email existe déjà' });
-    }
-    res.status(500).json({ error: 'Erreur serveur' });
+    console.error('Register error:', err);
+    res.status(500).json({ error: 'Erreur serveur lors de l\'inscription' });
   }
 });
 
 app.post('/api/login', async (req, res) => {
   const { email, password } = req.body;
+
+  if (!email || !password) {
+    return res.status(400).json({ error: 'Email et mot de passe requis' });
+  }
 
   try {
     const user = db.prepare('SELECT * FROM users WHERE email = ?').get(email);
@@ -201,9 +216,17 @@ app.post('/api/login', async (req, res) => {
     }
 
     req.session.userId = user.id;
-    res.json({ success: true, user: { email: user.email } });
+    // Explicitly save the session
+    req.session.save((err) => {
+      if (err) {
+        console.error('Session save error:', err);
+        return res.status(500).json({ error: 'Erreur lors de la création de la session' });
+      }
+      res.json({ success: true, user: { email: user.email } });
+    });
   } catch (err) {
-    res.status(500).json({ error: 'Erreur serveur' });
+    console.error('Login error:', err);
+    res.status(500).json({ error: 'Erreur serveur lors de la connexion' });
   }
 });
 
