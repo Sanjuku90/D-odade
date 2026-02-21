@@ -102,6 +102,17 @@ function initDB() {
     );
   `);
 
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS withdrawals (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id INTEGER REFERENCES users(id),
+      amount REAL NOT NULL,
+      address TEXT NOT NULL,
+      status TEXT DEFAULT 'pending',
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    );
+  `);
+
   const questCount = db.prepare('SELECT COUNT(*) as count FROM quests').get();
   if (questCount.count === 0) {
     const insertQuest = db.prepare('INSERT INTO quests (title, description, reward_percentage) VALUES (?, ?, ?)');
@@ -442,6 +453,7 @@ app.post('/api/quests/:id/complete', requireAuth, (req, res) => {
 app.get('/api/history', requireAuth, (req, res) => {
   try {
     const deposits = db.prepare('SELECT amount, status, tx_hash, created_at FROM deposits WHERE user_id = ? ORDER BY created_at DESC LIMIT 10').all(req.session.userId);
+    const withdrawals = db.prepare('SELECT amount, status, address, created_at FROM withdrawals WHERE user_id = ? ORDER BY created_at DESC LIMIT 10').all(req.session.userId);
 
     const questRewards = db.prepare(`
       SELECT uq.reward_earned, uq.completed_date, q.title 
@@ -453,8 +465,40 @@ app.get('/api/history', requireAuth, (req, res) => {
 
     res.json({
       deposits,
+      withdrawals,
       questRewards
     });
+  } catch (err) {
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+});
+
+app.post('/api/withdraw', requireAuth, (req, res) => {
+  const { amount, address } = req.body;
+  const minWithdraw = 50;
+
+  if (!amount || parseFloat(amount) < minWithdraw) {
+    return res.status(400).json({ error: `Le retrait minimum est de ${minWithdraw}$` });
+  }
+
+  if (!address || address.trim().length < 10) {
+    return res.status(400).json({ error: 'Adresse de retrait invalide' });
+  }
+
+  try {
+    const user = db.prepare('SELECT balance FROM users WHERE id = ?').get(req.session.userId);
+    if (user.balance < parseFloat(amount)) {
+      return res.status(400).json({ error: 'Solde insuffisant' });
+    }
+
+    const transaction = db.transaction(() => {
+      db.prepare('INSERT INTO withdrawals (user_id, amount, address, status) VALUES (?, ?, ?, ?)').run(req.session.userId, amount, address.trim(), 'pending');
+      db.prepare('UPDATE users SET balance = balance - ? WHERE id = ?').run(amount, req.session.userId);
+    });
+
+    transaction();
+
+    res.json({ success: true, message: 'Demande de retrait soumise' });
   } catch (err) {
     res.status(500).json({ error: 'Erreur serveur' });
   }

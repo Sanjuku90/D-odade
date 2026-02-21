@@ -149,6 +149,37 @@ function setupEventListeners() {
     }
   });
 
+  document.getElementById('withdraw-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const formData = new FormData(e.target);
+    const amount = formData.get('amount');
+    const address = formData.get('address');
+
+    document.getElementById('withdraw-error').textContent = '';
+    document.getElementById('withdraw-success').textContent = '';
+
+    try {
+      const res = await fetch('/api/withdraw', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ amount, address })
+      });
+
+      const result = await res.json();
+      if (res.ok) {
+        document.getElementById('withdraw-success').textContent = 'Retrait soumis! En attente de traitement.';
+        e.target.reset();
+        loadUserData();
+        loadHistory();
+        showToast('Demande de retrait soumise!', 'success');
+      } else {
+        document.getElementById('withdraw-error').textContent = result.error;
+      }
+    } catch (err) {
+      document.getElementById('withdraw-error').textContent = 'Erreur de soumission';
+    }
+  });
+
   document.getElementById('change-email-form').addEventListener('submit', async (e) => {
     e.preventDefault();
     const formData = new FormData(e.target);
@@ -375,6 +406,13 @@ async function loadHistory() {
           date: new Date(d.created_at).toLocaleDateString('fr-FR'),
           positive: d.status === 'confirmed',
           pending: d.status === 'pending'
+        })),
+        ...data.withdrawals.map(w => ({
+          type: 'Retrait - ' + (statusLabels[w.status] || w.status),
+          amount: '-$' + parseFloat(w.amount).toFixed(2),
+          date: new Date(w.created_at).toLocaleDateString('fr-FR'),
+          positive: false,
+          pending: w.status === 'pending'
         })),
         ...data.questRewards.map(q => ({
           type: q.title,
