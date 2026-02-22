@@ -354,34 +354,7 @@ app.get('/api/quests', requireAuth, (req, res) => {
     const hasReferral = referralsCount.count >= 1;
 
     const questsWithStatus = quests.map((quest, index) => {
-      let locked = false;
-      let lockReason = '';
-      
-      if (index > 0) {
-        const previousQuest = quests[index - 1];
-        if (!previousQuest.completed) {
-          locked = true;
-          lockReason = 'Complétez d\'abord la quête précédente';
-        }
-      }
-      
-      // Check if it's the second day for this user
-      const user = db.prepare('SELECT created_at FROM users WHERE id = ?').get(req.session.userId);
-      const createdDate = new Date(user.created_at);
-      const todayDate = new Date();
-      const diffTime = Math.abs(todayDate - createdDate);
-      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-      
-      if (index === 1 && diffDays < 2) {
-        locked = true;
-        lockReason = 'Disponible à partir du deuxième jour';
-      }
-      
-    if (index === 1 && diffDays >= 2) {
-        locked = false;
-      }
-      
-      return { ...quest, completed: !!quest.completed, locked, lockReason };
+      return { ...quest, completed: !!quest.completed, locked: false, lockReason: '' };
     });
 
     res.json({
@@ -415,31 +388,6 @@ app.post('/api/quests/:id/complete', requireAuth, (req, res) => {
     const quest = db.prepare('SELECT * FROM quests WHERE id = ?').get(questId);
     if (!quest) {
       return res.status(404).json({ error: 'Quête non trouvée' });
-    }
-
-    const allQuests = db.prepare('SELECT id FROM quests ORDER BY id').all();
-    const questIds = allQuests.map(q => q.id);
-    const questIndex = questIds.indexOf(questId);
-
-    if (questIndex > 0) {
-      const previousQuestId = questIds[questIndex - 1];
-      const previousCompleted = db.prepare('SELECT * FROM user_quests WHERE user_id = ? AND quest_id = ? AND completed_date = ?').get(req.session.userId, previousQuestId, today);
-      
-      if (!previousCompleted) {
-        return res.status(400).json({ error: 'Vous devez d\'abord compléter la quête précédente' });
-      }
-    }
-
-    if (questIndex === 1) {
-      const userRecord = db.prepare('SELECT created_at FROM users WHERE id = ?').get(req.session.userId);
-      const createdDate = new Date(userRecord.created_at);
-      const todayDate = new Date();
-      const diffTime = Math.abs(todayDate - createdDate);
-      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-
-      if (diffDays < 2) {
-        return res.status(400).json({ error: 'Cette quête n\'est disponible qu\'à partir du deuxième jour' });
-      }
     }
 
     const depositAmount = parseFloat(user.deposit_amount);
