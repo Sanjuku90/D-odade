@@ -118,7 +118,7 @@ function initDB() {
     const insertQuest = db.prepare('INSERT INTO quests (title, description, reward_percentage) VALUES (?, ?, ?)');
     insertQuest.run('Partager sur les réseaux', 'Partagez notre plateforme sur vos réseaux sociaux', 15);
     insertQuest.run('Regarder une vidéo', 'Regardez une vidéo promotionnelle de 30 secondes', 15);
-    insertQuest.run('Inviter un ami', 'Invitez un ami à rejoindre la plateforme', 15);
+    insertQuest.run('Visiter notre partenaire', 'Visitez le site de notre partenaire pour découvrir de nouvelles opportunités', 15);
   }
 
   const adminCount = db.prepare('SELECT COUNT(*) as count FROM admins').get();
@@ -377,9 +377,8 @@ app.get('/api/quests', requireAuth, (req, res) => {
         lockReason = 'Disponible à partir du deuxième jour';
       }
       
-      if (index === 1 && diffDays >= 2 && !hasReferral) {
-        locked = true;
-        lockReason = 'Invitez au moins 1 personne pour débloquer (Quête du jour 2)';
+    if (index === 1 && diffDays >= 2) {
+        locked = false;
       }
       
       return { ...quest, completed: !!quest.completed, locked, lockReason };
@@ -440,12 +439,6 @@ app.post('/api/quests/:id/complete', requireAuth, (req, res) => {
 
       if (diffDays < 2) {
         return res.status(400).json({ error: 'Cette quête n\'est disponible qu\'à partir du deuxième jour' });
-      }
-
-      const referralsCount = db.prepare('SELECT COUNT(*) as count FROM referrals WHERE referrer_id = ?').get(req.session.userId);
-      
-      if (referralsCount.count < 1) {
-        return res.status(400).json({ error: 'Vous devez inviter au moins 1 personne pour compléter cette quête du jour 2' });
       }
     }
 
