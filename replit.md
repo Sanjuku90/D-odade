@@ -24,7 +24,7 @@ QuestInvest est une plateforme d'investissement où les utilisateurs peuvent dé
 ## Base de Données (SQLite)
 - **users**: Utilisateurs avec email, mot de passe hashé, solde, dépôt
 - **deposits**: Historique des dépôts avec tx_hash et status (pending/confirmed/rejected)
-- **quests**: 3 quêtes disponibles (15% chacune)
+- **quests**: 3 quêtes disponibles (45% chacune)
 - **user_quests**: Suivi des quêtes complétées par cycle de 2 semaines
 - **admins**: Administrateurs pour valider les paiements
 
@@ -62,6 +62,7 @@ QuestInvest est une plateforme d'investissement où les utilisateurs peuvent dé
 - `POST /api/admin/deposits/:id/reject` - Rejeter un dépôt
 
 ## Changements Récents
+- 13 Avr 2026: Récompense des quêtes mise à 45% par tâche, avec mise à jour automatique des quêtes existantes
 - 13 Avr 2026: Correction du démarrage Render quand les variables `SESSION_SECRET`, `ADMIN_PASSWORD` ou `ADMIN_ACCESS_CODE` ne sont pas définies; le serveur génère désormais des valeurs persistantes sur le disque de production
 - 13 Avr 2026: Migration vers l'environnement Replit, installation des dépendances Node.js, configuration du workflow sur le serveur Express, et renforcement de la configuration de session/variables sensibles
 - 13 Avr 2026: Réinitialisation des quêtes changée de quotidienne à un cycle de 2 semaines
