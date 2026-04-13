@@ -31,6 +31,7 @@ const DEPOSIT_ADDRESS = process.env.DEPOSIT_ADDRESS || 'TAB1oeEKDS5NATwFAaUrTioD
 const ADMIN_EMAIL = getConfigValue('ADMIN_EMAIL', 'admin@questinvest.com');
 const ADMIN_PASSWORD = getConfigValue('ADMIN_PASSWORD', 'admin123');
 const ADMIN_ACCESS_CODE = getConfigValue('ADMIN_ACCESS_CODE', '1289');
+const MIN_DEPOSIT = 55;
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
@@ -348,10 +349,9 @@ app.put('/api/user/password', requireAuth, async (req, res) => {
 
 app.post('/api/deposit', requireAuth, (req, res) => {
   const { amount, tx_hash } = req.body;
-  const minDeposit = 90;
 
-  if (!amount || parseFloat(amount) < minDeposit) {
-    return res.status(400).json({ error: `Le dépôt minimum est de ${minDeposit}$` });
+  if (!amount || parseFloat(amount) < MIN_DEPOSIT) {
+    return res.status(400).json({ error: `Le dépôt minimum est de ${MIN_DEPOSIT}$` });
   }
 
   if (!tx_hash || tx_hash.trim().length < 10) {
@@ -413,8 +413,8 @@ app.post('/api/quests/:id/complete', requireAuth, (req, res) => {
   try {
     const user = db.prepare('SELECT deposit_amount FROM users WHERE id = ?').get(req.session.userId);
 
-    if (parseFloat(user.deposit_amount) < 90) {
-      return res.status(400).json({ error: 'Vous devez avoir un dépôt minimum de 90$ pour compléter les quêtes' });
+    if (parseFloat(user.deposit_amount) < MIN_DEPOSIT) {
+      return res.status(400).json({ error: `Vous devez avoir un dépôt minimum de ${MIN_DEPOSIT}$ pour compléter les quêtes` });
     }
 
     const existing = db.prepare('SELECT * FROM user_quests WHERE user_id = ? AND quest_id = ? AND completed_date BETWEEN ? AND ?').get(req.session.userId, questId, questPeriod.startDate, questPeriod.endDate);
