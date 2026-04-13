@@ -4,6 +4,7 @@ const bcrypt = require('bcryptjs');
 const crypto = require('crypto');
 const Database = require('better-sqlite3');
 const path = require('path');
+const fs = require('fs');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -12,25 +13,44 @@ const isProduction = process.env.NODE_ENV === 'production';
 app.set('trust proxy', 1);
 
 const dbPath = process.env.DATABASE_PATH || 'questinvest.db';
+fs.mkdirSync(path.dirname(path.resolve(dbPath)), { recursive: true });
 const db = new Database(dbPath);
 
-function getConfigValue(name, developmentFallback) {
+function getPersistentConfigPath(name) {
+  const baseDir = process.env.DATABASE_PATH
+    ? path.dirname(path.resolve(process.env.DATABASE_PATH))
+    : path.join(__dirname, '.data');
+
+  fs.mkdirSync(baseDir, { recursive: true });
+  return path.join(baseDir, `${name}.txt`);
+}
+
+function getOrCreatePersistentSecret(name, generator) {
   if (process.env[name]) {
     return process.env[name];
   }
 
-  if (isProduction) {
-    throw new Error(`${name} environment variable is required in production`);
+  if (!isProduction) {
+    return generator();
   }
 
-  return developmentFallback;
+  const secretPath = getPersistentConfigPath(name);
+
+  if (fs.existsSync(secretPath)) {
+    return fs.readFileSync(secretPath, 'utf8').trim();
+  }
+
+  const value = generator();
+  fs.writeFileSync(secretPath, value, { mode: 0o600 });
+  console.warn(`${name} was not provided; generated a persistent value at ${secretPath}`);
+  return value;
 }
 
-const SESSION_SECRET = getConfigValue('SESSION_SECRET', crypto.randomBytes(32).toString('hex'));
+const SESSION_SECRET = getOrCreatePersistentSecret('SESSION_SECRET', () => crypto.randomBytes(32).toString('hex'));
 const DEPOSIT_ADDRESS = process.env.DEPOSIT_ADDRESS || 'TAB1oeEKDS5NATwFAaUrTioDU9djX7anyS';
-const ADMIN_EMAIL = getConfigValue('ADMIN_EMAIL', 'admin@questinvest.com');
-const ADMIN_PASSWORD = getConfigValue('ADMIN_PASSWORD', 'admin123');
-const ADMIN_ACCESS_CODE = getConfigValue('ADMIN_ACCESS_CODE', '1289');
+const ADMIN_EMAIL = process.env.ADMIN_EMAIL || 'admin@questinvest.com';
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || (isProduction ? getOrCreatePersistentSecret('ADMIN_PASSWORD', () => crypto.randomBytes(24).toString('base64url')) : 'admin123');
+const ADMIN_ACCESS_CODE = process.env.ADMIN_ACCESS_CODE || (isProduction ? getOrCreatePersistentSecret('ADMIN_ACCESS_CODE', () => crypto.randomInt(100000, 999999).toString()) : '1289');
 const MIN_DEPOSIT = 55;
 
 app.use(express.json());

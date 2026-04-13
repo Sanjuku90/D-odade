@@ -62,6 +62,7 @@ QuestInvest est une plateforme d'investissement où les utilisateurs peuvent dé
 - `POST /api/admin/deposits/:id/reject` - Rejeter un dépôt
 
 ## Changements Récents
+- 13 Avr 2026: Correction du démarrage Render quand les variables `SESSION_SECRET`, `ADMIN_PASSWORD` ou `ADMIN_ACCESS_CODE` ne sont pas définies; le serveur génère désormais des valeurs persistantes sur le disque de production
 - 13 Avr 2026: Migration vers l'environnement Replit, installation des dépendances Node.js, configuration du workflow sur le serveur Express, et renforcement de la configuration de session/variables sensibles
 - 13 Avr 2026: Réinitialisation des quêtes changée de quotidienne à un cycle de 2 semaines
 - 13 Avr 2026: Dépôt minimum changé à 55$
