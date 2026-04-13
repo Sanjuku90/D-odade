@@ -7,16 +7,30 @@ const path = require('path');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
+const isProduction = process.env.NODE_ENV === 'production';
 
 app.set('trust proxy', 1);
 
 const dbPath = process.env.DATABASE_PATH || 'questinvest.db';
 const db = new Database(dbPath);
 
-const SESSION_SECRET = process.env.SESSION_SECRET || crypto.randomBytes(32).toString('hex');
+function getConfigValue(name, developmentFallback) {
+  if (process.env[name]) {
+    return process.env[name];
+  }
+
+  if (isProduction) {
+    throw new Error(`${name} environment variable is required in production`);
+  }
+
+  return developmentFallback;
+}
+
+const SESSION_SECRET = getConfigValue('SESSION_SECRET', crypto.randomBytes(32).toString('hex'));
 const DEPOSIT_ADDRESS = process.env.DEPOSIT_ADDRESS || 'TAB1oeEKDS5NATwFAaUrTioDU9djX7anyS';
-const ADMIN_EMAIL = process.env.ADMIN_EMAIL || 'admin@questinvest.com';
-const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'admin123';
+const ADMIN_EMAIL = getConfigValue('ADMIN_EMAIL', 'admin@questinvest.com');
+const ADMIN_PASSWORD = getConfigValue('ADMIN_PASSWORD', 'admin123');
+const ADMIN_ACCESS_CODE = getConfigValue('ADMIN_ACCESS_CODE', '1289');
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
@@ -28,7 +42,8 @@ app.use(session({
   saveUninitialized: false,
   cookie: { 
     maxAge: 30 * 24 * 60 * 60 * 1000,
-    secure: false,
+    httpOnly: true,
+    secure: isProduction,
     sameSite: 'lax'
   }
 }));
@@ -466,8 +481,6 @@ app.post('/api/withdraw', requireAuth, (req, res) => {
     res.status(500).json({ error: 'Erreur serveur' });
   }
 });
-
-const ADMIN_ACCESS_CODE = process.env.ADMIN_ACCESS_CODE || '1289';
 
 app.post('/api/admin/login', (req, res) => {
   const { code } = req.body;

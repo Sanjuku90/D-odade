@@ -5,7 +5,7 @@ QuestInvest est une plateforme d'investissement où les utilisateurs peuvent dé
 
 ## Stack Technique
 - **Backend**: Node.js + Express.js
-- **Base de données**: PostgreSQL
+- **Base de données**: SQLite avec better-sqlite3
 - **Frontend**: HTML/CSS/JavaScript vanilla
 - **Authentification**: Sessions avec express-session + bcryptjs
 
@@ -21,7 +21,7 @@ QuestInvest est une plateforme d'investissement où les utilisateurs peuvent dé
 └── replit.md          # Ce fichier
 ```
 
-## Base de Données (PostgreSQL)
+## Base de Données (SQLite)
 - **users**: Utilisateurs avec email, mot de passe hashé, solde, dépôt
 - **deposits**: Historique des dépôts avec tx_hash et status (pending/confirmed/rejected)
 - **quests**: 3 quêtes disponibles (15% chacune)
@@ -62,8 +62,9 @@ QuestInvest est une plateforme d'investissement où les utilisateurs peuvent dé
 - `POST /api/admin/deposits/:id/reject` - Rejeter un dépôt
 
 ## Changements Récents
+- 13 Avr 2026: Migration vers l'environnement Replit, installation des dépendances Node.js, configuration du workflow sur le serveur Express, et renforcement de la configuration de session/variables sensibles
 - 14 Déc 2024: Création initiale du projet
 - Adresse de dépôt fixe: TAB1oeEKDS5NATwFAaUrTioDU9djX7anyS
 - Système de soumission de transaction avec hash
 - Page admin pour valider les paiements
-- Correction des transactions PostgreSQL (client dédié)
+- Transactions SQLite via better-sqlite3
