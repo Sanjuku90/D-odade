@@ -499,10 +499,15 @@ app.get('/api/history', requireAuth, (req, res) => {
 app.post('/api/withdraw', requireAuth, (req, res) => {
   const { amount, address } = req.body;
   const minWithdraw = 50;
+  const maxWithdraw = 500;
   const questPeriod = getQuestPeriod();
 
   if (!amount || parseFloat(amount) < minWithdraw) {
     return res.status(400).json({ error: `Le retrait minimum est de ${minWithdraw}$` });
+  }
+
+  if (parseFloat(amount) > maxWithdraw) {
+    return res.status(400).json({ error: `Le retrait maximum est de ${maxWithdraw}$` });
   }
 
   if (!address || address.trim().length < 10) {
