@@ -34,7 +34,8 @@ QuestInvest est une plateforme d'investissement où les utilisateurs peuvent dé
 3. **Adresse de dépôt fixe** - TAB1oeEKDS5NATwFAaUrTioDU9djX7anyS
 4. **Soumission de transaction** - L'utilisateur entre le montant et hash de transaction
 5. **Quêtes par cycle** - 3 quêtes toutes les 2 semaines, 45% de récompense chacune
-6. **Historique** - Suivi des dépôts (avec statut) et récompenses
+6. **Retraits** - Un retrait disponible par utilisateur sur chaque cycle de 2 semaines
+7. **Historique** - Suivi des dépôts (avec statut) et récompenses
 
 ## Fonctionnalités Admin
 - **Page admin** - /admin.html
@@ -62,6 +63,7 @@ QuestInvest est une plateforme d'investissement où les utilisateurs peuvent dé
 - `POST /api/admin/deposits/:id/reject` - Rejeter un dépôt
 
 ## Changements Récents
+- 13 Avr 2026: Retraits limités à une demande par utilisateur sur chaque cycle de 2 semaines
 - 13 Avr 2026: Récompense des quêtes mise à 45% par tâche, avec mise à jour automatique des quêtes existantes
 - 13 Avr 2026: Correction du démarrage Render quand les variables `SESSION_SECRET`, `ADMIN_PASSWORD` ou `ADMIN_ACCESS_CODE` ne sont pas définies; le serveur génère désormais des valeurs persistantes sur le disque de production
 - 13 Avr 2026: Migration vers l'environnement Replit, installation des dépendances Node.js, configuration du workflow sur le serveur Express, et renforcement de la configuration de session/variables sensibles

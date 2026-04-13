@@ -499,6 +499,7 @@ app.get('/api/history', requireAuth, (req, res) => {
 app.post('/api/withdraw', requireAuth, (req, res) => {
   const { amount, address } = req.body;
   const minWithdraw = 50;
+  const questPeriod = getQuestPeriod();
 
   if (!amount || parseFloat(amount) < minWithdraw) {
     return res.status(400).json({ error: `Le retrait minimum est de ${minWithdraw}$` });
@@ -509,6 +510,21 @@ app.post('/api/withdraw', requireAuth, (req, res) => {
   }
 
   try {
+    const existingWithdrawal = db.prepare(`
+      SELECT id, created_at
+      FROM withdrawals
+      WHERE user_id = ?
+        AND DATE(created_at) BETWEEN ? AND ?
+      ORDER BY created_at DESC
+      LIMIT 1
+    `).get(req.session.userId, questPeriod.startDate, questPeriod.endDate);
+
+    if (existingWithdrawal) {
+      return res.status(400).json({
+        error: `Vous avez déjà demandé un retrait pour ce cycle de 2 semaines. Prochain retrait disponible après le ${questPeriod.endDate}.`
+      });
+    }
+
     const user = db.prepare('SELECT balance FROM users WHERE id = ?').get(req.session.userId);
     if (user.balance < parseFloat(amount)) {
       return res.status(400).json({ error: 'Solde insuffisant' });
