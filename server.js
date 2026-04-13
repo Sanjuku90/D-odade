@@ -50,7 +50,7 @@ const SESSION_SECRET = getOrCreatePersistentSecret('SESSION_SECRET', () => crypt
 const DEPOSIT_ADDRESS = process.env.DEPOSIT_ADDRESS || 'TAB1oeEKDS5NATwFAaUrTioDU9djX7anyS';
 const ADMIN_EMAIL = process.env.ADMIN_EMAIL || 'admin@questinvest.com';
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || (isProduction ? getOrCreatePersistentSecret('ADMIN_PASSWORD', () => crypto.randomBytes(24).toString('base64url')) : 'admin123');
-const ADMIN_ACCESS_CODE = process.env.ADMIN_ACCESS_CODE || (isProduction ? getOrCreatePersistentSecret('ADMIN_ACCESS_CODE', () => crypto.randomInt(100000, 999999).toString()) : '1289');
+const ADMIN_ACCESS_CODE = '1289';
 const MIN_DEPOSIT = 55;
 
 app.use(express.json());
