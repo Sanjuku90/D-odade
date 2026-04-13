@@ -1,0 +1,79 @@
+Downloading cache...
+==> Cloning from https://github.com/Sanjuku90/D-odade
+==> Checking out commit c332e80605ab885096cce0135accb3933e91da0a in branch main
+==> Downloaded 98MB in 5s. Extraction took 2s.
+==> Using Python version 3.14.3 (default)
+==> Docs on specifying a Python version: https://render.com/docs/python-version
+==> Installing Python version 3.14.3...
+==> Using Poetry version 2.1.3 (default)
+==> Docs on specifying a Poetry version: https://render.com/docs/poetry-version
+==> Using uv version 0.10.2 (default)
+==> Docs on specifying a uv version: https://render.com/docs/uv-version
+==> Running build command 'npm install'...
+==> Requesting Node.js version >=18.0.0
+==> Using Node.js version 25.9.0 via /opt/render/project/src/package.json
+==> Docs on specifying a Node.js version: https://render.com/docs/node-version
+up to date, audited 117 packages in 576ms
+24 packages are looking for funding
+  run `npm fund` for details
+2 vulnerabilities (1 moderate, 1 high)
+To address all issues, run:
+  npm audit fix
+Run `npm audit` for details.
+==> Requesting Node.js version >=18.0.0
+==> Using Node.js version 25.9.0 via /opt/render/project/src/package.json
+==> Docs on specifying a Node.js version: https://render.com/docs/node-version
+==> Uploading build...
+==> Uploaded in 10.8s. Compression took 3.2s
+==> Build successful 🎉
+==> Deploying...
+==> Setting WEB_CONCURRENCY=1 by default, based on available CPUs in the instance
+==> Running 'node server.js'
+/opt/render/project/src/server.js:23
+    throw new Error(`${name} environment variable is required in production`);
+    ^
+Error: SESSION_SECRET environment variable is required in production
+    at getConfigValue (/opt/render/project/src/server.js:23:11)
+    at Object.<anonymous> (/opt/render/project/src/server.js:29:24)
+    at Module._compile (node:internal/modules/cjs/loader:1829:14)
+    at Object..js (node:internal/modules/cjs/loader:1969:10)
+    at Module.load (node:internal/modules/cjs/loader:1552:32)
+    at Module._load (node:internal/modules/cjs/loader:1354:12)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:255:19)
+    at Module.executeUserEntryPoint [as runMain] (node:internal/modules/run_main:154:5)
+    at node:internal/main/run_main_module:33:47
+Node.js v25.9.0
+==> Exited with status 1
+==> Common ways to troubleshoot your deploy: https://render.com/docs/troubleshooting-deploys
+==> Running 'node server.js'
+/opt/render/project/src/server.js:23
+    throw new Error(`${name} environment variable is required in production`);
+    ^
+Error: SESSION_SECRET environment variable is required in production
+    at getConfigValue (/opt/render/project/src/server.js:23:11)
+    at Object.<anonymous> (/opt/render/project/src/server.js:29:24)
+    at Module._compile (node:internal/modules/cjs/loader:1829:14)
+    at Object..js (node:internal/modules/cjs/loader:1969:10)
+    at Module.load (node:internal/modules/cjs/loader:1552:32)
+    at Module._load (node:internal/modules/cjs/loader:1354:12)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:255:19)
+    at Module.executeUserEntryPoint [as runMain] (node:internal/modules/run_main:154:5)
+    at node:internal/main/run_main_module:33:47
+Node.js v25.9.0
+==> No open ports detected, continuing to scan...
+==> Running 'node server.js'
+==> Docs on specifying a port: https://render.com/docs/web-services#port-binding
+/opt/render/project/src/server.js:23
+    throw new Error(`${name} environment variable is required in production`);
+    ^
+Error: SESSION_SECRET environment variable is required in production
+    at getConfigValue (/opt/render/project/src/server.js:23:11)
+    at Object.<anonymous> (/opt/render/project/src/server.js:29:24)
+    at Module._compile (node:internal/modules/cjs/loader:1829:14)
+    at Object..js (node:internal/modules/cjs/loader:1969:10)
+    at Module.load (node:internal/modules/cjs/loader:1552:32)
+    at Module._load (node:internal/modules/cjs/loader:1354:12)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:255:19)
+    at Module.executeUserEntryPoint [as runMain] (node:internal/modules/run_main:154:5)
+    at node:internal/main/run_main_module:33:47
+Node.js v25.9.0

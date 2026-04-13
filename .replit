@@ -1,5 +1,5 @@
 entrypoint = "main.py"
-modules = ["web", "nodejs-18", "python-3.11"]
+modules = ["nodejs-18", "web", "python-3.11"]
 
 [nix]
 channel = "stable-25_05"
