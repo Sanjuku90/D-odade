@@ -1,7 +1,7 @@
 # QuestInvest - Plateforme d'Investissement avec Quêtes
 
 ## Vue d'ensemble
-QuestInvest est une plateforme d'investissement où les utilisateurs peuvent déposer de l'argent (minimum 30$) et gagner des récompenses en complétant des quêtes quotidiennes. Chaque quête rapporte 15% du dépôt, soit un total de 45% pour les 3 quêtes quotidiennes.
+QuestInvest est une plateforme d'investissement où les utilisateurs peuvent déposer de l'argent (minimum 90$) et gagner des récompenses en complétant des quêtes sur un cycle de 2 semaines. Chaque quête rapporte 45% du dépôt, soit un total de 135% pour les 3 quêtes du cycle.
 
 ## Stack Technique
 - **Backend**: Node.js + Express.js
@@ -25,7 +25,7 @@ QuestInvest est une plateforme d'investissement où les utilisateurs peuvent dé
 - **users**: Utilisateurs avec email, mot de passe hashé, solde, dépôt
 - **deposits**: Historique des dépôts avec tx_hash et status (pending/confirmed/rejected)
 - **quests**: 3 quêtes disponibles (15% chacune)
-- **user_quests**: Suivi des quêtes complétées par jour
+- **user_quests**: Suivi des quêtes complétées par cycle de 2 semaines
 - **admins**: Administrateurs pour valider les paiements
 
 ## Fonctionnalités Utilisateur
@@ -33,7 +33,7 @@ QuestInvest est une plateforme d'investissement où les utilisateurs peuvent dé
 2. **Tableau de bord** - Affiche le solde et dépôt total
 3. **Adresse de dépôt fixe** - TAB1oeEKDS5NATwFAaUrTioDU9djX7anyS
 4. **Soumission de transaction** - L'utilisateur entre le montant et hash de transaction
-5. **Quêtes quotidiennes** - 3 quêtes par jour, 15% de récompense chacune
+5. **Quêtes par cycle** - 3 quêtes toutes les 2 semaines, 45% de récompense chacune
 6. **Historique** - Suivi des dépôts (avec statut) et récompenses
 
 ## Fonctionnalités Admin
@@ -63,6 +63,7 @@ QuestInvest est une plateforme d'investissement où les utilisateurs peuvent dé
 
 ## Changements Récents
 - 13 Avr 2026: Migration vers l'environnement Replit, installation des dépendances Node.js, configuration du workflow sur le serveur Express, et renforcement de la configuration de session/variables sensibles
+- 13 Avr 2026: Réinitialisation des quêtes changée de quotidienne à un cycle de 2 semaines
 - 14 Déc 2024: Création initiale du projet
 - Adresse de dépôt fixe: TAB1oeEKDS5NATwFAaUrTioDU9djX7anyS
 - Système de soumission de transaction avec hash

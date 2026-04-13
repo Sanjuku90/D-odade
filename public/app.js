@@ -315,16 +315,22 @@ async function loadQuests() {
     const res = await fetch('/api/quests');
     if (res.ok) {
       const data = await res.json();
-      document.getElementById('quests-completed').textContent = data.completedToday;
+      const completedCount = data.completedThisPeriod ?? data.completedToday;
+      document.getElementById('quests-completed').textContent = completedCount;
       
       const questsCompleted2 = document.getElementById('quests-completed-2');
       if (questsCompleted2) {
-        questsCompleted2.textContent = data.completedToday;
+        questsCompleted2.textContent = completedCount;
+      }
+
+      const resetDate = document.getElementById('quests-reset-date');
+      if (resetDate && data.resetPeriodEnd) {
+        resetDate.textContent = new Date(data.resetPeriodEnd).toLocaleDateString('fr-FR');
       }
       
       const progressFill = document.getElementById('quests-progress-fill');
       if (progressFill) {
-        progressFill.style.width = ((data.completedToday / 3) * 100) + '%';
+        progressFill.style.width = ((completedCount / 3) * 100) + '%';
       }
       
       const questsListFull = document.getElementById('quests-list');

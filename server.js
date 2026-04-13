@@ -163,6 +163,24 @@ function generateReferralCode() {
   return code;
 }
 
+function getQuestPeriod() {
+  const periodLengthDays = 14;
+  const millisecondsPerDay = 24 * 60 * 60 * 1000;
+  const startAnchor = Date.UTC(2024, 0, 1);
+  const now = new Date();
+  const todayUtc = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate());
+  const daysSinceAnchor = Math.floor((todayUtc - startAnchor) / millisecondsPerDay);
+  const periodIndex = Math.floor(daysSinceAnchor / periodLengthDays);
+  const startUtc = startAnchor + periodIndex * periodLengthDays * millisecondsPerDay;
+  const endUtc = startUtc + (periodLengthDays - 1) * millisecondsPerDay;
+
+  return {
+    startDate: new Date(startUtc).toISOString().split('T')[0],
+    endDate: new Date(endUtc).toISOString().split('T')[0],
+    lengthDays: periodLengthDays
+  };
+}
+
 function requireAuth(req, res, next) {
   if (!req.session.userId) {
     return res.status(401).json({ error: 'Non authentifié' });
@@ -351,19 +369,20 @@ app.post('/api/deposit', requireAuth, (req, res) => {
 
 app.get('/api/quests', requireAuth, (req, res) => {
   try {
-    const today = new Date().toISOString().split('T')[0];
+    const questPeriod = getQuestPeriod();
     
     const quests = db.prepare(`
       SELECT q.*, 
         CASE WHEN uq.id IS NOT NULL THEN 1 ELSE 0 END as completed
       FROM quests q
-      LEFT JOIN user_quests uq ON q.id = uq.quest_id 
+      LEFT JOIN user_quests uq ON q.id = uq.quest_id
         AND uq.user_id = ? 
-        AND uq.completed_date = ?
+        AND uq.completed_date BETWEEN ? AND ?
+      GROUP BY q.id
       ORDER BY q.id
-    `).all(req.session.userId, today);
+    `).all(req.session.userId, questPeriod.startDate, questPeriod.endDate);
 
-    const completedCount = db.prepare('SELECT COUNT(*) as count FROM user_quests WHERE user_id = ? AND completed_date = ?').get(req.session.userId, today);
+    const completedCount = db.prepare('SELECT COUNT(DISTINCT quest_id) as count FROM user_quests WHERE user_id = ? AND completed_date BETWEEN ? AND ?').get(req.session.userId, questPeriod.startDate, questPeriod.endDate);
 
     const referralsCount = db.prepare('SELECT COUNT(*) as count FROM referrals WHERE referrer_id = ?').get(req.session.userId);
     const hasReferral = referralsCount.count >= 1;
@@ -375,7 +394,11 @@ app.get('/api/quests', requireAuth, (req, res) => {
     res.json({
       quests: questsWithStatus,
       completedToday: completedCount.count,
+      completedThisPeriod: completedCount.count,
       totalQuests: 3,
+      resetPeriodStart: questPeriod.startDate,
+      resetPeriodEnd: questPeriod.endDate,
+      resetPeriodDays: questPeriod.lengthDays,
       referralsCount: referralsCount.count
     });
   } catch (err) {
@@ -385,7 +408,7 @@ app.get('/api/quests', requireAuth, (req, res) => {
 
 app.post('/api/quests/:id/complete', requireAuth, (req, res) => {
   const questId = parseInt(req.params.id);
-  const today = new Date().toISOString().split('T')[0];
+  const questPeriod = getQuestPeriod();
 
   try {
     const user = db.prepare('SELECT deposit_amount FROM users WHERE id = ?').get(req.session.userId);
@@ -394,10 +417,10 @@ app.post('/api/quests/:id/complete', requireAuth, (req, res) => {
       return res.status(400).json({ error: 'Vous devez avoir un dépôt minimum de 90$ pour compléter les quêtes' });
     }
 
-    const existing = db.prepare('SELECT * FROM user_quests WHERE user_id = ? AND quest_id = ? AND completed_date = ?').get(req.session.userId, questId, today);
+    const existing = db.prepare('SELECT * FROM user_quests WHERE user_id = ? AND quest_id = ? AND completed_date BETWEEN ? AND ?').get(req.session.userId, questId, questPeriod.startDate, questPeriod.endDate);
 
     if (existing) {
-      return res.status(400).json({ error: 'Quête déjà complétée aujourd\'hui' });
+      return res.status(400).json({ error: 'Quête déjà complétée pour cette période de 2 semaines' });
     }
 
     const quest = db.prepare('SELECT * FROM quests WHERE id = ?').get(questId);
@@ -410,7 +433,7 @@ app.post('/api/quests/:id/complete', requireAuth, (req, res) => {
     const reward = (depositAmount * rewardPercentage) / 100;
 
     const transaction = db.transaction(() => {
-      db.prepare('INSERT INTO user_quests (user_id, quest_id, completed_date, reward_earned) VALUES (?, ?, ?, ?)').run(req.session.userId, questId, today, reward);
+      db.prepare('INSERT INTO user_quests (user_id, quest_id, completed_date, reward_earned) VALUES (?, ?, ?, ?)').run(req.session.userId, questId, questPeriod.startDate, reward);
       db.prepare('UPDATE users SET balance = balance + ? WHERE id = ?').run(reward, req.session.userId);
     });
 
