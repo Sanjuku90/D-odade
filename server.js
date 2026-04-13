@@ -630,6 +630,10 @@ app.get('/admin', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'admin.html'));
 });
 
+app.get('/health', (req, res) => {
+  res.json({ status: 'ok', timestamp: new Date().toISOString() });
+});
+
 app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
@@ -637,4 +641,17 @@ app.get('*', (req, res) => {
 initDB();
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`Server running on http://0.0.0.0:${PORT}`);
+
+  if (isProduction && process.env.RENDER_EXTERNAL_URL) {
+    const appUrl = process.env.RENDER_EXTERNAL_URL;
+    const PING_INTERVAL = 14 * 60 * 1000;
+
+    setInterval(() => {
+      fetch(`${appUrl}/health`)
+        .then(() => console.log('[keep-alive] ping ok'))
+        .catch((err) => console.warn('[keep-alive] ping failed:', err.message));
+    }, PING_INTERVAL);
+
+    console.log(`[keep-alive] Auto-ping actif toutes les 14 minutes → ${appUrl}/health`);
+  }
 });

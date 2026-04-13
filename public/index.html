@@ -5,8 +5,96 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>QuestInvest - Investissez et Gagnez</title>
   <link rel="stylesheet" href="styles.css">
+  <style>
+    #splash-screen {
+      position: fixed;
+      inset: 0;
+      background: #0a0a0f;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      z-index: 9999;
+      gap: 24px;
+      transition: opacity 0.4s ease;
+    }
+    #splash-screen.hidden {
+      opacity: 0;
+      pointer-events: none;
+    }
+    .splash-logo {
+      font-size: 2rem;
+      font-weight: 800;
+      color: #7c3aed;
+      letter-spacing: -0.5px;
+    }
+    .splash-spinner {
+      width: 44px;
+      height: 44px;
+      border: 3px solid rgba(124, 58, 237, 0.2);
+      border-top-color: #7c3aed;
+      border-radius: 50%;
+      animation: spin 0.9s linear infinite;
+    }
+    .splash-text {
+      color: rgba(255,255,255,0.45);
+      font-size: 0.85rem;
+      letter-spacing: 0.5px;
+    }
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+  </style>
+  <script>
+    (function () {
+      var MAX_WAIT = 18000;
+      var RELOAD_AFTER = 22000;
+      var start = Date.now();
+
+      function hideSplash() {
+        var el = document.getElementById('splash-screen');
+        if (el) {
+          el.classList.add('hidden');
+          setTimeout(function () { el.remove(); }, 450);
+        }
+      }
+
+      function ping() {
+        fetch('/health', { cache: 'no-store' })
+          .then(function (r) {
+            if (r.ok) {
+              hideSplash();
+            } else {
+              retry();
+            }
+          })
+          .catch(function () { retry(); });
+      }
+
+      function retry() {
+        if (Date.now() - start > RELOAD_AFTER) {
+          window.location.reload();
+        } else {
+          setTimeout(ping, 1500);
+        }
+      }
+
+      window.addEventListener('DOMContentLoaded', function () {
+        setTimeout(ping, 600);
+        setTimeout(function () {
+          hideSplash();
+        }, MAX_WAIT);
+      });
+    })();
+  </script>
 </head>
 <body>
+  <div id="splash-screen">
+    <div class="splash-logo">QuestInvest</div>
+    <div class="splash-spinner"></div>
+    <div class="splash-text">Chargement en cours…</div>
+  </div>
+
   <div id="app">
     <header>
       <div class="container">
