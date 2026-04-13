@@ -5,6 +5,205 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>QuestInvest - Admin</title>
   <link rel="stylesheet" href="styles.css">
+  <style>
+    .admin-stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+      gap: 16px;
+      margin-bottom: 28px;
+    }
+    .admin-stat-card {
+      background: var(--card-bg, #1a1a2e);
+      border: 1px solid var(--border, rgba(255,255,255,0.08));
+      border-radius: 12px;
+      padding: 18px 20px;
+    }
+    .admin-stat-card .label {
+      font-size: 0.75rem;
+      color: var(--text-muted, rgba(255,255,255,0.45));
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 6px;
+    }
+    .admin-stat-card .value {
+      font-size: 1.6rem;
+      font-weight: 700;
+      color: #fff;
+    }
+    .admin-stat-card.accent .value { color: #7c3aed; }
+    .admin-stat-card.warn .value { color: #f59e0b; }
+    .admin-stat-card.danger .value { color: #ef4444; }
+    .admin-stat-card.success .value { color: #10b981; }
+
+    .admin-tabs {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 20px;
+      border-bottom: 1px solid rgba(255,255,255,0.08);
+      padding-bottom: 0;
+    }
+    .admin-tab-btn {
+      background: none;
+      border: none;
+      color: rgba(255,255,255,0.5);
+      font-size: 0.95rem;
+      font-weight: 600;
+      padding: 10px 20px;
+      cursor: pointer;
+      border-bottom: 2px solid transparent;
+      margin-bottom: -1px;
+      transition: all 0.2s;
+    }
+    .admin-tab-btn.active {
+      color: #7c3aed;
+      border-bottom-color: #7c3aed;
+    }
+    .admin-tab-btn .badge {
+      display: inline-block;
+      background: #ef4444;
+      color: #fff;
+      font-size: 0.7rem;
+      font-weight: 700;
+      padding: 1px 6px;
+      border-radius: 20px;
+      margin-left: 6px;
+      vertical-align: middle;
+    }
+
+    .admin-panel { display: none; }
+    .admin-panel.active { display: block; }
+
+    .admin-filters {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 16px;
+      flex-wrap: wrap;
+    }
+    .filter-btn {
+      background: rgba(255,255,255,0.05);
+      border: 1px solid rgba(255,255,255,0.1);
+      color: rgba(255,255,255,0.6);
+      padding: 6px 14px;
+      border-radius: 20px;
+      font-size: 0.82rem;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .filter-btn.active, .filter-btn:hover {
+      background: #7c3aed;
+      border-color: #7c3aed;
+      color: #fff;
+    }
+
+    .admin-table-container {
+      overflow-x: auto;
+      border-radius: 12px;
+      border: 1px solid rgba(255,255,255,0.08);
+    }
+    .admin-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.88rem;
+    }
+    .admin-table th {
+      background: rgba(255,255,255,0.04);
+      color: rgba(255,255,255,0.5);
+      font-weight: 600;
+      text-transform: uppercase;
+      font-size: 0.72rem;
+      letter-spacing: 0.5px;
+      padding: 12px 16px;
+      text-align: left;
+      white-space: nowrap;
+    }
+    .admin-table td {
+      padding: 12px 16px;
+      border-top: 1px solid rgba(255,255,255,0.05);
+      color: rgba(255,255,255,0.85);
+      vertical-align: middle;
+    }
+    .admin-table tr:hover td { background: rgba(255,255,255,0.02); }
+    .tx-hash {
+      font-family: monospace;
+      font-size: 0.78rem;
+      max-width: 180px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .admin-address {
+      font-family: monospace;
+      font-size: 0.78rem;
+      max-width: 200px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .status-badge {
+      display: inline-block;
+      padding: 3px 10px;
+      border-radius: 20px;
+      font-size: 0.75rem;
+      font-weight: 600;
+    }
+    .status-badge.pending { background: rgba(245,158,11,0.15); color: #f59e0b; }
+    .status-badge.confirmed { background: rgba(16,185,129,0.15); color: #10b981; }
+    .status-badge.rejected { background: rgba(239,68,68,0.15); color: #ef4444; }
+
+    .btn-approve {
+      background: rgba(16,185,129,0.15);
+      border: 1px solid rgba(16,185,129,0.3);
+      color: #10b981;
+      padding: 5px 12px;
+      border-radius: 6px;
+      font-size: 0.8rem;
+      cursor: pointer;
+      margin-right: 6px;
+      transition: all 0.2s;
+    }
+    .btn-approve:hover { background: #10b981; color: #fff; }
+    .btn-reject {
+      background: rgba(239,68,68,0.1);
+      border: 1px solid rgba(239,68,68,0.3);
+      color: #ef4444;
+      padding: 5px 12px;
+      border-radius: 6px;
+      font-size: 0.8rem;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .btn-reject:hover { background: #ef4444; color: #fff; }
+
+    .refresh-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 16px;
+    }
+    .refresh-bar span {
+      font-size: 0.78rem;
+      color: rgba(255,255,255,0.35);
+    }
+    .btn-refresh {
+      background: rgba(124,58,237,0.15);
+      border: 1px solid rgba(124,58,237,0.3);
+      color: #7c3aed;
+      padding: 5px 14px;
+      border-radius: 6px;
+      font-size: 0.82rem;
+      cursor: pointer;
+    }
+    .btn-refresh:hover { background: #7c3aed; color: #fff; }
+
+    .admin-title {
+      font-size: 1.4rem;
+      font-weight: 700;
+      margin-bottom: 24px;
+      color: #fff;
+    }
+    .empty-row td { text-align: center; color: rgba(255,255,255,0.3); padding: 32px !important; }
+  </style>
 </head>
 <body>
   <div id="app">
@@ -21,40 +220,103 @@
           <form id="admin-login-form" class="auth-form">
             <h2>Connexion Admin</h2>
             <div class="form-group">
-              <label>Code d'acces</label>
+              <label>Code d'accès</label>
               <input type="password" name="code" required placeholder="Entrez le code">
             </div>
-            <button type="submit" class="btn btn-primary">Acceder</button>
+            <button type="submit" class="btn btn-primary">Accéder</button>
             <p class="error-msg" id="admin-login-error"></p>
           </form>
         </div>
       </div>
 
       <div id="admin-dashboard" class="section hidden">
-        <h2 class="admin-title">Gestion des Dépôts</h2>
-        
-        <div class="admin-filters">
-          <button class="filter-btn active" data-filter="all">Tous</button>
-          <button class="filter-btn" data-filter="pending">En attente</button>
-          <button class="filter-btn" data-filter="confirmed">Confirmés</button>
-          <button class="filter-btn" data-filter="rejected">Rejetés</button>
+        <h2 class="admin-title">Tableau de bord Admin</h2>
+
+        <div class="admin-stats-grid">
+          <div class="admin-stat-card accent">
+            <div class="label">Utilisateurs</div>
+            <div class="value" id="stat-users">—</div>
+          </div>
+          <div class="admin-stat-card warn">
+            <div class="label">Dépôts en attente</div>
+            <div class="value" id="stat-pending-deposits">—</div>
+          </div>
+          <div class="admin-stat-card success">
+            <div class="label">Dépôts confirmés ($)</div>
+            <div class="value" id="stat-confirmed-deposits">—</div>
+          </div>
+          <div class="admin-stat-card danger">
+            <div class="label">Retraits en attente</div>
+            <div class="value" id="stat-pending-withdrawals">—</div>
+          </div>
+          <div class="admin-stat-card">
+            <div class="label">Total retiré ($)</div>
+            <div class="value" id="stat-total-withdrawn">—</div>
+          </div>
         </div>
 
-        <div class="admin-table-container">
-          <table class="admin-table">
-            <thead>
-              <tr>
-                <th>ID</th>
-                <th>Utilisateur</th>
-                <th>Montant</th>
-                <th>Hash Transaction</th>
-                <th>Date</th>
-                <th>Statut</th>
-                <th>Actions</th>
-              </tr>
-            </thead>
-            <tbody id="deposits-table"></tbody>
-          </table>
+        <div class="refresh-bar">
+          <span id="last-refresh-label">Actualisation auto toutes les 30s</span>
+          <button class="btn-refresh" onclick="refreshAll()">↻ Actualiser</button>
+        </div>
+
+        <div class="admin-tabs">
+          <button class="admin-tab-btn active" data-panel="deposits-panel">
+            Dépôts <span class="badge" id="deposit-badge" style="display:none"></span>
+          </button>
+          <button class="admin-tab-btn" data-panel="withdrawals-panel">
+            Retraits <span class="badge" id="withdrawal-badge" style="display:none"></span>
+          </button>
+        </div>
+
+        <div id="deposits-panel" class="admin-panel active">
+          <div class="admin-filters">
+            <button class="filter-btn active" data-filter="all">Tous</button>
+            <button class="filter-btn" data-filter="pending">En attente</button>
+            <button class="filter-btn" data-filter="confirmed">Confirmés</button>
+            <button class="filter-btn" data-filter="rejected">Rejetés</button>
+          </div>
+          <div class="admin-table-container">
+            <table class="admin-table">
+              <thead>
+                <tr>
+                  <th>ID</th>
+                  <th>Utilisateur</th>
+                  <th>Montant</th>
+                  <th>Hash Transaction</th>
+                  <th>Date</th>
+                  <th>Statut</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="deposits-table"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <div id="withdrawals-panel" class="admin-panel">
+          <div class="admin-filters">
+            <button class="filter-btn active" data-filter="all">Tous</button>
+            <button class="filter-btn" data-filter="pending">En attente</button>
+            <button class="filter-btn" data-filter="confirmed">Confirmés</button>
+            <button class="filter-btn" data-filter="rejected">Rejetés</button>
+          </div>
+          <div class="admin-table-container">
+            <table class="admin-table">
+              <thead>
+                <tr>
+                  <th>ID</th>
+                  <th>Utilisateur</th>
+                  <th>Montant</th>
+                  <th>Adresse USDT</th>
+                  <th>Date</th>
+                  <th>Statut</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="withdrawals-table"></tbody>
+            </table>
+          </div>
         </div>
       </div>
     </main>
@@ -69,29 +331,30 @@
   <div id="toast" class="toast hidden"></div>
 
   <script>
-    let currentFilter = 'all';
     let allDeposits = [];
+    let allWithdrawals = [];
+    let depositFilter = 'all';
+    let withdrawalFilter = 'all';
+    let autoRefreshTimer = null;
 
     document.addEventListener('DOMContentLoaded', () => {
       checkAdminAuth();
-      setupEventListeners();
+      setupTabs();
+      setupDepositFilters();
+      setupWithdrawalFilters();
+      setupLoginForm();
     });
 
-    function setupEventListeners() {
+    function setupLoginForm() {
       document.getElementById('admin-login-form').addEventListener('submit', async (e) => {
         e.preventDefault();
-        const formData = new FormData(e.target);
-        const data = {
-          code: formData.get('code')
-        };
-
+        const code = new FormData(e.target).get('code');
         try {
           const res = await fetch('/api/admin/login', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(data)
+            body: JSON.stringify({ code })
           });
-
           const result = await res.json();
           if (res.ok) {
             showAdminDashboard();
@@ -102,13 +365,37 @@
           document.getElementById('admin-login-error').textContent = 'Erreur de connexion';
         }
       });
+    }
 
-      document.querySelectorAll('.filter-btn').forEach(btn => {
+    function setupTabs() {
+      document.querySelectorAll('.admin-tab-btn').forEach(btn => {
         btn.addEventListener('click', () => {
-          document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+          document.querySelectorAll('.admin-tab-btn').forEach(b => b.classList.remove('active'));
+          document.querySelectorAll('.admin-panel').forEach(p => p.classList.remove('active'));
           btn.classList.add('active');
-          currentFilter = btn.dataset.filter;
+          document.getElementById(btn.dataset.panel).classList.add('active');
+        });
+      });
+    }
+
+    function setupDepositFilters() {
+      document.querySelectorAll('#deposits-panel .filter-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          document.querySelectorAll('#deposits-panel .filter-btn').forEach(b => b.classList.remove('active'));
+          btn.classList.add('active');
+          depositFilter = btn.dataset.filter;
           renderDeposits();
+        });
+      });
+    }
+
+    function setupWithdrawalFilters() {
+      document.querySelectorAll('#withdrawals-panel .filter-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          document.querySelectorAll('#withdrawals-panel .filter-btn').forEach(b => b.classList.remove('active'));
+          btn.classList.add('active');
+          withdrawalFilter = btn.dataset.filter;
+          renderWithdrawals();
         });
       });
     }
@@ -131,104 +418,167 @@
       document.getElementById('admin-login').classList.remove('hidden');
       document.getElementById('admin-dashboard').classList.add('hidden');
       document.getElementById('nav-links').innerHTML = '<a href="/" class="nav-link">Retour au site</a>';
+      if (autoRefreshTimer) clearInterval(autoRefreshTimer);
     }
 
     function showAdminDashboard() {
       document.getElementById('admin-login').classList.add('hidden');
       document.getElementById('admin-dashboard').classList.remove('hidden');
       document.getElementById('nav-links').innerHTML = '<button onclick="adminLogout()">Déconnexion</button>';
-      loadDeposits();
+      refreshAll();
+      autoRefreshTimer = setInterval(() => {
+        refreshAll();
+        updateRefreshLabel();
+      }, 30000);
+    }
+
+    function updateRefreshLabel() {
+      const now = new Date();
+      document.getElementById('last-refresh-label').textContent =
+        'Dernière actualisation: ' + now.toLocaleTimeString('fr-FR');
+    }
+
+    async function refreshAll() {
+      await Promise.all([loadStats(), loadDeposits(), loadWithdrawals()]);
+      updateRefreshLabel();
+    }
+
+    async function loadStats() {
+      try {
+        const res = await fetch('/api/admin/stats');
+        if (!res.ok) return;
+        const s = await res.json();
+        document.getElementById('stat-users').textContent = s.totalUsers;
+        document.getElementById('stat-pending-deposits').textContent = s.pendingDeposits;
+        document.getElementById('stat-confirmed-deposits').textContent = '$' + parseFloat(s.confirmedDeposits).toFixed(0);
+        document.getElementById('stat-pending-withdrawals').textContent = s.pendingWithdrawals;
+        document.getElementById('stat-total-withdrawn').textContent = '$' + parseFloat(s.totalWithdrawn).toFixed(0);
+
+        const db = document.getElementById('deposit-badge');
+        if (s.pendingDeposits > 0) { db.textContent = s.pendingDeposits; db.style.display = ''; }
+        else { db.style.display = 'none'; }
+
+        const wb = document.getElementById('withdrawal-badge');
+        if (s.pendingWithdrawals > 0) { wb.textContent = s.pendingWithdrawals; wb.style.display = ''; }
+        else { wb.style.display = 'none'; }
+      } catch (err) {}
     }
 
     async function loadDeposits() {
       try {
         const res = await fetch('/api/admin/deposits');
-        if (res.ok) {
-          allDeposits = await res.json();
-          renderDeposits();
-        }
-      } catch (err) {
-        console.error('Error loading deposits');
-      }
+        if (res.ok) { allDeposits = await res.json(); renderDeposits(); }
+      } catch (err) {}
     }
+
+    async function loadWithdrawals() {
+      try {
+        const res = await fetch('/api/admin/withdrawals');
+        if (res.ok) { allWithdrawals = await res.json(); renderWithdrawals(); }
+      } catch (err) {}
+    }
+
+    const statusBadge = {
+      pending: '<span class="status-badge pending">En attente</span>',
+      confirmed: '<span class="status-badge confirmed">Confirmé</span>',
+      rejected: '<span class="status-badge rejected">Rejeté</span>'
+    };
 
     function renderDeposits() {
       const tbody = document.getElementById('deposits-table');
-      let filtered = allDeposits;
-      
-      if (currentFilter !== 'all') {
-        filtered = allDeposits.filter(d => d.status === currentFilter);
+      const list = depositFilter === 'all' ? allDeposits : allDeposits.filter(d => d.status === depositFilter);
+      if (list.length === 0) {
+        tbody.innerHTML = '<tr class="empty-row"><td colspan="7">Aucun dépôt</td></tr>';
+        return;
       }
-
-      const statusLabels = {
-        'pending': '<span class="status-badge pending">En attente</span>',
-        'confirmed': '<span class="status-badge confirmed">Confirmé</span>',
-        'rejected': '<span class="status-badge rejected">Rejeté</span>'
-      };
-
-      tbody.innerHTML = filtered.map(d => `
+      tbody.innerHTML = list.map(d => `
         <tr>
-          <td>${d.id}</td>
+          <td>#${d.id}</td>
           <td>${d.user_email}</td>
-          <td>$${parseFloat(d.amount).toFixed(2)}</td>
-          <td class="tx-hash">${d.tx_hash || '-'}</td>
+          <td><strong>$${parseFloat(d.amount).toFixed(2)}</strong></td>
+          <td class="tx-hash" title="${d.tx_hash || ''}">${d.tx_hash || '—'}</td>
           <td>${new Date(d.created_at).toLocaleDateString('fr-FR')}</td>
-          <td>${statusLabels[d.status] || d.status}</td>
+          <td>${statusBadge[d.status] || d.status}</td>
           <td>
             ${d.status === 'pending' ? `
-              <button class="btn btn-approve" onclick="approveDeposit(${d.id})">Approuver</button>
-              <button class="btn btn-reject" onclick="rejectDeposit(${d.id})">Rejeter</button>
-            ` : '-'}
+              <button class="btn-approve" onclick="approveDeposit(${d.id})">✓ Approuver</button>
+              <button class="btn-reject" onclick="rejectDeposit(${d.id})">✕ Rejeter</button>
+            ` : '—'}
           </td>
         </tr>
       `).join('');
+    }
 
-      if (filtered.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="7" style="text-align: center; color: var(--text-muted);">Aucun dépôt</td></tr>';
+    function renderWithdrawals() {
+      const tbody = document.getElementById('withdrawals-table');
+      const list = withdrawalFilter === 'all' ? allWithdrawals : allWithdrawals.filter(w => w.status === withdrawalFilter);
+      if (list.length === 0) {
+        tbody.innerHTML = '<tr class="empty-row"><td colspan="7">Aucun retrait</td></tr>';
+        return;
       }
+      tbody.innerHTML = list.map(w => `
+        <tr>
+          <td>#${w.id}</td>
+          <td>${w.user_email}</td>
+          <td><strong>$${parseFloat(w.amount).toFixed(2)}</strong></td>
+          <td class="admin-address" title="${w.address}">${w.address}</td>
+          <td>${new Date(w.created_at).toLocaleDateString('fr-FR')}</td>
+          <td>${statusBadge[w.status] || w.status}</td>
+          <td>
+            ${w.status === 'pending' ? `
+              <button class="btn-approve" onclick="approveWithdrawal(${w.id})">✓ Approuver</button>
+              <button class="btn-reject" onclick="rejectWithdrawal(${w.id})">✕ Rejeter</button>
+            ` : '—'}
+          </td>
+        </tr>
+      `).join('');
     }
 
     async function approveDeposit(id) {
-      if (!confirm('Confirmer l\'approbation de ce dépôt?')) return;
-      
+      if (!confirm('Approuver ce dépôt ?')) return;
       try {
         const res = await fetch(`/api/admin/deposits/${id}/approve`, { method: 'POST' });
         const result = await res.json();
-        if (res.ok) {
-          showToast('Dépôt approuvé!', 'success');
-          loadDeposits();
-        } else {
-          showToast(result.error, 'error');
-        }
-      } catch (err) {
-        showToast('Erreur lors de l\'approbation', 'error');
-      }
+        if (res.ok) { showToast('Dépôt approuvé !', 'success'); refreshAll(); }
+        else showToast(result.error, 'error');
+      } catch { showToast('Erreur', 'error'); }
     }
 
     async function rejectDeposit(id) {
-      if (!confirm('Confirmer le rejet de ce dépôt?')) return;
-      
+      if (!confirm('Rejeter ce dépôt ?')) return;
       try {
         const res = await fetch(`/api/admin/deposits/${id}/reject`, { method: 'POST' });
         const result = await res.json();
-        if (res.ok) {
-          showToast('Dépôt rejeté', 'success');
-          loadDeposits();
-        } else {
-          showToast(result.error, 'error');
-        }
-      } catch (err) {
-        showToast('Erreur lors du rejet', 'error');
-      }
+        if (res.ok) { showToast('Dépôt rejeté', 'success'); refreshAll(); }
+        else showToast(result.error, 'error');
+      } catch { showToast('Erreur', 'error'); }
+    }
+
+    async function approveWithdrawal(id) {
+      if (!confirm('Approuver ce retrait ? Le paiement a été envoyé à l\'utilisateur ?')) return;
+      try {
+        const res = await fetch(`/api/admin/withdrawals/${id}/approve`, { method: 'POST' });
+        const result = await res.json();
+        if (res.ok) { showToast('Retrait confirmé !', 'success'); refreshAll(); }
+        else showToast(result.error, 'error');
+      } catch { showToast('Erreur', 'error'); }
+    }
+
+    async function rejectWithdrawal(id) {
+      if (!confirm('Rejeter ce retrait ? Le solde sera recrédité à l\'utilisateur.')) return;
+      try {
+        const res = await fetch(`/api/admin/withdrawals/${id}/reject`, { method: 'POST' });
+        const result = await res.json();
+        if (res.ok) { showToast('Retrait rejeté, solde recrédité', 'success'); refreshAll(); }
+        else showToast(result.error, 'error');
+      } catch { showToast('Erreur', 'error'); }
     }
 
     async function adminLogout() {
       try {
         await fetch('/api/admin/logout', { method: 'POST' });
         showAdminLogin();
-      } catch (err) {
-        console.error('Error logging out');
-      }
+      } catch (err) {}
     }
 
     function showToast(message, type) {
@@ -236,10 +586,7 @@
       toast.textContent = message;
       toast.className = 'toast ' + type;
       toast.classList.remove('hidden');
-      
-      setTimeout(() => {
-        toast.classList.add('hidden');
-      }, 3000);
+      setTimeout(() => toast.classList.add('hidden'), 3500);
     }
   </script>
 </body>

@@ -295,7 +295,8 @@ async function loadUserData() {
       const user = await res.json();
       currentUser = user;
       document.getElementById('user-balance').textContent = parseFloat(user.balance).toFixed(2);
-      document.getElementById('user-deposit').textContent = parseFloat(user.deposit_amount).toFixed(2);
+      const withdrawnEl = document.getElementById('user-withdrawn');
+      if (withdrawnEl) withdrawnEl.textContent = parseFloat(user.total_withdrawn || 0).toFixed(2);
       document.getElementById('deposit-address').textContent = user.deposit_address;
       
       document.getElementById('profile-email').textContent = user.email;

@@ -310,6 +310,9 @@ app.get('/api/user', requireAuth, (req, res) => {
     
     const referralsCount = db.prepare('SELECT COUNT(*) as count FROM referrals WHERE referrer_id = ?').get(req.session.userId);
     user.referrals_count = referralsCount.count;
+
+    const withdrawnRow = db.prepare("SELECT COALESCE(SUM(amount),0) as total FROM withdrawals WHERE user_id = ? AND status != 'rejected'").get(req.session.userId);
+    user.total_withdrawn = withdrawnRow.total;
     
     res.json(user);
   } catch (err) {
@@ -566,6 +569,62 @@ app.post('/api/admin/logout', (req, res) => {
 
 app.get('/api/admin/check', (req, res) => {
   res.json({ isAdmin: !!req.session.adminId });
+});
+
+app.get('/api/admin/stats', requireAdmin, (req, res) => {
+  try {
+    const totalUsers = db.prepare('SELECT COUNT(*) as count FROM users').get().count;
+    const pendingDeposits = db.prepare("SELECT COUNT(*) as count FROM deposits WHERE status = 'pending'").get().count;
+    const confirmedDeposits = db.prepare("SELECT COALESCE(SUM(amount),0) as total FROM deposits WHERE status = 'confirmed'").get().total;
+    const pendingWithdrawals = db.prepare("SELECT COUNT(*) as count FROM withdrawals WHERE status = 'pending'").get().count;
+    const totalWithdrawn = db.prepare("SELECT COALESCE(SUM(amount),0) as total FROM withdrawals WHERE status = 'confirmed'").get().total;
+    res.json({ totalUsers, pendingDeposits, confirmedDeposits, pendingWithdrawals, totalWithdrawn });
+  } catch (err) {
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+});
+
+app.get('/api/admin/withdrawals', requireAdmin, (req, res) => {
+  try {
+    const withdrawals = db.prepare(`
+      SELECT w.*, u.email as user_email
+      FROM withdrawals w
+      JOIN users u ON w.user_id = u.id
+      ORDER BY w.created_at DESC
+    `).all();
+    res.json(withdrawals);
+  } catch (err) {
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+});
+
+app.post('/api/admin/withdrawals/:id/approve', requireAdmin, (req, res) => {
+  const id = req.params.id;
+  try {
+    const w = db.prepare('SELECT * FROM withdrawals WHERE id = ?').get(id);
+    if (!w) return res.status(404).json({ error: 'Retrait non trouvé' });
+    if (w.status !== 'pending') return res.status(400).json({ error: 'Déjà traité' });
+    db.prepare('UPDATE withdrawals SET status = ? WHERE id = ?').run('confirmed', id);
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+});
+
+app.post('/api/admin/withdrawals/:id/reject', requireAdmin, (req, res) => {
+  const id = req.params.id;
+  try {
+    const w = db.prepare('SELECT * FROM withdrawals WHERE id = ?').get(id);
+    if (!w) return res.status(404).json({ error: 'Retrait non trouvé' });
+    if (w.status !== 'pending') return res.status(400).json({ error: 'Déjà traité' });
+    db.transaction(() => {
+      db.prepare('UPDATE withdrawals SET status = ? WHERE id = ?').run('rejected', id);
+      db.prepare('UPDATE users SET balance = balance + ? WHERE id = ?').run(w.amount, w.user_id);
+    })();
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
 });
 
 app.get('/api/admin/deposits', requireAdmin, (req, res) => {
