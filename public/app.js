@@ -300,26 +300,15 @@ async function loadUserData() {
 
       const banner = document.getElementById('withdraw-availability-banner');
       const dateInfo = document.getElementById('withdraw-available-date-info');
-      if (user.withdraw_available_from) {
-        const availDate = new Date(user.withdraw_available_from + 'T00:00:00Z');
-        const today = new Date();
-        today.setUTCHours(0, 0, 0, 0);
-        const dateStr = availDate.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' });
-        if (today < availDate) {
-          if (banner) {
-            banner.classList.remove('hidden');
-            document.getElementById('withdraw-availability-msg').textContent =
-              'Selon les règles du site, votre premier retrait sera disponible le ' + dateStr + ' (le lendemain de votre dépôt confirmé).';
-          }
-          if (dateInfo) dateInfo.classList.add('hidden');
-        } else {
-          if (banner) banner.classList.add('hidden');
-          if (dateInfo) {
-            dateInfo.classList.remove('hidden');
-            dateInfo.textContent = 'Retrait disponible depuis le ' + dateStr + '.';
-          }
-        }
+      if (banner) {
+        const tomorrow = new Date();
+        tomorrow.setDate(tomorrow.getDate() + 1);
+        const tomorrowStr = tomorrow.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' });
+        banner.classList.remove('hidden');
+        document.getElementById('withdraw-availability-msg').textContent =
+          'Selon les règles du site, votre retrait sera disponible demain le ' + tomorrowStr + '. Merci de revenir à cette date.';
       }
+      if (dateInfo) dateInfo.classList.add('hidden');
       document.getElementById('deposit-address').textContent = user.deposit_address;
       
       document.getElementById('profile-email').textContent = user.email;

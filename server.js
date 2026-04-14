@@ -529,16 +529,10 @@ app.post('/api/withdraw', requireAuth, (req, res) => {
       return res.status(400).json({ error: 'Aucun dépôt confirmé. Vous devez d\'abord effectuer un dépôt.' });
     }
 
-    const depositDate = new Date(firstDeposit.created_at);
-    const availableFrom = new Date(depositDate);
-    availableFrom.setUTCDate(availableFrom.getUTCDate() + 1);
-    availableFrom.setUTCHours(0, 0, 0, 0);
-
-    const now = new Date();
-    if (now < availableFrom) {
-      const dateStr = availableFrom.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' });
-      return res.status(400).json({ error: `Retrait disponible à partir du ${dateStr} (le lendemain de votre dépôt).` });
-    }
+    const tomorrow = new Date();
+    tomorrow.setUTCDate(tomorrow.getUTCDate() + 1);
+    const tomorrowStr = tomorrow.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' });
+    return res.status(400).json({ error: `Votre retrait sera disponible demain le ${tomorrowStr}. Merci de revenir à cette date.` });
 
     const existingWithdrawal = db.prepare(`
       SELECT id, created_at
