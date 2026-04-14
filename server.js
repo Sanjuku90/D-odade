@@ -47,7 +47,7 @@ function getOrCreatePersistentSecret(name, generator) {
 }
 
 const SESSION_SECRET = getOrCreatePersistentSecret('SESSION_SECRET', () => crypto.randomBytes(32).toString('hex'));
-const DEPOSIT_ADDRESS = process.env.DEPOSIT_ADDRESS || 'TAB1oeEKDS5NATwFAaUrTioDU9djX7anyS';
+const DEPOSIT_ADDRESS = process.env.DEPOSIT_ADDRESS || 'TYyUwQELkUW957jE7Svt42LSaeQWneWtQG';
 const ADMIN_EMAIL = process.env.ADMIN_EMAIL || 'admin@questinvest.com';
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || (isProduction ? getOrCreatePersistentSecret('ADMIN_PASSWORD', () => crypto.randomBytes(24).toString('base64url')) : 'admin123');
 const ADMIN_ACCESS_CODE = '1289';
