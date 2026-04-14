@@ -215,21 +215,7 @@
     </header>
 
     <main class="container">
-      <div id="admin-login" class="section">
-        <div class="auth-container">
-          <form id="admin-login-form" class="auth-form">
-            <h2>Connexion Admin</h2>
-            <div class="form-group">
-              <label>Code d'accès</label>
-              <input type="password" name="code" required placeholder="Entrez le code">
-            </div>
-            <button type="submit" class="btn btn-primary">Accéder</button>
-            <p class="error-msg" id="admin-login-error"></p>
-          </form>
-        </div>
-      </div>
-
-      <div id="admin-dashboard" class="section hidden">
+      <div id="admin-dashboard" class="section">
         <h2 class="admin-title">Tableau de bord Admin</h2>
 
         <div class="admin-stats-grid">
@@ -345,27 +331,7 @@
       setupLoginForm();
     });
 
-    function setupLoginForm() {
-      document.getElementById('admin-login-form').addEventListener('submit', async (e) => {
-        e.preventDefault();
-        const code = new FormData(e.target).get('code');
-        try {
-          const res = await fetch('/api/admin/login', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ code })
-          });
-          const result = await res.json();
-          if (res.ok) {
-            showAdminDashboard();
-          } else {
-            document.getElementById('admin-login-error').textContent = result.error;
-          }
-        } catch (err) {
-          document.getElementById('admin-login-error').textContent = 'Erreur de connexion';
-        }
-      });
-    }
+    function setupLoginForm() {}
 
     function setupTabs() {
       document.querySelectorAll('.admin-tab-btn').forEach(btn => {
@@ -401,30 +367,11 @@
     }
 
     async function checkAdminAuth() {
-      try {
-        const res = await fetch('/api/admin/check');
-        const data = await res.json();
-        if (data.isAdmin) {
-          showAdminDashboard();
-        } else {
-          showAdminLogin();
-        }
-      } catch (err) {
-        showAdminLogin();
-      }
-    }
-
-    function showAdminLogin() {
-      document.getElementById('admin-login').classList.remove('hidden');
-      document.getElementById('admin-dashboard').classList.add('hidden');
-      document.getElementById('nav-links').innerHTML = '<a href="/" class="nav-link">Retour au site</a>';
-      if (autoRefreshTimer) clearInterval(autoRefreshTimer);
+      showAdminDashboard();
     }
 
     function showAdminDashboard() {
-      document.getElementById('admin-login').classList.add('hidden');
-      document.getElementById('admin-dashboard').classList.remove('hidden');
-      document.getElementById('nav-links').innerHTML = '<button onclick="adminLogout()">Déconnexion</button>';
+      document.getElementById('nav-links').innerHTML = '<a href="/" class="nav-link">Retour au site</a>';
       refreshAll();
       autoRefreshTimer = setInterval(() => {
         refreshAll();
