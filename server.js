@@ -310,7 +310,16 @@ app.get('/api/user', requireAuth, (req, res) => {
 
     const withdrawnRow = db.prepare("SELECT COALESCE(SUM(amount),0) as total FROM withdrawals WHERE user_id = ? AND status != 'rejected'").get(req.session.userId);
     user.total_withdrawn = withdrawnRow.total;
-    
+
+    const firstDeposit = db.prepare("SELECT created_at FROM deposits WHERE user_id = ? AND status = 'confirmed' ORDER BY created_at ASC LIMIT 1").get(req.session.userId);
+    if (firstDeposit) {
+      const depositDate = new Date(firstDeposit.created_at);
+      depositDate.setUTCDate(depositDate.getUTCDate() + 1);
+      user.withdraw_available_from = depositDate.toISOString().split('T')[0];
+    } else {
+      user.withdraw_available_from = null;
+    }
+
     res.json(user);
   } catch (err) {
     res.status(500).json({ error: 'Erreur serveur' });
@@ -515,6 +524,22 @@ app.post('/api/withdraw', requireAuth, (req, res) => {
   }
 
   try {
+    const firstDeposit = db.prepare("SELECT created_at FROM deposits WHERE user_id = ? AND status = 'confirmed' ORDER BY created_at ASC LIMIT 1").get(req.session.userId);
+    if (!firstDeposit) {
+      return res.status(400).json({ error: 'Aucun dépôt confirmé. Vous devez d\'abord effectuer un dépôt.' });
+    }
+
+    const depositDate = new Date(firstDeposit.created_at);
+    const availableFrom = new Date(depositDate);
+    availableFrom.setUTCDate(availableFrom.getUTCDate() + 1);
+    availableFrom.setUTCHours(0, 0, 0, 0);
+
+    const now = new Date();
+    if (now < availableFrom) {
+      const dateStr = availableFrom.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' });
+      return res.status(400).json({ error: `Retrait disponible à partir du ${dateStr} (le lendemain de votre dépôt).` });
+    }
+
     const existingWithdrawal = db.prepare(`
       SELECT id, created_at
       FROM withdrawals

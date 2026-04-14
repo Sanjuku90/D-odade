@@ -523,11 +523,17 @@
             <h2>Retirer mes Gains</h2>
             <p>Retirez vos gains vers votre portefeuille USDT (TRC20). Un retrait est disponible une fois toutes les 2 semaines.</p>
           </div>
+
+          <div id="withdraw-availability-banner" class="hidden" style="background:rgba(245,158,11,0.12);border:1px solid rgba(245,158,11,0.35);border-radius:10px;padding:14px 18px;margin-bottom:20px;color:#f59e0b;font-size:0.9rem;line-height:1.5;">
+            <strong>⏳ Retrait pas encore disponible</strong><br>
+            <span id="withdraw-availability-msg"></span>
+          </div>
           
           <div class="withdraw-layout">
             <div class="card">
               <h3>Demander un Retrait</h3>
               <p class="min-deposit">Retrait minimum: <strong>$50</strong> · Maximum: <strong>$500</strong> · Limite: <strong>1 retrait / 2 semaines</strong></p>
+              <p id="withdraw-available-date-info" class="hidden" style="font-size:0.85rem;color:rgba(255,255,255,0.5);margin-bottom:12px;"></p>
               <form id="withdraw-form">
                 <div class="form-group">
                   <label>Montant a retirer ($)</label>
