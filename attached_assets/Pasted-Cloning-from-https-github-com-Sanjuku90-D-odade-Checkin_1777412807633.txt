@@ -1,0 +1,47 @@
+Cloning from https://github.com/Sanjuku90/D-odade
+==> Checking out commit f27adbe4c8ecf5535a85cad594894ab1ee655d89 in branch main
+==> Using Python version 3.14.3 (default)
+==> Docs on specifying a Python version: https://render.com/docs/python-version
+==> Installing Python version 3.14.3...
+==> Using Poetry version 2.1.3 (default)
+==> Docs on specifying a Poetry version: https://render.com/docs/poetry-version
+==> Using uv version 0.10.2 (default)
+==> Docs on specifying a uv version: https://render.com/docs/uv-version
+==> Installing uv version 0.10.2...
+==> Running build command 'uv sync --frozen && uv cache prune --ci'...
+Bytecode compiled 398 files in 70ms
+Pruning cache at: /opt/render/.cache/.python-uv/cache
+No unused entries found
+==> Requesting Node.js version >=18.0.0
+==> Using Node.js version 25.9.0 via /opt/render/project/src/package.json
+==> Docs on specifying a Node.js version: https://render.com/docs/node-version
+==> Uploading build...
+==> Uploaded in 8.5s. Compression took 2.8s
+==> Build successful 🎉
+==> Deploying...
+==> Setting WEB_CONCURRENCY=1 by default, based on available CPUs in the instance
+==> Running 'npm start'
+> quest-invest@1.0.0 start
+> NODE_ENV=production node server.js
+node:internal/modules/cjs/loader:1478
+  throw err;
+  ^
+Error: Cannot find module 'express'
+Require stack:
+- /opt/render/project/src/server.js
+    at Module._resolveFilename (node:internal/modules/cjs/loader:1475:15)
+    at wrapResolveFilename (node:internal/modules/cjs/loader:1048:27)
+    at defaultResolveImplForCJSLoading (node:internal/modules/cjs/loader:1072:10)
+    at resolveForCJSWithHooks (node:internal/modules/cjs/loader:1093:12)
+    at Module._load (node:internal/modules/cjs/loader:1261:25)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:255:19)
+    at Module.require (node:internal/modules/cjs/loader:1575:12)
+    at require (node:internal/modules/helpers:191:16)
+    at Object.<anonymous> (/opt/render/project/src/server.js:1:17)
+    at Module._compile (node:internal/modules/cjs/loader:1829:14) {
+  code: 'MODULE_NOT_FOUND',
+  requireStack: [ '/opt/render/project/src/server.js' ]
+}
+Node.js v25.9.0
+==> Exited with status 1
+==> Common ways to troubleshoot your deploy: https://render.com/docs/troubleshooting-deploys
