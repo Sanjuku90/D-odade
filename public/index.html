@@ -9,13 +9,13 @@
     #splash-screen {
       position: fixed;
       inset: 0;
-      background: #0a0a0f;
+      background: #07070b;
       display: flex;
       flex-direction: column;
       align-items: center;
       justify-content: center;
       z-index: 9999;
-      gap: 24px;
+      gap: 22px;
       transition: opacity 0.4s ease;
     }
     #splash-screen.hidden {
@@ -25,20 +25,23 @@
     .splash-logo {
       font-size: 2rem;
       font-weight: 800;
-      color: #7c3aed;
+      background: linear-gradient(135deg, #8b5cf6, #22d3ee);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
       letter-spacing: -0.5px;
     }
     .splash-spinner {
-      width: 44px;
-      height: 44px;
-      border: 3px solid rgba(124, 58, 237, 0.2);
-      border-top-color: #7c3aed;
+      width: 40px;
+      height: 40px;
+      border: 3px solid rgba(139, 92, 246, 0.18);
+      border-top-color: #8b5cf6;
       border-radius: 50%;
       animation: spin 0.9s linear infinite;
     }
     .splash-text {
       color: rgba(255,255,255,0.45);
-      font-size: 0.85rem;
+      font-size: 0.82rem;
       letter-spacing: 0.5px;
     }
     @keyframes spin {
