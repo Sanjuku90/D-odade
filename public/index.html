@@ -3,13 +3,13 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>QuestInvest - Investissez et Gagnez</title>
+  <title>QuestInvest — Investissez. Complétez. Gagnez.</title>
   <link rel="stylesheet" href="styles.css">
   <style>
     #splash-screen {
       position: fixed;
       inset: 0;
-      background: #07070b;
+      background: #050509;
       display: flex;
       flex-direction: column;
       align-items: center;
@@ -18,75 +18,46 @@
       gap: 22px;
       transition: opacity 0.4s ease;
     }
-    #splash-screen.hidden {
-      opacity: 0;
-      pointer-events: none;
-    }
+    #splash-screen.hidden { opacity: 0; pointer-events: none; }
     .splash-logo {
-      font-size: 2rem;
+      font-size: 1.8rem;
       font-weight: 800;
-      background: linear-gradient(135deg, #8b5cf6, #22d3ee);
+      background: linear-gradient(135deg, #a78bfa, #22d3ee);
       -webkit-background-clip: text;
       -webkit-text-fill-color: transparent;
       background-clip: text;
       letter-spacing: -0.5px;
     }
     .splash-spinner {
-      width: 40px;
-      height: 40px;
-      border: 3px solid rgba(139, 92, 246, 0.18);
-      border-top-color: #8b5cf6;
+      width: 36px;
+      height: 36px;
+      border: 2px solid rgba(167, 139, 250, 0.2);
+      border-top-color: #a78bfa;
       border-radius: 50%;
       animation: spin 0.9s linear infinite;
     }
-    .splash-text {
-      color: rgba(255,255,255,0.45);
-      font-size: 0.82rem;
-      letter-spacing: 0.5px;
-    }
-    @keyframes spin {
-      to { transform: rotate(360deg); }
-    }
+    .splash-text { color: rgba(255,255,255,0.4); font-size: 0.8rem; letter-spacing: 0.4px; }
+    @keyframes spin { to { transform: rotate(360deg); } }
   </style>
   <script>
     (function () {
-      var MAX_WAIT = 18000;
-      var RELOAD_AFTER = 22000;
-      var start = Date.now();
-
+      var MAX_WAIT = 18000, RELOAD_AFTER = 22000, start = Date.now();
       function hideSplash() {
         var el = document.getElementById('splash-screen');
-        if (el) {
-          el.classList.add('hidden');
-          setTimeout(function () { el.remove(); }, 450);
-        }
+        if (el) { el.classList.add('hidden'); setTimeout(function () { el.remove(); }, 450); }
       }
-
       function ping() {
         fetch('/health', { cache: 'no-store' })
-          .then(function (r) {
-            if (r.ok) {
-              hideSplash();
-            } else {
-              retry();
-            }
-          })
+          .then(function (r) { if (r.ok) hideSplash(); else retry(); })
           .catch(function () { retry(); });
       }
-
       function retry() {
-        if (Date.now() - start > RELOAD_AFTER) {
-          window.location.reload();
-        } else {
-          setTimeout(ping, 1500);
-        }
+        if (Date.now() - start > RELOAD_AFTER) window.location.reload();
+        else setTimeout(ping, 1500);
       }
-
       window.addEventListener('DOMContentLoaded', function () {
         setTimeout(ping, 600);
-        setTimeout(function () {
-          hideSplash();
-        }, MAX_WAIT);
+        setTimeout(hideSplash, MAX_WAIT);
       });
     })();
   </script>
@@ -95,201 +66,388 @@
   <div id="splash-screen">
     <div class="splash-logo">QuestInvest</div>
     <div class="splash-spinner"></div>
-    <div class="splash-text">Chargement en cours…</div>
+    <div class="splash-text">Chargement…</div>
   </div>
 
   <div id="app">
-    <header>
-      <div class="container">
-        <h1 class="logo">QuestInvest</h1>
-        <nav id="nav-links"></nav>
-      </div>
-    </header>
+    <!-- ============ LANDING ============ -->
+    <div id="landing-section" class="section">
+      <header class="site-header">
+        <div class="container header-inner">
+          <a href="/" class="logo">
+            <span class="logo-mark">Q</span>
+            <span class="logo-text">QuestInvest</span>
+          </a>
+          <nav class="site-nav">
+            <a href="#how">Comment ça marche</a>
+            <a href="#pricing">Tarifs</a>
+            <a href="#testimonials">Avis</a>
+            <a href="#faq">FAQ</a>
+          </nav>
+          <div class="header-cta" id="nav-links"></div>
+        </div>
+      </header>
 
-    <main class="container">
-      <div id="landing-section" class="section">
-        <div class="hero">
-          <div class="hero-badge">La plateforme N°1 de gains passifs</div>
-          <h1 class="hero-title">Transformez <span class="highlight">55$</span> en <span class="highlight">+3000$</span> par mois</h1>
-          <p class="hero-subtitle">Rejoignez plus de 15 000 investisseurs qui gagnent toutes les 2 semaines grâce à nos quêtes simples et rapides</p>
-          <div class="hero-buttons">
-            <button class="btn btn-primary btn-large" id="get-started-btn">Commencer à gagner</button>
-            <button class="btn btn-outline btn-large" id="learn-more-btn">Comment ça marche ?</button>
+      <!-- HERO -->
+      <section class="hero">
+        <div class="container hero-grid">
+          <div class="hero-text">
+            <div class="hero-badge">
+              <span class="dot"></span>
+              <span>Plateforme N°1 de gains passifs en 2026</span>
+            </div>
+            <h1 class="hero-title">
+              Investissez <span class="highlight">55$</span>.<br>
+              Complétez 3 quêtes.<br>
+              Gagnez <span class="highlight">+135%</span> tous les 14 jours.
+            </h1>
+            <p class="hero-subtitle">
+              Une plateforme transparente, sécurisée et conçue pour générer des revenus passifs réguliers — sans expérience requise, sans frais cachés.
+            </p>
+            <div class="hero-buttons">
+              <button class="btn btn-primary btn-large" id="get-started-btn">
+                Commencer maintenant
+                <span class="btn-arrow">→</span>
+              </button>
+              <button class="btn btn-ghost btn-large" id="learn-more-btn">
+                <span class="play-icon">▶</span>
+                Voir comment ça marche
+              </button>
+            </div>
+            <div class="hero-trust-row">
+              <div class="trust-pill">
+                <span class="stars">★★★★★</span>
+                <span>4.9/5 sur 2 800 avis</span>
+              </div>
+              <div class="trust-pill">
+                <span class="check-icon">✓</span>
+                <span>Sécurisé blockchain</span>
+              </div>
+            </div>
           </div>
-          <div class="hero-stats">
-            <div class="hero-stat">
-              <span class="hero-stat-value">15K+</span>
-              <span class="hero-stat-label">Utilisateurs actifs</span>
+
+          <!-- HERO VISUAL: Dashboard mockup -->
+          <div class="hero-visual">
+            <div class="mockup-glow"></div>
+            <div class="mockup-card">
+              <div class="mockup-header">
+                <div class="mockup-dots">
+                  <span></span><span></span><span></span>
+                </div>
+                <div class="mockup-title">Tableau de bord</div>
+              </div>
+              <div class="mockup-body">
+                <div class="mockup-balance">
+                  <div class="mockup-label">Solde disponible</div>
+                  <div class="mockup-amount">$<span class="balance-num">1 247.50</span></div>
+                  <div class="mockup-change">
+                    <span class="change-up">↑ +135%</span>
+                    <span class="change-period">ce cycle</span>
+                  </div>
+                </div>
+                <div class="mockup-progress">
+                  <div class="mockup-progress-head">
+                    <span>Quêtes du cycle</span>
+                    <span class="mockup-progress-num">2 / 3</span>
+                  </div>
+                  <div class="mockup-progress-bar">
+                    <div class="mockup-progress-fill"></div>
+                  </div>
+                </div>
+                <div class="mockup-quests">
+                  <div class="mockup-quest done">
+                    <div class="quest-check">✓</div>
+                    <div class="quest-info">
+                      <div class="quest-name">Partage Twitter</div>
+                      <div class="quest-meta">+45% • Complété</div>
+                    </div>
+                    <div class="quest-amount">+$45</div>
+                  </div>
+                  <div class="mockup-quest done">
+                    <div class="quest-check">✓</div>
+                    <div class="quest-info">
+                      <div class="quest-name">Visionnage vidéo</div>
+                      <div class="quest-meta">+45% • Complété</div>
+                    </div>
+                    <div class="quest-amount">+$45</div>
+                  </div>
+                  <div class="mockup-quest pending">
+                    <div class="quest-check pending-check">·</div>
+                    <div class="quest-info">
+                      <div class="quest-name">Quête bonus</div>
+                      <div class="quest-meta">+45% • Disponible</div>
+                    </div>
+                    <div class="quest-amount muted">+$45</div>
+                  </div>
+                </div>
+              </div>
             </div>
-            <div class="hero-stat">
-              <span class="hero-stat-value">$2.5M</span>
-              <span class="hero-stat-label">Distribués</span>
+            <div class="mockup-floater floater-1">
+              <span class="floater-icon">💰</span>
+              <div>
+                <div class="floater-label">Retrait validé</div>
+                <div class="floater-value">+$200</div>
+              </div>
             </div>
-            <div class="hero-stat">
-              <span class="hero-stat-value">135%</span>
-              <span class="hero-stat-label">Rendement par cycle</span>
+            <div class="mockup-floater floater-2">
+              <span class="floater-icon">⚡</span>
+              <div>
+                <div class="floater-label">Quête complétée</div>
+                <div class="floater-value">+$45.00</div>
+              </div>
             </div>
           </div>
         </div>
 
-        <div class="trust-section">
-          <p class="trust-title">Ils nous font confiance</p>
-          <div class="trust-logos">
-            <span class="trust-logo">TrustPilot ⭐⭐⭐⭐⭐</span>
-            <span class="trust-logo">Blockchain Verified</span>
-            <span class="trust-logo">SSL Secured</span>
-            <span class="trust-logo">24/7 Support</span>
+        <!-- TICKER STRIP -->
+        <div class="container">
+          <div class="ticker-strip">
+            <div class="ticker-item">
+              <div class="ticker-value">15 247</div>
+              <div class="ticker-label">Investisseurs actifs</div>
+            </div>
+            <div class="ticker-divider"></div>
+            <div class="ticker-item">
+              <div class="ticker-value">$2.5M</div>
+              <div class="ticker-label">Distribués au total</div>
+            </div>
+            <div class="ticker-divider"></div>
+            <div class="ticker-item">
+              <div class="ticker-value">135%</div>
+              <div class="ticker-label">Rendement par cycle</div>
+            </div>
+            <div class="ticker-divider"></div>
+            <div class="ticker-item">
+              <div class="ticker-value">14j</div>
+              <div class="ticker-label">Cycle de gain</div>
+            </div>
           </div>
         </div>
+      </section>
 
-        <div class="features" id="features">
-          <h2 class="section-title">Comment ça marche ?</h2>
-          <p class="section-subtitle">3 étapes simples pour commencer à gagner</p>
-          <div class="features-grid">
-            <div class="feature-card">
-              <div class="feature-step">Étape 1</div>
-              <div class="feature-icon">💰</div>
-              <h3>Déposez</h3>
+      <!-- HOW IT WORKS -->
+      <section class="how-section" id="how">
+        <div class="container">
+          <div class="section-head">
+            <div class="eyebrow">Processus</div>
+            <h2 class="section-title">Trois étapes. Quatorze jours. Cent trente-cinq pour cent.</h2>
+            <p class="section-subtitle">Un système simple, transparent et conçu pour vous faire gagner du temps comme de l'argent.</p>
+          </div>
+
+          <div class="how-timeline">
+            <div class="timeline-line"></div>
+            <div class="timeline-step">
+              <div class="step-num">01</div>
+              <div class="step-icon">💎</div>
+              <h3>Déposez en USDT</h3>
               <p>Effectuez un dépôt minimum de 55$ en USDT (TRC20). Votre capital est sécurisé et traçable sur la blockchain.</p>
             </div>
-            <div class="feature-card">
-              <div class="feature-step">Étape 2</div>
-              <div class="feature-icon">🎯</div>
+            <div class="timeline-step">
+              <div class="step-num">02</div>
+              <div class="step-icon">🎯</div>
               <h3>Complétez les quêtes</h3>
-              <p>3 quêtes ultra-simples toutes les 2 semaines : partager sur les réseaux, regarder une vidéo, et plus encore. Moins de 5 minutes !</p>
+              <p>3 quêtes ultra-simples toutes les 2 semaines. Partage social, visionnage, et plus. Moins de 5 minutes au total.</p>
             </div>
-            <div class="feature-card">
-              <div class="feature-step">Étape 3</div>
-              <div class="feature-icon">🚀</div>
+            <div class="timeline-step">
+              <div class="step-num">03</div>
+              <div class="step-icon">🏆</div>
               <h3>Récoltez vos gains</h3>
-              <p>Chaque quête vous rapporte 45% de votre dépôt. 3 quêtes = 135% de gains par cycle de 2 semaines !</p>
+              <p>45% de votre dépôt par quête. 3 quêtes = 135% par cycle. Retrait possible toutes les 2 semaines.</p>
             </div>
           </div>
         </div>
+      </section>
 
-        <div class="calculator-section">
-          <h2 class="section-title">Calculez vos gains</h2>
-          <p class="section-subtitle">Voyez combien vous pouvez gagner avec QuestInvest</p>
-          <div class="calculator-container">
-            <div class="calculator-card">
-              <div class="calculator-input-group">
-                <label>Montant de votre dépôt ($)</label>
-                <input type="number" id="calc-deposit" value="100" min="55" class="calculator-input">
+      <!-- FEATURES STRIPS -->
+      <section class="features-strip">
+        <div class="container">
+          <div class="features-grid-2col">
+            <div class="feature-block">
+              <div class="feature-icon-sm">🔒</div>
+              <h4>100% sécurisé</h4>
+              <p>Transactions blockchain vérifiables. Aucune donnée personnelle stockée inutilement.</p>
+            </div>
+            <div class="feature-block">
+              <div class="feature-icon-sm">⚡</div>
+              <h4>Paiement rapide</h4>
+              <p>Retraits traités sous 24h ouvrées. Crédit de gains instantané après chaque quête.</p>
+            </div>
+            <div class="feature-block">
+              <div class="feature-icon-sm">📊</div>
+              <h4>Transparence totale</h4>
+              <p>Tableau de bord en temps réel. Historique complet de tous vos dépôts et retraits.</p>
+            </div>
+            <div class="feature-block">
+              <div class="feature-icon-sm">🎁</div>
+              <h4>Programme de parrainage</h4>
+              <p>Invitez vos proches et débloquez des quêtes bonus pour augmenter vos revenus.</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- CALCULATOR + PRICING -->
+      <section class="pricing-section" id="pricing">
+        <div class="container">
+          <div class="section-head">
+            <div class="eyebrow">Simulateur & tarifs</div>
+            <h2 class="section-title">Calculez. Choisissez. Investissez.</h2>
+            <p class="section-subtitle">Visualisez vos gains potentiels et choisissez l'offre adaptée à votre profil.</p>
+          </div>
+
+          <div class="pricing-layout">
+            <!-- Calculator -->
+            <div class="calc-panel">
+              <div class="calc-panel-header">
+                <h3>Simulateur de gains</h3>
+                <p>Ajustez le montant de votre dépôt</p>
               </div>
-              <div class="calculator-results">
-                <div class="calc-result">
-                  <span class="calc-label">Gain par quête (45%)</span>
-                  <span class="calc-value" id="calc-per-quest">$45.00</span>
+              <div class="calc-input-wrap">
+                <span class="calc-currency">$</span>
+                <input type="number" id="calc-deposit" value="100" min="55" class="calc-input-big">
+              </div>
+              <div class="calc-slider-marks">
+                <span>$55</span><span>$250</span><span>$500</span>
+              </div>
+
+              <div class="calc-rows">
+                <div class="calc-row">
+                  <div class="calc-row-label">
+                    <span class="calc-bullet">●</span>
+                    Par quête (45%)
+                  </div>
+                  <div class="calc-row-value" id="calc-per-quest">$45.00</div>
                 </div>
-                <div class="calc-result featured">
-                  <span class="calc-label">Gain par cycle de 2 semaines (3 quêtes)</span>
-                  <span class="calc-value" id="calc-daily">$135.00</span>
+                <div class="calc-row">
+                  <div class="calc-row-label">
+                    <span class="calc-bullet">●</span>
+                    Par cycle (3 quêtes)
+                  </div>
+                  <div class="calc-row-value" id="calc-daily">$135.00</div>
                 </div>
-                <div class="calc-result">
-                  <span class="calc-label">Gain hebdomadaire</span>
-                  <span class="calc-value" id="calc-weekly">$945.00</span>
+                <div class="calc-row">
+                  <div class="calc-row-label">
+                    <span class="calc-bullet">●</span>
+                    Hebdomadaire
+                  </div>
+                  <div class="calc-row-value" id="calc-weekly">$67.50</div>
                 </div>
-                <div class="calc-result highlight">
-                  <span class="calc-label">Gain mensuel estimé</span>
-                  <span class="calc-value" id="calc-monthly">$4,050.00</span>
+                <div class="calc-row featured">
+                  <div class="calc-row-label">
+                    <span class="calc-bullet">●</span>
+                    Mensuel estimé
+                  </div>
+                  <div class="calc-row-value" id="calc-monthly">$289.29</div>
                 </div>
               </div>
               <button class="btn btn-primary" id="calc-start-btn">Commencer avec ce montant</button>
             </div>
-          </div>
-        </div>
 
-        <div class="rewards-section">
-          <h2 class="section-title">Nos offres</h2>
-          <p class="section-subtitle">Choisissez le plan qui vous convient</p>
-          <div class="rewards-grid">
-            <div class="reward-card">
-              <div class="plan-header">
-                <h3>Starter</h3>
-                <div class="plan-price">$55</div>
-                <span class="plan-period">dépôt minimum</span>
+            <!-- Pricing -->
+            <div class="plans-stack">
+              <div class="plan-row">
+                <div class="plan-row-left">
+                  <div class="plan-tag">Starter</div>
+                  <div class="plan-row-price">$55<span>min</span></div>
+                  <p>Idéal pour découvrir la plateforme.</p>
+                </div>
+                <div class="plan-row-right">
+                  <div class="plan-row-earn">$74.25<span>/cycle</span></div>
+                  <ul class="plan-row-features">
+                    <li>3 quêtes par cycle</li>
+                    <li>Support email</li>
+                    <li>Retraits hebdomadaires</li>
+                  </ul>
+                </div>
               </div>
-              <ul class="plan-features">
-                <li>✓ Accès aux 3 quêtes toutes les 2 semaines</li>
-                <li>✓ 45% de gains par quête</li>
-                <li>✓ Support par email</li>
-                <li>✓ 1 retrait disponible toutes les 2 semaines</li>
-              </ul>
-              <div class="plan-earnings">
-                <span>Gains potentiels</span>
-                <strong>$121.50/cycle</strong>
+
+              <div class="plan-row featured">
+                <div class="plan-row-badge">★ Recommandé</div>
+                <div class="plan-row-left">
+                  <div class="plan-tag">Pro</div>
+                  <div class="plan-row-price">$100<span>recommandé</span></div>
+                  <p>Le meilleur rapport gains / engagement.</p>
+                </div>
+                <div class="plan-row-right">
+                  <div class="plan-row-earn">$135<span>/cycle</span></div>
+                  <ul class="plan-row-features">
+                    <li>3 quêtes par cycle</li>
+                    <li>Support prioritaire 24/7</li>
+                    <li>Bonus parrainage x2</li>
+                  </ul>
+                </div>
               </div>
-            </div>
-            <div class="reward-card featured">
-              <span class="reward-badge">Populaire</span>
-              <div class="plan-header">
-                <h3>Pro</h3>
-                <div class="plan-price">$100</div>
-                <span class="plan-period">dépôt recommandé</span>
-              </div>
-              <ul class="plan-features">
-                <li>✓ Accès aux 3 quêtes toutes les 2 semaines</li>
-                <li>✓ 45% de gains par quête</li>
-                <li>✓ Support prioritaire 24/7</li>
-                <li>✓ 1 retrait disponible toutes les 2 semaines</li>
-                <li>✓ Bonus de parrainage x2</li>
-              </ul>
-              <div class="plan-earnings">
-                <span>Gains potentiels</span>
-                <strong>$135/cycle</strong>
-              </div>
-            </div>
-            <div class="reward-card">
-              <div class="plan-header">
-                <h3>VIP</h3>
-                <div class="plan-price">$500+</div>
-                <span class="plan-period">investisseurs sérieux</span>
-              </div>
-              <ul class="plan-features">
-                <li>✓ Accès aux 3 quêtes toutes les 2 semaines</li>
-                <li>✓ 45% de gains par quête</li>
-                <li>✓ Manager de compte dédié</li>
-                <li>✓ 1 retrait disponible toutes les 2 semaines</li>
-                <li>✓ Bonus de parrainage x3</li>
-                <li>✓ Accès anticipé aux nouvelles fonctionnalités</li>
-              </ul>
-              <div class="plan-earnings">
-                <span>Gains potentiels</span>
-                <strong>$675+/cycle</strong>
+
+              <div class="plan-row">
+                <div class="plan-row-left">
+                  <div class="plan-tag">VIP</div>
+                  <div class="plan-row-price">$500+<span>investisseurs sérieux</span></div>
+                  <p>Pour ceux qui veulent maximiser.</p>
+                </div>
+                <div class="plan-row-right">
+                  <div class="plan-row-earn">$675+<span>/cycle</span></div>
+                  <ul class="plan-row-features">
+                    <li>Manager dédié</li>
+                    <li>Bonus parrainage x3</li>
+                    <li>Accès anticipé aux nouveautés</li>
+                  </ul>
+                </div>
               </div>
             </div>
           </div>
         </div>
+      </section>
 
-        <div class="referral-section">
-          <div class="referral-content">
-            <div class="referral-icon">🎁</div>
-            <h2>Programme de Parrainage Exclusif</h2>
-            <p>Gagnez encore plus en invitant vos amis ! Chaque filleul actif débloque des quêtes bonus et augmente vos revenus passifs.</p>
-            <div class="referral-benefits">
-              <div class="referral-benefit">
-                <span class="benefit-icon">👥</span>
-                <span>1 filleul = Quête bonus débloquée</span>
+      <!-- REFERRAL -->
+      <section class="referral-strip">
+        <div class="container">
+          <div class="referral-card">
+            <div class="referral-left">
+              <div class="referral-eyebrow">Programme de parrainage</div>
+              <h2>Plus vous invitez, plus vous gagnez.</h2>
+              <p>Chaque ami que vous invitez débloque des quêtes bonus, des commissions, et des statuts exclusifs.</p>
+              <button class="btn btn-light" id="join-now-btn">Obtenir mon lien de parrainage</button>
+            </div>
+            <div class="referral-right">
+              <div class="referral-step">
+                <div class="ref-icon">👥</div>
+                <div>
+                  <div class="ref-title">1 filleul</div>
+                  <div class="ref-desc">Quête bonus débloquée</div>
+                </div>
               </div>
-              <div class="referral-benefit">
-                <span class="benefit-icon">💎</span>
-                <span>5 filleuls = Commission sur leurs gains</span>
+              <div class="referral-step">
+                <div class="ref-icon">💎</div>
+                <div>
+                  <div class="ref-title">5 filleuls</div>
+                  <div class="ref-desc">Commission sur leurs gains</div>
+                </div>
               </div>
-              <div class="referral-benefit">
-                <span class="benefit-icon">🏆</span>
-                <span>10 filleuls = Statut Ambassador</span>
+              <div class="referral-step">
+                <div class="ref-icon">🏆</div>
+                <div>
+                  <div class="ref-title">10 filleuls</div>
+                  <div class="ref-desc">Statut Ambassador</div>
+                </div>
               </div>
             </div>
-            <button class="btn btn-primary btn-large" id="join-now-btn">Obtenir mon lien de parrainage</button>
           </div>
         </div>
+      </section>
 
-        <div class="testimonials-section">
-          <h2 class="section-title">Ce que disent nos membres</h2>
+      <!-- TESTIMONIALS -->
+      <section class="testimonials-section" id="testimonials">
+        <div class="container">
+          <div class="section-head">
+            <div class="eyebrow">Témoignages</div>
+            <h2 class="section-title">15 000+ investisseurs nous font confiance.</h2>
+            <p class="section-subtitle">Ils utilisent QuestInvest tous les 14 jours pour générer des revenus passifs réels.</p>
+          </div>
+
           <div class="testimonials-grid">
-            <div class="testimonial-card">
-              <div class="testimonial-stars">⭐⭐⭐⭐⭐</div>
-              <p class="testimonial-text">"J'étais sceptique au début, mais après 2 semaines j'ai déjà retiré plus de 500$. Les quêtes prennent vraiment 5 minutes max !"</p>
+            <article class="testimonial-card">
+              <div class="testimonial-stars">★★★★★</div>
+              <p class="testimonial-text">"J'étais sceptique au début, mais après 2 semaines j'ai déjà retiré plus de 500$. Les quêtes prennent vraiment 5 minutes max."</p>
               <div class="testimonial-author">
                 <div class="author-avatar">M</div>
                 <div class="author-info">
@@ -297,10 +455,10 @@
                   <span class="author-date">Membre depuis 3 mois</span>
                 </div>
               </div>
-            </div>
-            <div class="testimonial-card">
-              <div class="testimonial-stars">⭐⭐⭐⭐⭐</div>
-              <p class="testimonial-text">"Le programme de parrainage est incroyable. J'ai invité 8 amis et maintenant mes cycles de gains sont beaucoup plus élevés sans effort."</p>
+            </article>
+            <article class="testimonial-card">
+              <div class="testimonial-stars">★★★★★</div>
+              <p class="testimonial-text">"Le programme de parrainage est incroyable. J'ai invité 8 amis et mes cycles de gains sont désormais beaucoup plus élevés sans effort."</p>
               <div class="testimonial-author">
                 <div class="author-avatar">K</div>
                 <div class="author-info">
@@ -308,9 +466,9 @@
                   <span class="author-date">Membre depuis 6 mois</span>
                 </div>
               </div>
-            </div>
-            <div class="testimonial-card">
-              <div class="testimonial-stars">⭐⭐⭐⭐⭐</div>
+            </article>
+            <article class="testimonial-card">
+              <div class="testimonial-stars">★★★★★</div>
               <p class="testimonial-text">"Interface super simple, paiements rapides, support réactif. Je recommande à 100% pour un revenu complémentaire."</p>
               <div class="testimonial-author">
                 <div class="author-avatar">S</div>
@@ -319,323 +477,456 @@
                   <span class="author-date">Membre depuis 2 mois</span>
                 </div>
               </div>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <!-- FAQ -->
+      <section class="faq-section" id="faq">
+        <div class="container">
+          <div class="faq-layout">
+            <div class="faq-side">
+              <div class="eyebrow">Questions fréquentes</div>
+              <h2 class="section-title left-align">Vous avez des questions, on a les réponses.</h2>
+              <p class="section-subtitle left-align">Tout ce qu'il faut savoir avant de commencer. Une question sans réponse ? Contactez-nous.</p>
+              <button class="btn btn-ghost" onclick="document.getElementById('get-started-btn').click()">Créer un compte</button>
+            </div>
+            <div class="faq-list">
+              <div class="faq-item">
+                <div class="faq-question" onclick="toggleFaq(this)">
+                  <span>Comment fonctionne le système de quêtes ?</span>
+                  <span class="faq-toggle">+</span>
+                </div>
+                <div class="faq-answer"><p>Toutes les 2 semaines, 3 quêtes simples sont disponibles : partage social, visionnage de vidéo, et autres tâches rapides. Chaque quête complétée vous rapporte 45% de votre dépôt initial.</p></div>
+              </div>
+              <div class="faq-item">
+                <div class="faq-question" onclick="toggleFaq(this)">
+                  <span>Comment effectuer un dépôt ?</span>
+                  <span class="faq-toggle">+</span>
+                </div>
+                <div class="faq-answer"><p>Les dépôts se font en USDT (TRC20). Après inscription vous recevez une adresse de dépôt unique. Envoyez vos fonds, soumettez le hash de transaction, et votre compte est crédité après validation.</p></div>
+              </div>
+              <div class="faq-item">
+                <div class="faq-question" onclick="toggleFaq(this)">
+                  <span>Combien de temps pour recevoir mes gains ?</span>
+                  <span class="faq-toggle">+</span>
+                </div>
+                <div class="faq-answer"><p>Les gains sont crédités instantanément après chaque quête. Un retrait est disponible une fois par cycle de 2 semaines.</p></div>
+              </div>
+              <div class="faq-item">
+                <div class="faq-question" onclick="toggleFaq(this)">
+                  <span>Y a-t-il des frais cachés ?</span>
+                  <span class="faq-toggle">+</span>
+                </div>
+                <div class="faq-answer"><p>Non, QuestInvest est 100% transparent. Aucun frais sur les dépôts, aucun frais de gestion. Seuls les frais réseau blockchain standard s'appliquent lors des retraits.</p></div>
+              </div>
+              <div class="faq-item">
+                <div class="faq-question" onclick="toggleFaq(this)">
+                  <span>Quelle est la limite de retrait ?</span>
+                  <span class="faq-toggle">+</span>
+                </div>
+                <div class="faq-answer"><p>Vous pouvez retirer entre $50 et $500 par retrait, et un seul retrait par cycle de 2 semaines. Cette limite garantit la stabilité de la plateforme pour tous les utilisateurs.</p></div>
+              </div>
             </div>
           </div>
         </div>
+      </section>
 
-        <div class="faq-section">
-          <h2 class="section-title">Questions fréquentes</h2>
-          <div class="faq-list">
-            <div class="faq-item">
-              <div class="faq-question" onclick="toggleFaq(this)">
-                <span>Comment fonctionne le système de quêtes ?</span>
-                <span class="faq-toggle">+</span>
-              </div>
-              <div class="faq-answer">
-                <p>Toutes les 2 semaines, 3 quêtes simples sont disponibles : partager sur les réseaux sociaux, regarder une vidéo promotionnelle, et d'autres tâches rapides. Chaque quête complétée vous rapporte 45% de votre dépôt initial.</p>
-              </div>
-            </div>
-            <div class="faq-item">
-              <div class="faq-question" onclick="toggleFaq(this)">
-                <span>Comment effectuer un dépôt ?</span>
-                <span class="faq-toggle">+</span>
-              </div>
-              <div class="faq-answer">
-                <p>Les dépôts se font en USDT (TRC20). Après inscription, vous recevrez une adresse de dépôt unique. Envoyez vos fonds, soumettez le hash de transaction, et votre compte sera crédité après validation.</p>
-              </div>
-            </div>
-            <div class="faq-item">
-              <div class="faq-question" onclick="toggleFaq(this)">
-                <span>Combien de temps pour recevoir mes gains ?</span>
-                <span class="faq-toggle">+</span>
-              </div>
-              <div class="faq-answer">
-                <p>Les gains sont crédités instantanément sur votre compte après chaque quête. Un retrait est disponible une fois par cycle de 2 semaines.</p>
-              </div>
-            </div>
-            <div class="faq-item">
-              <div class="faq-question" onclick="toggleFaq(this)">
-                <span>Y a-t-il des frais cachés ?</span>
-                <span class="faq-toggle">+</span>
-              </div>
-              <div class="faq-answer">
-                <p>Non, QuestInvest est 100% transparent. Aucun frais sur les dépôts, aucun frais de gestion. Seuls les frais réseau blockchain standard s'appliquent lors des retraits.</p>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div class="cta-section">
-          <div class="cta-content">
-            <h2>Prêt à transformer votre avenir financier ?</h2>
-            <p>Rejoignez des milliers d'investisseurs qui gagnent toutes les 2 semaines. Inscription gratuite, commencez en moins de 2 minutes.</p>
-            <div class="cta-buttons">
+      <!-- FINAL CTA -->
+      <section class="final-cta">
+        <div class="container">
+          <div class="final-cta-card">
+            <div class="final-cta-glow"></div>
+            <h2>Prêt à transformer 55$ en revenus récurrents ?</h2>
+            <p>Inscription gratuite, configuration en moins de 2 minutes, premier gain dès la première quête.</p>
+            <div class="final-cta-buttons">
               <button class="btn btn-primary btn-large" id="signup-cta-btn">Créer mon compte gratuitement</button>
             </div>
-            <p class="cta-note">🔒 Vos données sont sécurisées et ne seront jamais partagées</p>
+            <div class="final-cta-trust">
+              <span>🔒 Données chiffrées</span>
+              <span>·</span>
+              <span>⚡ Configuration en 2 min</span>
+              <span>·</span>
+              <span>✓ Sans engagement</span>
+            </div>
           </div>
         </div>
-      </div>
+      </section>
 
-      <div id="auth-section" class="section hidden">
+      <!-- FOOTER -->
+      <footer class="site-footer">
+        <div class="container">
+          <div class="footer-grid">
+            <div class="footer-brand-col">
+              <a class="logo">
+                <span class="logo-mark">Q</span>
+                <span class="logo-text">QuestInvest</span>
+              </a>
+              <p>La plateforme de gains passifs la plus simple et transparente. Investissez 55$, gagnez 135% par cycle.</p>
+              <div class="footer-socials">
+                <a href="#" aria-label="Twitter">𝕏</a>
+                <a href="#" aria-label="Discord">⌬</a>
+                <a href="#" aria-label="Telegram">✈</a>
+              </div>
+            </div>
+            <div class="footer-col">
+              <h4>Produit</h4>
+              <a href="#how">Comment ça marche</a>
+              <a href="#pricing">Tarifs</a>
+              <a href="#" onclick="document.getElementById('get-started-btn').click()">Inscription</a>
+            </div>
+            <div class="footer-col">
+              <h4>Support</h4>
+              <a href="#faq">FAQ</a>
+              <a href="#">Centre d'aide</a>
+              <a href="#">Contact</a>
+            </div>
+            <div class="footer-col">
+              <h4>Légal</h4>
+              <a href="#">Conditions</a>
+              <a href="#">Confidentialité</a>
+              <a href="#">Cookies</a>
+            </div>
+          </div>
+          <div class="footer-bottom">
+            <p>© 2026 QuestInvest — Tous droits réservés</p>
+            <p class="footer-legal">USDT (TRC20) · Sécurisé blockchain · Hébergé en Europe</p>
+          </div>
+        </div>
+      </footer>
+    </div>
+
+    <!-- ============ AUTH ============ -->
+    <div id="auth-section" class="section hidden">
+      <header class="site-header">
+        <div class="container header-inner">
+          <a href="/" class="logo">
+            <span class="logo-mark">Q</span>
+            <span class="logo-text">QuestInvest</span>
+          </a>
+          <div class="header-cta"></div>
+        </div>
+      </header>
+      <div class="container">
         <div class="auth-container">
           <button class="btn btn-back" id="back-to-landing">← Retour à l'accueil</button>
-          <div class="auth-tabs">
-            <button class="tab-btn active" data-tab="login">Connexion</button>
-            <button class="tab-btn" data-tab="register">Inscription</button>
-          </div>
+          <div class="auth-card">
+            <div class="auth-tabs">
+              <button class="tab-btn active" data-tab="login">Connexion</button>
+              <button class="tab-btn" data-tab="register">Inscription</button>
+            </div>
 
-          <form id="login-form" class="auth-form">
-            <h2>Connexion</h2>
-            <div class="form-group">
-              <label>Email</label>
-              <input type="email" name="email" required autocomplete="email">
-            </div>
-            <div class="form-group">
-              <label>Mot de passe</label>
-              <input type="password" name="password" required autocomplete="current-password">
-            </div>
-            <button type="submit" class="btn btn-primary">Se connecter</button>
-            <p class="error-msg" id="login-error"></p>
-          </form>
-
-          <form id="register-form" class="auth-form hidden">
-            <h2>Inscription</h2>
-            <div class="form-group">
-              <label>Email</label>
-              <input type="email" name="email" required autocomplete="email">
-            </div>
-            <div class="form-group">
-              <label>Mot de passe</label>
-              <input type="password" name="password" required minlength="6" autocomplete="new-password">
-            </div>
-            <div class="form-group">
-              <label>Code de parrainage (optionnel)</label>
-              <input type="text" name="referral_code" placeholder="Ex: ABC12345" autocomplete="off">
-            </div>
-            <button type="submit" class="btn btn-primary">S'inscrire</button>
-            <p class="error-msg" id="register-error"></p>
-          </form>
-        </div>
-      </div>
-
-      <div id="dashboard-section" class="section hidden">
-        <div class="dashboard-nav">
-          <button class="dash-tab active" data-view="overview">Tableau de bord</button>
-          <button class="dash-tab" data-view="quests">Quetes</button>
-          <button class="dash-tab" data-view="deposit">Deposer</button>
-          <button class="dash-tab" data-view="withdraw">Retirer</button>
-          <button class="dash-tab" data-view="profile">Profil</button>
-        </div>
-
-        <div id="overview-view" class="dashboard-view">
-          <div class="welcome-banner">
-            <div class="welcome-content">
-              <h2>Bienvenue sur QuestInvest</h2>
-              <p>Completez vos quetes toutes les 2 semaines pour gagner des recompenses</p>
-            </div>
-          </div>
-
-          <div class="stats-grid">
-            <div class="stat-card primary">
-              <div class="stat-icon">$</div>
-              <div class="stat-info">
-                <span class="stat-label">Solde actuel</span>
-                <span class="stat-value">$<span id="user-balance">0.00</span></span>
+            <form id="login-form" class="auth-form">
+              <h2>Bon retour parmi nous</h2>
+              <p class="auth-sub">Accédez à votre tableau de bord</p>
+              <div class="form-group">
+                <label>Email</label>
+                <input type="email" name="email" required autocomplete="email" placeholder="vous@exemple.com">
               </div>
-            </div>
-            <div class="stat-card">
-              <div class="stat-icon">↑</div>
-              <div class="stat-info">
-                <span class="stat-label">Total retire</span>
-                <span class="stat-value">$<span id="user-withdrawn">0.00</span></span>
+              <div class="form-group">
+                <label>Mot de passe</label>
+                <input type="password" name="password" required autocomplete="current-password" placeholder="••••••••">
               </div>
-            </div>
-            <div class="stat-card">
-              <div class="stat-icon">%</div>
-              <div class="stat-info">
-                <span class="stat-label">Quetes du cycle</span>
-                <span class="stat-value"><span id="quests-completed">0</span>/3</span>
+              <button type="submit" class="btn btn-primary">Se connecter</button>
+              <p class="error-msg" id="login-error"></p>
+            </form>
+
+            <form id="register-form" class="auth-form hidden">
+              <h2>Créez votre compte</h2>
+              <p class="auth-sub">Commencez à gagner en 2 minutes</p>
+              <div class="form-group">
+                <label>Email</label>
+                <input type="email" name="email" required autocomplete="email" placeholder="vous@exemple.com">
               </div>
-            </div>
-          </div>
-
-          <div class="overview-grid">
-            <div class="card">
-              <h3>Quetes rapides</h3>
-              <div id="quick-quests" class="quests-list"></div>
-            </div>
-            <div class="card">
-              <h3>Historique recent</h3>
-              <div id="history-list" class="history-list"></div>
-            </div>
-          </div>
-        </div>
-
-        <div id="quests-view" class="dashboard-view hidden">
-          <div class="view-header">
-            <h2>Quetes des 2 semaines</h2>
-            <p>Completez 3 quetes pour gagner <strong>45%</strong> de votre depot par quete. Elles se reinitialisent toutes les 2 semaines.</p>
-          </div>
-          <div class="quests-progress-bar">
-            <div class="progress-fill" id="quests-progress-fill"></div>
-          </div>
-          <p class="progress-text">Progression: <span id="quests-completed-2">0</span>/3 quetes completees. Prochaine reinitialisation: <span id="quests-reset-date">...</span></p>
-          <div id="quests-list" class="quests-grid"></div>
-        </div>
-
-        <div id="deposit-view" class="dashboard-view hidden">
-          <div class="view-header">
-            <h2>Effectuer un Depot</h2>
-            <p>Deposez des fonds pour debloquer les quetes et commencer a gagner</p>
-          </div>
-          
-          <div class="deposit-layout">
-            <div class="card">
-              <h3>Adresse de Depot</h3>
-              <p class="deposit-note">Envoyez vos fonds USDT (TRC20) a cette adresse:</p>
-              <div class="address-box">
-                <code id="deposit-address">...</code>
-                <button class="btn btn-small" onclick="copyAddress()">Copier</button>
+              <div class="form-group">
+                <label>Mot de passe</label>
+                <input type="password" name="password" required minlength="6" autocomplete="new-password" placeholder="6 caractères minimum">
               </div>
-              <p class="address-warning">Important: Conservez le hash de transaction apres l'envoi</p>
-            </div>
-
-            <div class="card">
-              <h3>Soumettre votre Depot</h3>
-              <p class="min-deposit">Depot minimum: <strong>$55</strong></p>
-              <form id="deposit-form">
-                <div class="form-group">
-                  <label>Montant ($)</label>
-                  <input type="number" name="amount" min="55" step="0.01" required placeholder="Ex: 100">
-                </div>
-                <div class="form-group">
-                  <label>Hash de Transaction</label>
-                  <input type="text" name="tx_hash" placeholder="Ex: 0x123abc..." required>
-                </div>
-                <button type="submit" class="btn btn-primary">Soumettre le depot</button>
-              </form>
-              <p class="error-msg" id="deposit-error"></p>
-              <p class="success-msg" id="deposit-success"></p>
-            </div>
-          </div>
-        </div>
-
-        <div id="withdraw-view" class="dashboard-view hidden">
-          <div class="view-header">
-            <h2>Retirer mes Gains</h2>
-            <p>Retirez vos gains vers votre portefeuille USDT (TRC20). Un retrait est disponible une fois toutes les 2 semaines.</p>
-          </div>
-
-          <div id="withdraw-availability-banner" class="hidden" style="background:rgba(245,158,11,0.12);border:1px solid rgba(245,158,11,0.35);border-radius:10px;padding:14px 18px;margin-bottom:20px;color:#f59e0b;font-size:0.9rem;line-height:1.5;">
-            <strong>⏳ Retrait pas encore disponible</strong><br>
-            <span id="withdraw-availability-msg"></span>
-          </div>
-          
-          <div class="withdraw-layout">
-            <div class="card">
-              <h3>Demander un Retrait</h3>
-              <p class="min-deposit">Retrait minimum: <strong>$50</strong> · Maximum: <strong>$500</strong> · Limite: <strong>1 retrait / 2 semaines</strong></p>
-              <p id="withdraw-available-date-info" class="hidden" style="font-size:0.85rem;color:rgba(255,255,255,0.5);margin-bottom:12px;"></p>
-              <form id="withdraw-form">
-                <div class="form-group">
-                  <label>Montant a retirer ($)</label>
-                  <input type="number" name="amount" min="50" max="500" step="0.01" required placeholder="Ex: 50">
-                </div>
-                <div class="form-group">
-                  <label>Adresse USDT (TRC20)</label>
-                  <input type="text" name="address" placeholder="Ex: T..." required>
-                </div>
-                <button type="submit" class="btn btn-primary">Confirmer le retrait</button>
-              </form>
-              <p class="error-msg" id="withdraw-error"></p>
-              <p class="success-msg" id="withdraw-success"></p>
-            </div>
-          </div>
-        </div>
-
-        <div id="profile-view" class="dashboard-view hidden">
-          <div class="view-header">
-            <h2>Mon Profil</h2>
-            <p>Gerez vos informations personnelles</p>
-          </div>
-
-          <div class="profile-layout">
-            <div class="card profile-card">
-              <div class="profile-avatar">
-                <span id="profile-initial">U</span>
+              <div class="form-group">
+                <label>Code de parrainage <span class="optional">(optionnel)</span></label>
+                <input type="text" name="referral_code" placeholder="Ex: ABC12345" autocomplete="off">
               </div>
-              <h3 id="profile-email">utilisateur@email.com</h3>
-              <p class="profile-date">Membre depuis <span id="profile-date">...</span></p>
-            </div>
-
-            <div class="card">
-              <h3>Modifier l'email</h3>
-              <form id="change-email-form">
-                <div class="form-group">
-                  <label>Nouvel email</label>
-                  <input type="email" name="new_email" required placeholder="nouveau@email.com" autocomplete="email">
-                </div>
-                <div class="form-group">
-                  <label>Mot de passe actuel</label>
-                  <input type="password" name="current_password" required placeholder="Votre mot de passe" autocomplete="current-password">
-                </div>
-                <button type="submit" class="btn btn-primary">Mettre a jour</button>
-                <p class="error-msg" id="email-error"></p>
-                <p class="success-msg" id="email-success"></p>
-              </form>
-            </div>
-
-            <div class="card">
-              <h3>Changer le mot de passe</h3>
-              <form id="change-password-form">
-                <div class="form-group">
-                  <label>Mot de passe actuel</label>
-                  <input type="password" name="current_password" required placeholder="Mot de passe actuel" autocomplete="current-password">
-                </div>
-                <div class="form-group">
-                  <label>Nouveau mot de passe</label>
-                  <input type="password" name="new_password" required minlength="6" placeholder="Nouveau mot de passe" autocomplete="new-password">
-                </div>
-                <div class="form-group">
-                  <label>Confirmer le nouveau mot de passe</label>
-                  <input type="password" name="confirm_password" required minlength="6" placeholder="Confirmer" autocomplete="new-password">
-                </div>
-                <button type="submit" class="btn btn-primary">Changer le mot de passe</button>
-                <p class="error-msg" id="password-error"></p>
-                <p class="success-msg" id="password-success"></p>
-              </form>
-            </div>
+              <button type="submit" class="btn btn-primary">Créer mon compte</button>
+              <p class="error-msg" id="register-error"></p>
+            </form>
           </div>
         </div>
       </div>
-    </main>
+    </div>
 
-    <footer>
-      <div class="container">
-        <div class="footer-content">
-          <div class="footer-brand">
-            <h3 class="logo">QuestInvest</h3>
-            <p>La plateforme de gains passifs la plus simple et efficace.</p>
+    <!-- ============ DASHBOARD (sidebar layout) ============ -->
+    <div id="dashboard-section" class="section hidden">
+      <div class="app-shell">
+        <aside class="sidebar">
+          <div class="sidebar-top">
+            <a href="/" class="logo sidebar-logo">
+              <span class="logo-mark">Q</span>
+              <span class="logo-text">QuestInvest</span>
+            </a>
+            <nav class="sidebar-nav">
+              <button class="dash-tab active" data-view="overview">
+                <span class="nav-icon">⊞</span>
+                <span class="nav-label">Vue d'ensemble</span>
+              </button>
+              <button class="dash-tab" data-view="quests">
+                <span class="nav-icon">◎</span>
+                <span class="nav-label">Quêtes</span>
+              </button>
+              <button class="dash-tab" data-view="deposit">
+                <span class="nav-icon">↓</span>
+                <span class="nav-label">Déposer</span>
+              </button>
+              <button class="dash-tab" data-view="withdraw">
+                <span class="nav-icon">↑</span>
+                <span class="nav-label">Retirer</span>
+              </button>
+              <button class="dash-tab" data-view="profile">
+                <span class="nav-icon">◉</span>
+                <span class="nav-label">Profil</span>
+              </button>
+            </nav>
           </div>
-          <div class="footer-links">
-            <h4>Liens rapides</h4>
-            <a href="#features">Comment ça marche</a>
-            <a href="#" onclick="showAuth()">Connexion</a>
-            <a href="#" onclick="showAuth('register')">Inscription</a>
+          <div class="sidebar-bottom">
+            <button onclick="logout()">Déconnexion</button>
           </div>
-          <div class="footer-links">
-            <h4>Support</h4>
-            <a href="#">Centre d'aide</a>
-            <a href="#">Contact</a>
-            <a href="#">FAQ</a>
+        </aside>
+
+        <main class="dashboard-main">
+          <!-- ========== OVERVIEW ========== -->
+          <div id="overview-view" class="dashboard-view">
+            <div class="dash-header">
+              <div>
+                <div class="eyebrow">Tableau de bord</div>
+                <h1 class="dash-title">Bienvenue sur QuestInvest</h1>
+                <p class="dash-subtitle">Voici votre activité en cours. Complétez vos quêtes pour générer des gains.</p>
+              </div>
+            </div>
+
+            <div class="hero-stat-cards">
+              <div class="hero-stat-card primary">
+                <div class="hero-stat-top">
+                  <span class="hero-stat-label">Solde actuel</span>
+                  <span class="hero-stat-icon">$</span>
+                </div>
+                <div class="hero-stat-amount">$<span id="user-balance">0.00</span></div>
+                <div class="hero-stat-sub">Disponible pour retrait</div>
+              </div>
+              <div class="hero-stat-card">
+                <div class="hero-stat-top">
+                  <span class="hero-stat-label">Total retiré</span>
+                  <span class="hero-stat-icon">↑</span>
+                </div>
+                <div class="hero-stat-amount">$<span id="user-withdrawn">0.00</span></div>
+                <div class="hero-stat-sub">Depuis votre inscription</div>
+              </div>
+              <div class="hero-stat-card">
+                <div class="hero-stat-top">
+                  <span class="hero-stat-label">Quêtes du cycle</span>
+                  <span class="hero-stat-icon">◎</span>
+                </div>
+                <div class="hero-stat-amount"><span id="quests-completed">0</span><span class="muted-num">/3</span></div>
+                <div class="hero-stat-sub">Réinitialisation chaque 14j</div>
+              </div>
+            </div>
+
+            <div class="overview-grid">
+              <div class="card">
+                <div class="card-head">
+                  <h3>Quêtes rapides</h3>
+                  <button class="card-link" onclick="document.querySelector('[data-view=quests]').click()">Voir tout →</button>
+                </div>
+                <div id="quick-quests" class="quests-list"></div>
+              </div>
+              <div class="card">
+                <div class="card-head">
+                  <h3>Activité récente</h3>
+                </div>
+                <div id="history-list" class="history-list"></div>
+              </div>
+            </div>
           </div>
-        </div>
-        <div class="footer-bottom">
-          <p>© 2024 QuestInvest - Tous droits réservés</p>
-        </div>
+
+          <!-- ========== QUESTS ========== -->
+          <div id="quests-view" class="dashboard-view hidden">
+            <div class="dash-header">
+              <div>
+                <div class="eyebrow">Quêtes</div>
+                <h1 class="dash-title">Quêtes du cycle en cours</h1>
+                <p class="dash-subtitle">Complétez 3 quêtes pour gagner <strong>135%</strong> de votre dépôt. Réinitialisation toutes les 2 semaines.</p>
+              </div>
+            </div>
+
+            <div class="quests-progress-block">
+              <div class="quests-progress-stats">
+                <div>
+                  <div class="qps-label">Progression</div>
+                  <div class="qps-value"><span id="quests-completed-2">0</span><span class="muted-num">/3</span></div>
+                </div>
+                <div>
+                  <div class="qps-label">Prochaine réinitialisation</div>
+                  <div class="qps-value-sm" id="quests-reset-date">…</div>
+                </div>
+              </div>
+              <div class="quests-progress-bar">
+                <div class="progress-fill" id="quests-progress-fill"></div>
+              </div>
+            </div>
+
+            <div id="quests-list" class="quests-grid"></div>
+          </div>
+
+          <!-- ========== DEPOSIT ========== -->
+          <div id="deposit-view" class="dashboard-view hidden">
+            <div class="dash-header">
+              <div>
+                <div class="eyebrow">Dépôt</div>
+                <h1 class="dash-title">Effectuer un dépôt</h1>
+                <p class="dash-subtitle">Déposez des fonds USDT (TRC20) pour débloquer les quêtes et commencer à gagner.</p>
+              </div>
+            </div>
+
+            <div class="deposit-layout">
+              <div class="card">
+                <div class="card-head">
+                  <h3>Adresse de dépôt</h3>
+                  <span class="badge-net">USDT · TRC20</span>
+                </div>
+                <p class="muted-text">Envoyez vos fonds USDT (TRC20) à cette adresse :</p>
+                <div class="address-box">
+                  <code id="deposit-address">…</code>
+                  <button class="btn btn-small" onclick="copyAddress()">Copier</button>
+                </div>
+                <div class="address-warning">
+                  <strong>⚠ Important</strong> Conservez le hash de transaction après l'envoi pour valider votre dépôt.
+                </div>
+              </div>
+
+              <div class="card">
+                <div class="card-head">
+                  <h3>Soumettre votre dépôt</h3>
+                </div>
+                <p class="muted-text">Dépôt minimum : <strong class="text-bright">$55</strong></p>
+                <form id="deposit-form">
+                  <div class="form-group">
+                    <label>Montant ($)</label>
+                    <input type="number" name="amount" min="55" step="0.01" required placeholder="Ex : 100">
+                  </div>
+                  <div class="form-group">
+                    <label>Hash de transaction</label>
+                    <input type="text" name="tx_hash" placeholder="Ex : 0x123abc…" required>
+                  </div>
+                  <button type="submit" class="btn btn-primary">Soumettre le dépôt</button>
+                </form>
+                <p class="error-msg" id="deposit-error"></p>
+                <p class="success-msg" id="deposit-success"></p>
+              </div>
+            </div>
+          </div>
+
+          <!-- ========== WITHDRAW ========== -->
+          <div id="withdraw-view" class="dashboard-view hidden">
+            <div class="dash-header">
+              <div>
+                <div class="eyebrow">Retrait</div>
+                <h1 class="dash-title">Retirer mes gains</h1>
+                <p class="dash-subtitle">Retirez vos gains vers votre portefeuille USDT (TRC20). Un retrait est disponible toutes les 2 semaines.</p>
+              </div>
+            </div>
+
+            <div id="withdraw-availability-banner" class="hidden warning-banner">
+              <strong>⏳ Retrait pas encore disponible</strong>
+              <span id="withdraw-availability-msg"></span>
+            </div>
+
+            <div class="withdraw-layout">
+              <div class="card">
+                <div class="card-head">
+                  <h3>Demander un retrait</h3>
+                  <span class="badge-net">USDT · TRC20</span>
+                </div>
+                <div class="withdraw-limits">
+                  <div><span>Min</span><strong>$50</strong></div>
+                  <div><span>Max</span><strong>$500</strong></div>
+                  <div><span>Limite</span><strong>1 / 14j</strong></div>
+                </div>
+                <p id="withdraw-available-date-info" class="hidden muted-text"></p>
+                <form id="withdraw-form">
+                  <div class="form-group">
+                    <label>Montant ($)</label>
+                    <input type="number" name="amount" min="50" max="500" step="0.01" required placeholder="Ex : 50">
+                  </div>
+                  <div class="form-group">
+                    <label>Adresse USDT (TRC20)</label>
+                    <input type="text" name="address" placeholder="Ex : T…" required>
+                  </div>
+                  <button type="submit" class="btn btn-primary">Confirmer le retrait</button>
+                </form>
+                <p class="error-msg" id="withdraw-error"></p>
+                <p class="success-msg" id="withdraw-success"></p>
+              </div>
+            </div>
+          </div>
+
+          <!-- ========== PROFILE ========== -->
+          <div id="profile-view" class="dashboard-view hidden">
+            <div class="dash-header">
+              <div>
+                <div class="eyebrow">Profil</div>
+                <h1 class="dash-title">Mon profil</h1>
+                <p class="dash-subtitle">Gérez vos informations personnelles et la sécurité de votre compte.</p>
+              </div>
+            </div>
+
+            <div class="profile-layout">
+              <div class="card profile-card">
+                <div class="profile-avatar"><span id="profile-initial">U</span></div>
+                <h3 id="profile-email">utilisateur@email.com</h3>
+                <p class="profile-date">Membre depuis <span id="profile-date">…</span></p>
+              </div>
+
+              <div class="card">
+                <div class="card-head"><h3>Modifier l'email</h3></div>
+                <form id="change-email-form">
+                  <div class="form-group">
+                    <label>Nouvel email</label>
+                    <input type="email" name="new_email" required placeholder="nouveau@email.com" autocomplete="email">
+                  </div>
+                  <div class="form-group">
+                    <label>Mot de passe actuel</label>
+                    <input type="password" name="current_password" required placeholder="Votre mot de passe" autocomplete="current-password">
+                  </div>
+                  <button type="submit" class="btn btn-primary">Mettre à jour</button>
+                  <p class="error-msg" id="email-error"></p>
+                  <p class="success-msg" id="email-success"></p>
+                </form>
+              </div>
+
+              <div class="card">
+                <div class="card-head"><h3>Changer le mot de passe</h3></div>
+                <form id="change-password-form">
+                  <div class="form-group">
+                    <label>Mot de passe actuel</label>
+                    <input type="password" name="current_password" required placeholder="Mot de passe actuel" autocomplete="current-password">
+                  </div>
+                  <div class="form-group">
+                    <label>Nouveau mot de passe</label>
+                    <input type="password" name="new_password" required minlength="6" placeholder="Nouveau mot de passe" autocomplete="new-password">
+                  </div>
+                  <div class="form-group">
+                    <label>Confirmer le nouveau mot de passe</label>
+                    <input type="password" name="confirm_password" required minlength="6" placeholder="Confirmer" autocomplete="new-password">
+                  </div>
+                  <button type="submit" class="btn btn-primary">Changer le mot de passe</button>
+                  <p class="error-msg" id="password-error"></p>
+                  <p class="success-msg" id="password-success"></p>
+                </form>
+              </div>
+            </div>
+          </div>
+        </main>
       </div>
-    </footer>
+    </div>
   </div>
 
   <div id="toast" class="toast hidden"></div>
