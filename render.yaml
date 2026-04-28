@@ -16,8 +16,6 @@ services:
         value: /var/lib/questinvest/questinvest.db
       - key: SESSION_SECRET
         generateValue: true
-      - key: ADMIN_ACCESS_CODE
-        sync: false
       - key: ADMIN_EMAIL
         sync: false
       - key: ADMIN_PASSWORD
