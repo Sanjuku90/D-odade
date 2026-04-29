@@ -596,7 +596,7 @@
         <div class="tbl-wrap">
           <table>
             <thead><tr>
-              <th>Utilisateur</th><th>Solde</th><th>Déposé</th><th>Retiré</th><th>Parrainages</th><th>Inscription</th><th>Actions</th>
+              <th>Utilisateur</th><th>Solde</th><th>Déposé</th><th>Retiré</th><th>Parrainages</th><th>Retraits</th><th>Inscription</th><th>Actions</th>
             </tr></thead>
             <tbody id="users-tbody"></tbody>
           </table>
@@ -856,6 +856,9 @@
         <td style="color:var(--text2)">$${parseFloat(u.total_deposited||0).toFixed(2)}</td>
         <td style="color:var(--text2)">$${parseFloat(u.total_withdrawn||0).toFixed(2)}</td>
         <td style="text-align:center;color:var(--text2)">${u.referrals_count}</td>
+        <td>${u.can_withdraw
+          ? '<span class="badge b-confirmed">✓ Autorisé</span>'
+          : '<span class="badge b-rejected">✕ Bloqué</span>'}</td>
         <td class="td-date">${fmt(u.created_at)}</td>
         <td><button class="btn-info" onclick="openModal(${u.id})">Détails</button></td>
       </tr>`).join('');
@@ -864,6 +867,12 @@
       selUserId = id;
       const u = allUsers.find(x => x.id === id);
       if (!u) return;
+      const wBadge = u.can_withdraw
+        ? '<span class="badge b-confirmed" style="font-size:.72rem">✓ Autorisé</span>'
+        : '<span class="badge b-rejected" style="font-size:.72rem">✕ Bloqué</span>';
+      const wBtn = u.can_withdraw
+        ? `<button class="btn-ko" style="font-size:.75rem;padding:4px 10px" onclick="toggleWithdraw()">🚫 Bloquer les retraits</button>`
+        : `<button class="btn-ok" style="font-size:.75rem;padding:4px 10px" onclick="toggleWithdraw()">✅ Autoriser les retraits</button>`;
       document.getElementById('modal-rows').innerHTML = `
         <div class="modal-row"><span class="modal-key">Email</span><span class="modal-val" style="font-family:sans-serif">${u.email}</span></div>
         <div class="modal-row"><span class="modal-key">Solde</span><span class="modal-val" style="color:var(--green)">$${parseFloat(u.balance).toFixed(2)}</span></div>
@@ -871,7 +880,9 @@
         <div class="modal-row"><span class="modal-key">Total retiré</span><span class="modal-val">$${parseFloat(u.total_withdrawn||0).toFixed(2)}</span></div>
         <div class="modal-row"><span class="modal-key">Parrainages</span><span class="modal-val">${u.referrals_count}</span></div>
         <div class="modal-row"><span class="modal-key">Code parrainage</span><span class="modal-val">${u.referral_code||'—'}</span></div>
-        <div class="modal-row"><span class="modal-key">Inscription</span><span class="modal-val">${fmt(u.created_at)}</span></div>`;
+        <div class="modal-row"><span class="modal-key">Inscription</span><span class="modal-val">${fmt(u.created_at)}</span></div>
+        <div class="modal-row"><span class="modal-key">Statut retrait</span><span class="modal-val">${wBadge}</span></div>
+        <div style="margin-top:10px">${wBtn}</div>`;
       document.getElementById('adj-amt').value = '';
       document.getElementById('m-err').style.display = 'none';
       document.getElementById('m-ok').style.display = 'none';
@@ -894,6 +905,15 @@
       const j = await r.json();
       if (r.ok) { okEl.textContent=`✓ Nouveau solde : $${parseFloat(j.newBalance).toFixed(2)}`; okEl.style.display='block'; loadUsers(); }
       else { errEl.textContent=j.error; errEl.style.display='block'; }
+    }
+    async function toggleWithdraw() {
+      const u = allUsers.find(x => x.id === selUserId);
+      const action = u.can_withdraw ? 'bloquer' : 'autoriser';
+      if (!confirm(`Voulez-vous ${action} les retraits pour ${u.email} ?`)) return;
+      const r = await fetch(`/api/admin/users/${selUserId}/toggle-withdraw`, { method: 'POST' });
+      const j = await r.json();
+      if (r.ok) { await loadUsers(); openModal(selUserId); }
+      else { alert(j.error || 'Erreur'); }
     }
     document.getElementById('user-modal').addEventListener('click', e => { if(e.target===e.currentTarget) closeModal(); });
 

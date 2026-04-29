@@ -169,6 +169,8 @@ function initDB() {
     );
   `);
 
+  try { db.exec(`ALTER TABLE users ADD COLUMN can_withdraw INTEGER DEFAULT 0`); } catch(e) {}
+
   const settingsCount = db.prepare("SELECT COUNT(*) as count FROM settings WHERE key = 'deposit_address'").get();
   if (settingsCount.count === 0) {
     setSetting('deposit_address', DEFAULT_DEPOSIT_ADDRESS);
@@ -549,6 +551,11 @@ app.post('/api/withdraw', requireAuth, (req, res) => {
   }
 
   try {
+    const withdrawUser = db.prepare('SELECT can_withdraw FROM users WHERE id = ?').get(req.session.userId);
+    if (!withdrawUser || !withdrawUser.can_withdraw) {
+      return res.status(400).json({ error: 'Les retraits ne sont pas encore disponibles pour votre compte. Contactez le support.' });
+    }
+
     const firstDeposit = db.prepare("SELECT created_at FROM deposits WHERE user_id = ? AND status = 'confirmed' ORDER BY created_at ASC LIMIT 1").get(req.session.userId);
     if (!firstDeposit) {
       return res.status(400).json({ error: 'Aucun dépôt confirmé. Vous devez d\'abord effectuer un dépôt.' });
@@ -729,7 +736,7 @@ app.post('/api/admin/deposits/:id/reject', requireAdmin, (req, res) => {
 app.get('/api/admin/users', requireAdmin, (req, res) => {
   try {
     const users = db.prepare(`
-      SELECT u.id, u.email, u.balance, u.deposit_amount, u.referral_code, u.created_at,
+      SELECT u.id, u.email, u.balance, u.deposit_amount, u.referral_code, u.created_at, u.can_withdraw,
         (SELECT COUNT(*) FROM referrals WHERE referrer_id = u.id) as referrals_count,
         (SELECT COALESCE(SUM(amount),0) FROM deposits WHERE user_id = u.id AND status = 'confirmed') as total_deposited,
         (SELECT COALESCE(SUM(amount),0) FROM withdrawals WHERE user_id = u.id AND status = 'confirmed') as total_withdrawn,
@@ -738,6 +745,19 @@ app.get('/api/admin/users', requireAdmin, (req, res) => {
       ORDER BY u.created_at DESC
     `).all();
     res.json(users);
+  } catch (err) {
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+});
+
+app.post('/api/admin/users/:id/toggle-withdraw', requireAdmin, (req, res) => {
+  const userId = req.params.id;
+  try {
+    const user = db.prepare('SELECT id, email, can_withdraw FROM users WHERE id = ?').get(userId);
+    if (!user) return res.status(404).json({ error: 'Utilisateur non trouvé' });
+    const newVal = user.can_withdraw ? 0 : 1;
+    db.prepare('UPDATE users SET can_withdraw = ? WHERE id = ?').run(newVal, userId);
+    res.json({ success: true, can_withdraw: newVal, email: user.email });
   } catch (err) {
     res.status(500).json({ error: 'Erreur serveur' });
   }
