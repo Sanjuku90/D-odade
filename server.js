@@ -47,11 +47,24 @@ function getOrCreatePersistentSecret(name, generator) {
 }
 
 const SESSION_SECRET = getOrCreatePersistentSecret('SESSION_SECRET', () => crypto.randomBytes(32).toString('hex'));
-const DEPOSIT_ADDRESS = process.env.DEPOSIT_ADDRESS || 'TYyUwQELkUW957jE7Svt42LSaeQWneWtQG';
+const DEFAULT_DEPOSIT_ADDRESS = process.env.DEPOSIT_ADDRESS || 'TYyUwQELkUW957jE7Svt42LSaeQWneWtQG';
 const ADMIN_EMAIL = process.env.ADMIN_EMAIL || 'admin@questinvest.com';
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || (isProduction ? getOrCreatePersistentSecret('ADMIN_PASSWORD', () => crypto.randomBytes(24).toString('base64url')) : 'admin123');
 const ADMIN_ACCESS_CODE = '1289';
 const MIN_DEPOSIT = 55;
+
+function getSetting(key) {
+  const row = db.prepare('SELECT value FROM settings WHERE key = ?').get(key);
+  return row ? row.value : null;
+}
+
+function setSetting(key, value) {
+  db.prepare('INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value').run(key, value);
+}
+
+function getDepositAddress() {
+  return getSetting('deposit_address') || DEFAULT_DEPOSIT_ADDRESS;
+}
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
@@ -75,6 +88,13 @@ app.use((req, res, next) => {
 });
 
 function initDB() {
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS settings (
+      key TEXT PRIMARY KEY,
+      value TEXT NOT NULL
+    );
+  `);
+
   db.exec(`
     CREATE TABLE IF NOT EXISTS users (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -148,6 +168,11 @@ function initDB() {
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP
     );
   `);
+
+  const settingsCount = db.prepare("SELECT COUNT(*) as count FROM settings WHERE key = 'deposit_address'").get();
+  if (settingsCount.count === 0) {
+    setSetting('deposit_address', DEFAULT_DEPOSIT_ADDRESS);
+  }
 
   const questCount = db.prepare('SELECT COUNT(*) as count FROM quests').get();
   if (questCount.count === 0) {
@@ -303,7 +328,7 @@ app.post('/api/logout', (req, res) => {
 app.get('/api/user', requireAuth, (req, res) => {
   try {
     const user = db.prepare('SELECT id, email, balance, deposit_amount, created_at, referral_code FROM users WHERE id = ?').get(req.session.userId);
-    user.deposit_address = DEPOSIT_ADDRESS;
+    user.deposit_address = getDepositAddress();
     
     const referralsCount = db.prepare('SELECT COUNT(*) as count FROM referrals WHERE referrer_id = ?').get(req.session.userId);
     user.referrals_count = referralsCount.count;
@@ -701,6 +726,62 @@ app.post('/api/admin/deposits/:id/reject', requireAdmin, (req, res) => {
     db.prepare('UPDATE deposits SET status = ? WHERE id = ?').run('rejected', depositId);
 
     res.json({ success: true, message: 'Dépôt rejeté' });
+  } catch (err) {
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+});
+
+app.get('/api/admin/users', requireAdmin, (req, res) => {
+  try {
+    const users = db.prepare(`
+      SELECT u.id, u.email, u.balance, u.deposit_amount, u.referral_code, u.created_at,
+        (SELECT COUNT(*) FROM referrals WHERE referrer_id = u.id) as referrals_count,
+        (SELECT COALESCE(SUM(amount),0) FROM deposits WHERE user_id = u.id AND status = 'confirmed') as total_deposited,
+        (SELECT COALESCE(SUM(amount),0) FROM withdrawals WHERE user_id = u.id AND status = 'confirmed') as total_withdrawn,
+        (SELECT COUNT(*) FROM deposits WHERE user_id = u.id AND status = 'pending') as pending_deposits
+      FROM users u
+      ORDER BY u.created_at DESC
+    `).all();
+    res.json(users);
+  } catch (err) {
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+});
+
+app.post('/api/admin/users/:id/adjust-balance', requireAdmin, (req, res) => {
+  const userId = req.params.id;
+  const { amount, reason } = req.body;
+  if (amount === undefined || isNaN(parseFloat(amount))) {
+    return res.status(400).json({ error: 'Montant invalide' });
+  }
+  try {
+    const user = db.prepare('SELECT id, balance FROM users WHERE id = ?').get(userId);
+    if (!user) return res.status(404).json({ error: 'Utilisateur non trouvé' });
+    db.prepare('UPDATE users SET balance = balance + ? WHERE id = ?').run(parseFloat(amount), userId);
+    const updated = db.prepare('SELECT balance FROM users WHERE id = ?').get(userId);
+    res.json({ success: true, newBalance: updated.balance });
+  } catch (err) {
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+});
+
+app.get('/api/admin/settings', requireAdmin, (req, res) => {
+  try {
+    const depositAddress = getDepositAddress();
+    res.json({ deposit_address: depositAddress });
+  } catch (err) {
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+});
+
+app.post('/api/admin/settings', requireAdmin, (req, res) => {
+  const { deposit_address } = req.body;
+  if (!deposit_address || deposit_address.trim().length < 10) {
+    return res.status(400).json({ error: 'Adresse invalide (minimum 10 caractères)' });
+  }
+  try {
+    setSetting('deposit_address', deposit_address.trim());
+    res.json({ success: true, deposit_address: deposit_address.trim() });
   } catch (err) {
     res.status(500).json({ error: 'Erreur serveur' });
   }
