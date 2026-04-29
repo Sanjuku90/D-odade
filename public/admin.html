@@ -61,42 +61,73 @@
     .logo-name { font-weight: 700; font-size: 0.9rem; color: var(--text); }
     .logo-role { font-size: 0.68rem; color: var(--text3); font-weight: 500; }
 
-    /* ── NAV TABS ── */
-    .nav-tabs {
-      display: flex;
-      align-items: center;
-      gap: 2px;
+    /* ── DROPDOWN NAV ── */
+    .nav-dropdown-wrap {
       flex: 1;
-      height: 100%;
+      position: relative;
     }
-    .nav-tab {
+    .nav-trigger {
       display: flex;
       align-items: center;
-      gap: 7px;
-      padding: 0 16px;
-      height: 100%;
-      background: none;
-      border: none;
-      color: var(--text3);
-      font-size: 0.85rem;
+      gap: 8px;
+      padding: 7px 14px;
+      background: var(--bg3);
+      border: 1px solid var(--border);
+      border-radius: 9px;
+      color: var(--text);
+      font-size: 0.875rem;
       font-weight: 500;
       cursor: pointer;
       transition: all 0.15s;
-      position: relative;
       white-space: nowrap;
     }
-    .nav-tab:hover { color: var(--text2); }
-    .nav-tab.active { color: var(--text); }
-    .nav-tab.active::after {
-      content: '';
-      position: absolute;
-      bottom: 0; left: 0; right: 0;
-      height: 2px;
-      background: var(--accent);
-      border-radius: 2px 2px 0 0;
+    .nav-trigger:hover { border-color: rgba(167,139,250,0.4); }
+    .nav-trigger .chevron {
+      font-size: 0.6rem;
+      color: var(--text3);
+      margin-left: 2px;
+      transition: transform 0.2s;
     }
-    .nav-tab .tab-icon { font-size: 0.95rem; }
+    .nav-trigger.open .chevron { transform: rotate(180deg); }
+    .nav-trigger .active-icon { font-size: 0.95rem; }
+
+    .dropdown-menu {
+      position: absolute;
+      top: calc(100% + 8px);
+      left: 0;
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 6px;
+      min-width: 210px;
+      box-shadow: 0 16px 40px rgba(0,0,0,0.5);
+      z-index: 200;
+      display: none;
+    }
+    .dropdown-menu.open { display: block; }
+
+    .nav-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 12px;
+      border-radius: 8px;
+      cursor: pointer;
+      color: var(--text2);
+      font-weight: 500;
+      font-size: 0.875rem;
+      background: none;
+      border: none;
+      width: 100%;
+      text-align: left;
+      transition: all 0.12s;
+      position: relative;
+    }
+    .nav-item:hover { background: var(--bg3); color: var(--text); }
+    .nav-item.active { background: rgba(167,139,250,0.12); color: var(--accent); }
+    .nav-item .item-icon { font-size: 1rem; width: 20px; text-align: center; flex-shrink: 0; }
     .nav-badge {
+      margin-left: auto;
       background: var(--red);
       color: #fff;
       font-size: 0.62rem;
@@ -402,25 +433,32 @@
         </div>
       </a>
 
-      <nav class="nav-tabs">
-        <button class="nav-tab active" data-page="overview">
-          <span class="tab-icon">📊</span> Vue d'ensemble
+      <div class="nav-dropdown-wrap">
+        <button class="nav-trigger" id="nav-trigger" onclick="toggleNav()">
+          <span class="active-icon" id="nav-active-icon">📊</span>
+          <span id="nav-active-label">Vue d'ensemble</span>
+          <span class="chevron">▼</span>
         </button>
-        <button class="nav-tab" data-page="deposits">
-          <span class="tab-icon">💳</span> Dépôts
-          <span class="nav-badge" id="nb-dep"></span>
-        </button>
-        <button class="nav-tab" data-page="withdrawals">
-          <span class="tab-icon">💸</span> Retraits
-          <span class="nav-badge" id="nb-with"></span>
-        </button>
-        <button class="nav-tab" data-page="users">
-          <span class="tab-icon">👥</span> Utilisateurs
-        </button>
-        <button class="nav-tab" data-page="settings">
-          <span class="tab-icon">⚙️</span> Paramètres
-        </button>
-      </nav>
+        <div class="dropdown-menu" id="dropdown-menu">
+          <button class="nav-item active" data-page="overview">
+            <span class="item-icon">📊</span> Vue d'ensemble
+          </button>
+          <button class="nav-item" data-page="deposits">
+            <span class="item-icon">💳</span> Dépôts
+            <span class="nav-badge" id="nb-dep"></span>
+          </button>
+          <button class="nav-item" data-page="withdrawals">
+            <span class="item-icon">💸</span> Retraits
+            <span class="nav-badge" id="nb-with"></span>
+          </button>
+          <button class="nav-item" data-page="users">
+            <span class="item-icon">👥</span> Utilisateurs
+          </button>
+          <button class="nav-item" data-page="settings">
+            <span class="item-icon">⚙️</span> Paramètres
+          </button>
+        </div>
+      </div>
 
       <div class="topbar-right">
         <button class="btn-refresh" onclick="refreshAll()">↻ Actualiser</button>
@@ -624,16 +662,37 @@
       overview:'Vue d\'ensemble', deposits:'Dépôts',
       withdrawals:'Retraits', users:'Utilisateurs', settings:'Paramètres'
     };
+    const PAGE_ICONS = {
+      overview:'📊', deposits:'💳', withdrawals:'💸', users:'👥', settings:'⚙️'
+    };
+
+    // ── DROPDOWN TOGGLE ──
+    function toggleNav() {
+      const trigger = document.getElementById('nav-trigger');
+      const menu = document.getElementById('dropdown-menu');
+      trigger.classList.toggle('open');
+      menu.classList.toggle('open');
+    }
+    function closeNav() {
+      document.getElementById('nav-trigger').classList.remove('open');
+      document.getElementById('dropdown-menu').classList.remove('open');
+    }
+    document.addEventListener('click', e => {
+      if (!e.target.closest('.nav-dropdown-wrap')) closeNav();
+    });
 
     // ── NAVIGATION ──
-    document.querySelectorAll('.nav-tab').forEach(btn => {
+    document.querySelectorAll('.nav-item').forEach(btn => {
       btn.addEventListener('click', () => {
         const page = btn.dataset.page;
-        document.querySelectorAll('.nav-tab').forEach(b => b.classList.remove('active'));
+        document.querySelectorAll('.nav-item').forEach(b => b.classList.remove('active'));
         document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
         btn.classList.add('active');
         document.getElementById('page-' + page).classList.add('active');
         document.getElementById('meta-title').textContent = PAGE_LABELS[page];
+        document.getElementById('nav-active-label').textContent = PAGE_LABELS[page];
+        document.getElementById('nav-active-icon').textContent = PAGE_ICONS[page];
+        closeNav();
         if (page === 'settings') loadSettings();
       });
     });
