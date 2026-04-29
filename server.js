@@ -553,7 +553,10 @@ app.post('/api/withdraw', requireAuth, (req, res) => {
   try {
     const withdrawUser = db.prepare('SELECT can_withdraw FROM users WHERE id = ?').get(req.session.userId);
     if (!withdrawUser || !withdrawUser.can_withdraw) {
-      return res.status(400).json({ error: 'Les retraits ne sont pas encore disponibles pour votre compte. Contactez le support.' });
+      const tomorrow = new Date();
+      tomorrow.setUTCDate(tomorrow.getUTCDate() + 1);
+      const tomorrowStr = tomorrow.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' });
+      return res.status(400).json({ error: `Votre retrait sera disponible demain le ${tomorrowStr}. Merci de revenir à cette date.` });
     }
 
     const firstDeposit = db.prepare("SELECT created_at FROM deposits WHERE user_id = ? AND status = 'confirmed' ORDER BY created_at ASC LIMIT 1").get(req.session.userId);
