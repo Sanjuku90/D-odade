@@ -298,17 +298,6 @@ async function loadUserData() {
       const withdrawnEl = document.getElementById('user-withdrawn');
       if (withdrawnEl) withdrawnEl.textContent = parseFloat(user.total_withdrawn || 0).toFixed(2);
 
-      const banner = document.getElementById('withdraw-availability-banner');
-      const dateInfo = document.getElementById('withdraw-available-date-info');
-      if (banner) {
-        const tomorrow = new Date();
-        tomorrow.setDate(tomorrow.getDate() + 1);
-        const tomorrowStr = tomorrow.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' });
-        banner.classList.remove('hidden');
-        document.getElementById('withdraw-availability-msg').textContent =
-          'Selon les règles du site, votre retrait sera disponible demain le ' + tomorrowStr + '. Merci de revenir à cette date.';
-      }
-      if (dateInfo) dateInfo.classList.add('hidden');
       document.getElementById('deposit-address').textContent = user.deposit_address;
       
       document.getElementById('profile-email').textContent = user.email;
