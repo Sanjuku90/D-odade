@@ -318,23 +318,49 @@ async function loadQuests() {
     if (res.ok) {
       const data = await res.json();
       const completedCount = data.completedThisPeriod ?? data.completedToday;
-      document.getElementById('quests-completed').textContent = completedCount;
-      
+      const totalQuests = data.totalQuests || data.quests.length || 3;
+
+      const completedEl = document.getElementById('quests-completed');
+      if (completedEl) {
+        completedEl.textContent = completedCount;
+        const heroTotal = completedEl.parentElement && completedEl.parentElement.querySelector('.muted-num');
+        if (heroTotal) heroTotal.textContent = '/' + totalQuests;
+      }
+
       const questsCompleted2 = document.getElementById('quests-completed-2');
       if (questsCompleted2) {
         questsCompleted2.textContent = completedCount;
+        const total2 = questsCompleted2.parentElement && questsCompleted2.parentElement.querySelector('.muted-num');
+        if (total2) total2.textContent = '/' + totalQuests;
       }
 
       const resetDate = document.getElementById('quests-reset-date');
       if (resetDate && data.resetPeriodEnd) {
         resetDate.textContent = new Date(data.resetPeriodEnd).toLocaleDateString('fr-FR');
       }
-      
+
+      const newcomerBanner = document.getElementById('newcomer-banner');
+      if (newcomerBanner) {
+        if (data.isNewUser) {
+          const endDate = data.newUserPeriodEnd ? new Date(data.newUserPeriodEnd).toLocaleDateString('fr-FR') : '';
+          newcomerBanner.innerHTML = `
+            <div class="newcomer-banner-inner">
+              <span class="newcomer-badge">Bienvenue</span>
+              <p>Pendant vos 2 premières semaines, profitez de <strong>4 quêtes spéciales à 20%</strong> chacune (total <strong>+80%</strong>). Période valable jusqu'au <strong>${endDate}</strong>.</p>
+            </div>
+          `;
+          newcomerBanner.style.display = 'block';
+        } else {
+          newcomerBanner.style.display = 'none';
+        }
+      }
+
       const progressFill = document.getElementById('quests-progress-fill');
       if (progressFill) {
-        progressFill.style.width = ((completedCount / 3) * 100) + '%';
+        const pct = totalQuests > 0 ? (completedCount / totalQuests) * 100 : 0;
+        progressFill.style.width = pct + '%';
       }
-      
+
       const questsListFull = document.getElementById('quests-list');
       questsListFull.innerHTML = data.quests.map(quest => `
         <div class="quest-card ${quest.completed ? 'completed' : ''}">

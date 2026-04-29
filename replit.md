@@ -63,6 +63,7 @@ QuestInvest est une plateforme d'investissement où les utilisateurs peuvent dé
 - `POST /api/admin/deposits/:id/reject` - Rejeter un dépôt
 
 ## Changements Récents
+- 29 Avr 2026: Programme de bienvenue — pendant les 14 premiers jours suivant l'inscription, les nouveaux utilisateurs voient 4 quêtes spéciales à 20% chacune (total +80%). Après ce délai, ils basculent automatiquement sur le cycle normal de 3 quêtes à 40%. Ajout de la colonne `quest_type` ('newcomer' ou 'regular') dans la table `quests` et nouvelle bannière "Bienvenue" sur la page Quêtes.
 - 13 Avr 2026: Retraits limités à une demande par utilisateur sur chaque cycle de 2 semaines
 - 13 Avr 2026: Récompense des quêtes mise à 45% par tâche, avec mise à jour automatique des quêtes existantes
 - 13 Avr 2026: Correction du démarrage Render quand les variables `SESSION_SECRET`, `ADMIN_PASSWORD` ou `ADMIN_ACCESS_CODE` ne sont pas définies; le serveur génère désormais des valeurs persistantes sur le disque de production

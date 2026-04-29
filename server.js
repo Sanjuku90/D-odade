@@ -170,21 +170,32 @@ function initDB() {
   `);
 
   try { db.exec(`ALTER TABLE users ADD COLUMN can_withdraw INTEGER DEFAULT 0`); } catch(e) {}
+  try { db.exec(`ALTER TABLE quests ADD COLUMN quest_type TEXT DEFAULT 'regular'`); } catch(e) {}
 
   const settingsCount = db.prepare("SELECT COUNT(*) as count FROM settings WHERE key = 'deposit_address'").get();
   if (settingsCount.count === 0) {
     setSetting('deposit_address', DEFAULT_DEPOSIT_ADDRESS);
   }
 
-  const questCount = db.prepare('SELECT COUNT(*) as count FROM quests').get();
-  if (questCount.count === 0) {
-    const insertQuest = db.prepare('INSERT INTO quests (title, description, reward_percentage) VALUES (?, ?, ?)');
+  const regularQuestCount = db.prepare("SELECT COUNT(*) as count FROM quests WHERE quest_type = 'regular' OR quest_type IS NULL").get();
+  if (regularQuestCount.count === 0) {
+    const insertQuest = db.prepare("INSERT INTO quests (title, description, reward_percentage, quest_type) VALUES (?, ?, ?, 'regular')");
     insertQuest.run('Partager sur les réseaux', 'Partagez notre plateforme sur vos réseaux sociaux', 40);
     insertQuest.run('Regarder une vidéo', 'Regardez une vidéo promotionnelle de 30 secondes', 40);
     insertQuest.run('Visiter notre partenaire', 'Visitez le site de notre partenaire pour découvrir de nouvelles opportunités', 40);
   }
 
-  db.prepare('UPDATE quests SET reward_percentage = ?').run(40);
+  const newcomerQuestCount = db.prepare("SELECT COUNT(*) as count FROM quests WHERE quest_type = 'newcomer'").get();
+  if (newcomerQuestCount.count === 0) {
+    const insertNewcomer = db.prepare("INSERT INTO quests (title, description, reward_percentage, quest_type) VALUES (?, ?, ?, 'newcomer')");
+    insertNewcomer.run('Bienvenue : Présentez-vous', 'Complétez votre profil et découvrez la plateforme', 20);
+    insertNewcomer.run('Bienvenue : Partage social', 'Partagez QuestInvest avec vos amis sur les réseaux sociaux', 20);
+    insertNewcomer.run('Bienvenue : Tutoriel', 'Suivez le tutoriel d\'utilisation de QuestInvest', 20);
+    insertNewcomer.run('Bienvenue : Vidéo de présentation', 'Regardez la vidéo de présentation de la plateforme', 20);
+  }
+
+  db.prepare("UPDATE quests SET reward_percentage = 40 WHERE quest_type = 'regular' OR quest_type IS NULL").run();
+  db.prepare("UPDATE quests SET reward_percentage = 20 WHERE quest_type = 'newcomer'").run();
 
   const adminCount = db.prepare('SELECT COUNT(*) as count FROM admins').get();
   if (adminCount.count === 0) {
@@ -228,6 +239,28 @@ function getQuestPeriod() {
     startDate: new Date(startUtc).toISOString().split('T')[0],
     endDate: new Date(endUtc).toISOString().split('T')[0],
     lengthDays: periodLengthDays
+  };
+}
+
+const NEW_USER_PERIOD_DAYS = 14;
+
+function getNewUserStatus(user) {
+  if (!user || !user.created_at) {
+    return { isNew: false, startDate: null, endDate: null, lengthDays: NEW_USER_PERIOD_DAYS };
+  }
+  const millisecondsPerDay = 24 * 60 * 60 * 1000;
+  const createdAt = new Date(user.created_at);
+  const createdUtc = Date.UTC(createdAt.getUTCFullYear(), createdAt.getUTCMonth(), createdAt.getUTCDate());
+  const startDate = new Date(createdUtc).toISOString().split('T')[0];
+  const endDate = new Date(createdUtc + (NEW_USER_PERIOD_DAYS - 1) * millisecondsPerDay).toISOString().split('T')[0];
+  const now = new Date();
+  const todayUtc = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate());
+  const ageDays = Math.floor((todayUtc - createdUtc) / millisecondsPerDay);
+  return {
+    isNew: ageDays < NEW_USER_PERIOD_DAYS,
+    startDate,
+    endDate,
+    lengthDays: NEW_USER_PERIOD_DAYS
   };
 }
 
@@ -427,8 +460,16 @@ app.post('/api/deposit', requireAuth, (req, res) => {
 
 app.get('/api/quests', requireAuth, (req, res) => {
   try {
-    const questPeriod = getQuestPeriod();
-    
+    const user = db.prepare('SELECT created_at FROM users WHERE id = ?').get(req.session.userId);
+    const newUserStatus = getNewUserStatus(user);
+    const isNewcomer = newUserStatus.isNew;
+
+    const period = isNewcomer
+      ? { startDate: newUserStatus.startDate, endDate: newUserStatus.endDate, lengthDays: newUserStatus.lengthDays }
+      : getQuestPeriod();
+
+    const questType = isNewcomer ? 'newcomer' : 'regular';
+
     const quests = db.prepare(`
       SELECT q.*, 
         CASE WHEN uq.id IS NOT NULL THEN 1 ELSE 0 END as completed
@@ -436,28 +477,44 @@ app.get('/api/quests', requireAuth, (req, res) => {
       LEFT JOIN user_quests uq ON q.id = uq.quest_id
         AND uq.user_id = ? 
         AND uq.completed_date BETWEEN ? AND ?
+      WHERE COALESCE(q.quest_type, 'regular') = ?
       GROUP BY q.id
       ORDER BY q.id
-    `).all(req.session.userId, questPeriod.startDate, questPeriod.endDate);
+    `).all(req.session.userId, period.startDate, period.endDate, questType);
 
-    const completedCount = db.prepare('SELECT COUNT(DISTINCT quest_id) as count FROM user_quests WHERE user_id = ? AND completed_date BETWEEN ? AND ?').get(req.session.userId, questPeriod.startDate, questPeriod.endDate);
+    const completedCount = db.prepare(`
+      SELECT COUNT(DISTINCT uq.quest_id) as count
+      FROM user_quests uq
+      JOIN quests q ON q.id = uq.quest_id
+      WHERE uq.user_id = ?
+        AND uq.completed_date BETWEEN ? AND ?
+        AND COALESCE(q.quest_type, 'regular') = ?
+    `).get(req.session.userId, period.startDate, period.endDate, questType);
 
     const referralsCount = db.prepare('SELECT COUNT(*) as count FROM referrals WHERE referrer_id = ?').get(req.session.userId);
-    const hasReferral = referralsCount.count >= 1;
 
-    const questsWithStatus = quests.map((quest, index) => {
-      return { ...quest, completed: !!quest.completed, locked: false, lockReason: '' };
-    });
+    const questsWithStatus = quests.map((quest) => ({
+      ...quest,
+      completed: !!quest.completed,
+      locked: false,
+      lockReason: ''
+    }));
+
+    const totalQuests = quests.length;
+    const totalRewardPercentage = quests.reduce((sum, q) => sum + parseFloat(q.reward_percentage || 0), 0);
 
     res.json({
       quests: questsWithStatus,
       completedToday: completedCount.count,
       completedThisPeriod: completedCount.count,
-      totalQuests: 3,
-      resetPeriodStart: questPeriod.startDate,
-      resetPeriodEnd: questPeriod.endDate,
-      resetPeriodDays: questPeriod.lengthDays,
-      referralsCount: referralsCount.count
+      totalQuests,
+      totalRewardPercentage,
+      resetPeriodStart: period.startDate,
+      resetPeriodEnd: period.endDate,
+      resetPeriodDays: period.lengthDays,
+      referralsCount: referralsCount.count,
+      isNewUser: isNewcomer,
+      newUserPeriodEnd: newUserStatus.endDate
     });
   } catch (err) {
     res.status(500).json({ error: 'Erreur serveur' });
@@ -466,19 +523,12 @@ app.get('/api/quests', requireAuth, (req, res) => {
 
 app.post('/api/quests/:id/complete', requireAuth, (req, res) => {
   const questId = parseInt(req.params.id);
-  const questPeriod = getQuestPeriod();
 
   try {
-    const user = db.prepare('SELECT deposit_amount FROM users WHERE id = ?').get(req.session.userId);
+    const user = db.prepare('SELECT deposit_amount, created_at FROM users WHERE id = ?').get(req.session.userId);
 
     if (parseFloat(user.deposit_amount) < MIN_DEPOSIT) {
       return res.status(400).json({ error: `Vous devez avoir un dépôt minimum de ${MIN_DEPOSIT}$ pour compléter les quêtes` });
-    }
-
-    const existing = db.prepare('SELECT * FROM user_quests WHERE user_id = ? AND quest_id = ? AND completed_date BETWEEN ? AND ?').get(req.session.userId, questId, questPeriod.startDate, questPeriod.endDate);
-
-    if (existing) {
-      return res.status(400).json({ error: 'Quête déjà complétée pour cette période de 2 semaines' });
     }
 
     const quest = db.prepare('SELECT * FROM quests WHERE id = ?').get(questId);
@@ -486,12 +536,33 @@ app.post('/api/quests/:id/complete', requireAuth, (req, res) => {
       return res.status(404).json({ error: 'Quête non trouvée' });
     }
 
+    const newUserStatus = getNewUserStatus(user);
+    const isNewcomer = newUserStatus.isNew;
+    const questType = quest.quest_type || 'regular';
+
+    if (isNewcomer && questType !== 'newcomer') {
+      return res.status(400).json({ error: 'Cette quête sera disponible après votre période de bienvenue de 2 semaines.' });
+    }
+    if (!isNewcomer && questType === 'newcomer') {
+      return res.status(400).json({ error: 'La période de bienvenue est terminée. Ces quêtes ne sont plus disponibles.' });
+    }
+
+    const period = isNewcomer
+      ? { startDate: newUserStatus.startDate, endDate: newUserStatus.endDate }
+      : getQuestPeriod();
+
+    const existing = db.prepare('SELECT * FROM user_quests WHERE user_id = ? AND quest_id = ? AND completed_date BETWEEN ? AND ?').get(req.session.userId, questId, period.startDate, period.endDate);
+
+    if (existing) {
+      return res.status(400).json({ error: 'Quête déjà complétée pour cette période de 2 semaines' });
+    }
+
     const depositAmount = parseFloat(user.deposit_amount);
     const rewardPercentage = parseFloat(quest.reward_percentage);
     const reward = (depositAmount * rewardPercentage) / 100;
 
     const transaction = db.transaction(() => {
-      db.prepare('INSERT INTO user_quests (user_id, quest_id, completed_date, reward_earned) VALUES (?, ?, ?, ?)').run(req.session.userId, questId, questPeriod.startDate, reward);
+      db.prepare('INSERT INTO user_quests (user_id, quest_id, completed_date, reward_earned) VALUES (?, ?, ?, ?)').run(req.session.userId, questId, period.startDate, reward);
       db.prepare('UPDATE users SET balance = balance + ? WHERE id = ?').run(reward, req.session.userId);
     });
 
