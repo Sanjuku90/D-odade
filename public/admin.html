@@ -20,28 +20,34 @@
       --red: #f87171;
       --yellow: #fbbf24;
       --blue: #38bdf8;
-      --sidebar-w: 220px;
     }
     html, body { height: 100%; }
-    body { background: var(--bg); color: var(--text); font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; font-size: 14px; display: flex; min-height: 100vh; }
+    body { background: var(--bg); color: var(--text); font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; font-size: 14px; min-height: 100vh; }
 
-    /* ── SIDEBAR ── */
-    .sidebar {
-      width: var(--sidebar-w);
+    /* ── TOPBAR ── */
+    .topbar {
       background: var(--bg2);
-      border-right: 1px solid var(--border);
-      display: flex;
-      flex-direction: column;
-      position: fixed;
-      top: 0; left: 0; bottom: 0;
+      border-bottom: 1px solid var(--border);
+      position: sticky;
+      top: 0;
       z-index: 100;
     }
-    .sidebar-logo {
-      padding: 20px 20px 16px;
-      border-bottom: 1px solid var(--border);
+    .topbar-inner {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 0 24px;
+      display: flex;
+      align-items: center;
+      gap: 0;
+      height: 56px;
+    }
+    .topbar-logo {
       display: flex;
       align-items: center;
       gap: 10px;
+      margin-right: 32px;
+      flex-shrink: 0;
+      text-decoration: none;
     }
     .logo-mark {
       width: 32px; height: 32px;
@@ -51,98 +57,117 @@
       font-weight: 800; font-size: 0.9rem; color: #fff;
       flex-shrink: 0;
     }
-    .logo-text { font-weight: 700; font-size: 0.95rem; color: var(--text); }
-    .logo-sub { font-size: 0.7rem; color: var(--text3); font-weight: 500; }
-    .sidebar-nav { padding: 12px 10px; flex: 1; display: flex; flex-direction: column; gap: 2px; }
-    .nav-item {
-      display: flex; align-items: center; gap: 10px;
-      padding: 10px 12px;
-      border-radius: 8px;
-      cursor: pointer;
-      color: var(--text2);
+    .logo-texts { line-height: 1.2; }
+    .logo-name { font-weight: 700; font-size: 0.9rem; color: var(--text); }
+    .logo-role { font-size: 0.68rem; color: var(--text3); font-weight: 500; }
+
+    /* ── NAV TABS ── */
+    .nav-tabs {
+      display: flex;
+      align-items: center;
+      gap: 2px;
+      flex: 1;
+      height: 100%;
+    }
+    .nav-tab {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      padding: 0 16px;
+      height: 100%;
+      background: none;
+      border: none;
+      color: var(--text3);
+      font-size: 0.85rem;
       font-weight: 500;
+      cursor: pointer;
       transition: all 0.15s;
       position: relative;
-      border: none; background: none; width: 100%; text-align: left; font-size: 0.875rem;
+      white-space: nowrap;
     }
-    .nav-item:hover { background: var(--bg3); color: var(--text); }
-    .nav-item.active { background: rgba(167,139,250,0.12); color: var(--accent); }
-    .nav-item .nav-icon { font-size: 1rem; width: 18px; text-align: center; flex-shrink: 0; }
+    .nav-tab:hover { color: var(--text2); }
+    .nav-tab.active { color: var(--text); }
+    .nav-tab.active::after {
+      content: '';
+      position: absolute;
+      bottom: 0; left: 0; right: 0;
+      height: 2px;
+      background: var(--accent);
+      border-radius: 2px 2px 0 0;
+    }
+    .nav-tab .tab-icon { font-size: 0.95rem; }
     .nav-badge {
-      margin-left: auto;
       background: var(--red);
       color: #fff;
-      font-size: 0.65rem;
+      font-size: 0.62rem;
       font-weight: 700;
       padding: 1px 5px;
       border-radius: 10px;
       min-width: 18px;
       text-align: center;
+      display: none;
     }
-    .sidebar-footer {
-      padding: 14px 10px;
-      border-top: 1px solid var(--border);
+
+    .topbar-right {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-left: 16px;
+      flex-shrink: 0;
     }
-    .sidebar-footer a {
-      display: flex; align-items: center; gap: 10px;
-      padding: 9px 12px;
-      border-radius: 8px;
-      color: var(--text3);
-      font-size: 0.825rem;
-      text-decoration: none;
+    .btn-refresh {
+      display: flex; align-items: center; gap: 6px;
+      background: var(--bg3); border: 1px solid var(--border);
+      color: var(--text2); padding: 6px 14px; border-radius: 8px;
+      cursor: pointer; font-size: 0.78rem; font-weight: 500;
       transition: all 0.15s;
     }
-    .sidebar-footer a:hover { background: var(--bg3); color: var(--text2); }
-
-    /* ── MAIN CONTENT ── */
-    .main-content {
-      margin-left: var(--sidebar-w);
-      flex: 1;
-      display: flex;
-      flex-direction: column;
-      min-height: 100vh;
+    .btn-refresh:hover { background: rgba(167,139,250,0.1); color: var(--accent); border-color: rgba(167,139,250,0.3); }
+    .back-link {
+      display: flex; align-items: center; gap: 5px;
+      color: var(--text3); font-size: 0.78rem; text-decoration: none;
+      padding: 6px 10px; border-radius: 8px;
+      transition: all 0.15s;
     }
-    .topbar {
-      background: var(--bg2);
+    .back-link:hover { color: var(--text2); background: var(--bg3); }
+
+    /* ── META BAR ── */
+    .meta-bar {
+      background: var(--bg3);
       border-bottom: 1px solid var(--border);
-      padding: 14px 28px;
+      padding: 8px 24px;
       display: flex;
       align-items: center;
       justify-content: space-between;
-      position: sticky;
-      top: 0;
-      z-index: 50;
+      max-width: 1200px;
+      margin: 0 auto;
+      width: 100%;
     }
-    .topbar-title { font-size: 1rem; font-weight: 600; color: var(--text); }
-    .topbar-meta { font-size: 0.8rem; color: var(--text3); }
-    .topbar-right { display: flex; align-items: center; gap: 12px; }
-    .btn-refresh-top {
-      display: flex; align-items: center; gap: 6px;
-      background: var(--bg3); border: 1px solid var(--border);
-      color: var(--text2); padding: 7px 14px; border-radius: 8px;
-      cursor: pointer; font-size: 0.8rem; font-weight: 500;
-      transition: all 0.15s;
+    .meta-bar-wrap {
+      border-bottom: 1px solid var(--border);
     }
-    .btn-refresh-top:hover { background: rgba(167,139,250,0.1); color: var(--accent); border-color: rgba(167,139,250,0.3); }
+    .meta-title { font-size: 0.8rem; font-weight: 600; color: var(--text); }
+    .meta-time { font-size: 0.75rem; color: var(--text3); }
 
-    .page { display: none; padding: 28px; flex: 1; }
+    /* ── PAGES ── */
+    .page-wrap { max-width: 1200px; margin: 0 auto; padding: 24px; }
+    .page { display: none; }
     .page.active { display: block; }
 
     /* ── STATS GRID ── */
     .stats-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
-      gap: 14px;
-      margin-bottom: 24px;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 12px;
+      margin-bottom: 20px;
     }
+    @media (max-width: 900px) { .stats-grid { grid-template-columns: repeat(3, 1fr); } }
+    @media (max-width: 600px) { .stats-grid { grid-template-columns: repeat(2, 1fr); } }
     .stat-card {
       background: var(--bg2);
       border: 1px solid var(--border);
       border-radius: 12px;
-      padding: 18px 20px;
-      display: flex;
-      flex-direction: column;
-      gap: 6px;
+      padding: 16px 18px;
       position: relative;
       overflow: hidden;
     }
@@ -157,21 +182,20 @@
     .stat-card.c-yellow::before { background: var(--yellow); }
     .stat-card.c-red::before { background: var(--red); }
     .stat-card.c-blue::before { background: var(--blue); }
-    .stat-icon { font-size: 1.4rem; margin-bottom: 4px; }
-    .stat-label { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text3); font-weight: 600; }
-    .stat-value { font-size: 1.6rem; font-weight: 700; color: var(--text); line-height: 1; }
-    .stat-sub { font-size: 0.72rem; color: var(--text3); margin-top: 2px; }
+    .stat-icon { font-size: 1.2rem; margin-bottom: 8px; }
+    .stat-label { font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text3); font-weight: 600; margin-bottom: 4px; }
+    .stat-value { font-size: 1.5rem; font-weight: 700; color: var(--text); line-height: 1; }
 
-    /* ── SECTION CARD ── */
+    /* ── CARD ── */
     .card {
       background: var(--bg2);
       border: 1px solid var(--border);
       border-radius: 12px;
       overflow: hidden;
-      margin-bottom: 20px;
+      margin-bottom: 16px;
     }
     .card-header {
-      padding: 16px 20px;
+      padding: 14px 18px;
       border-bottom: 1px solid var(--border);
       display: flex;
       align-items: center;
@@ -179,309 +203,244 @@
       gap: 12px;
       flex-wrap: wrap;
     }
-    .card-title { font-size: 0.9rem; font-weight: 600; color: var(--text); }
-    .card-subtitle { font-size: 0.75rem; color: var(--text3); margin-top: 2px; }
+    .card-title { font-size: 0.875rem; font-weight: 600; }
+    .card-sub { font-size: 0.72rem; color: var(--text3); margin-top: 1px; }
+
+    /* ── OVERVIEW 2-COL ── */
+    .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+    @media (max-width: 700px) { .two-col { grid-template-columns: 1fr; } }
+
+    /* ── ACTIVITY ── */
+    .activity-item {
+      display: flex; align-items: center; gap: 12px;
+      padding: 11px 18px;
+      border-bottom: 1px solid rgba(255,255,255,0.04);
+    }
+    .activity-item:last-child { border-bottom: none; }
+    .dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+    .dot.green { background: var(--green); }
+    .dot.yellow { background: var(--yellow); }
+    .dot.red { background: var(--red); }
+    .act-info { flex: 1; min-width: 0; }
+    .act-label { font-size: 0.8rem; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .act-meta { font-size: 0.7rem; color: var(--text3); margin-top: 1px; }
+    .act-amount { font-size: 0.8rem; font-weight: 600; white-space: nowrap; }
+    .act-amount.pos { color: var(--green); }
+    .act-amount.neg { color: var(--red); }
 
     /* ── FILTERS ── */
-    .filter-row {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      flex-wrap: wrap;
-    }
-    .filter-chip {
-      padding: 5px 12px;
-      border-radius: 20px;
+    .filter-row { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+    .chip {
+      padding: 4px 12px; border-radius: 20px;
       border: 1px solid var(--border);
-      background: transparent;
-      color: var(--text2);
-      font-size: 0.775rem;
-      font-weight: 500;
-      cursor: pointer;
+      background: transparent; color: var(--text2);
+      font-size: 0.75rem; font-weight: 500; cursor: pointer;
       transition: all 0.15s;
     }
-    .filter-chip:hover { border-color: var(--accent); color: var(--accent); }
-    .filter-chip.active { background: rgba(167,139,250,0.15); border-color: var(--accent); color: var(--accent); }
-    .search-input {
-      background: var(--bg3);
-      border: 1px solid var(--border);
-      border-radius: 8px;
-      padding: 6px 12px;
-      color: var(--text);
-      font-size: 0.8rem;
-      outline: none;
-      transition: border-color 0.15s;
-      min-width: 180px;
+    .chip:hover { border-color: var(--accent); color: var(--accent); }
+    .chip.active { background: rgba(167,139,250,0.15); border-color: var(--accent); color: var(--accent); }
+    .search-box {
+      background: var(--bg3); border: 1px solid var(--border);
+      border-radius: 8px; padding: 5px 12px;
+      color: var(--text); font-size: 0.8rem; outline: none;
+      transition: border-color 0.15s; min-width: 160px;
     }
-    .search-input:focus { border-color: rgba(167,139,250,0.5); }
-    .search-input::placeholder { color: var(--text3); }
+    .search-box:focus { border-color: rgba(167,139,250,0.5); }
+    .search-box::placeholder { color: var(--text3); }
 
     /* ── TABLE ── */
-    .table-wrap { overflow-x: auto; }
+    .tbl-wrap { overflow-x: auto; }
     table { width: 100%; border-collapse: collapse; }
     thead th {
-      padding: 10px 16px;
-      text-align: left;
-      font-size: 0.7rem;
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
-      color: var(--text3);
-      font-weight: 600;
+      padding: 9px 16px; text-align: left;
+      font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.5px;
+      color: var(--text3); font-weight: 600;
       border-bottom: 1px solid var(--border);
       white-space: nowrap;
     }
     tbody tr { border-bottom: 1px solid rgba(255,255,255,0.04); transition: background 0.1s; }
     tbody tr:last-child { border-bottom: none; }
     tbody tr:hover { background: rgba(255,255,255,0.02); }
-    tbody td {
-      padding: 11px 16px;
-      font-size: 0.825rem;
-      color: var(--text);
-      vertical-align: middle;
-    }
-    .td-mono { font-family: 'SF Mono', 'Fira Code', monospace; font-size: 0.775rem; color: var(--text2); max-width: 160px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    tbody td { padding: 10px 16px; font-size: 0.82rem; vertical-align: middle; }
+    .td-id { color: var(--text3); font-size: 0.72rem; }
     .td-email { color: var(--text2); }
-    .td-amount { font-weight: 600; color: var(--text); }
-    .empty-row td { text-align: center; padding: 32px; color: var(--text3); font-style: italic; }
+    .td-mono { font-family: 'SF Mono', monospace; font-size: 0.75rem; color: var(--text2); max-width: 140px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .td-amount { font-weight: 600; }
+    .td-date { color: var(--text3); font-size: 0.75rem; white-space: nowrap; }
+    .empty-row td { text-align: center; padding: 30px; color: var(--text3); font-style: italic; }
 
-    /* ── STATUS BADGE ── */
+    /* ── BADGES ── */
     .badge {
-      display: inline-flex; align-items: center; gap: 4px;
-      padding: 3px 9px;
-      border-radius: 20px;
-      font-size: 0.7rem;
-      font-weight: 600;
-      white-space: nowrap;
+      display: inline-flex; align-items: center; gap: 3px;
+      padding: 3px 8px; border-radius: 20px;
+      font-size: 0.68rem; font-weight: 600; white-space: nowrap;
     }
-    .badge-pending { background: rgba(251,191,36,0.12); color: var(--yellow); border: 1px solid rgba(251,191,36,0.2); }
-    .badge-confirmed { background: rgba(34,211,168,0.12); color: var(--green); border: 1px solid rgba(34,211,168,0.2); }
-    .badge-rejected { background: rgba(248,113,113,0.12); color: var(--red); border: 1px solid rgba(248,113,113,0.2); }
+    .b-pending { background: rgba(251,191,36,.12); color: var(--yellow); border: 1px solid rgba(251,191,36,.2); }
+    .b-confirmed { background: rgba(34,211,168,.12); color: var(--green); border: 1px solid rgba(34,211,168,.2); }
+    .b-rejected { background: rgba(248,113,113,.1); color: var(--red); border: 1px solid rgba(248,113,113,.2); }
 
     /* ── ACTION BUTTONS ── */
-    .action-row { display: flex; gap: 6px; }
-    .btn-approve, .btn-reject, .btn-edit {
-      padding: 5px 11px;
-      border-radius: 6px;
-      border: none;
-      font-size: 0.75rem;
-      font-weight: 600;
-      cursor: pointer;
-      transition: all 0.15s;
-      display: flex; align-items: center; gap: 4px;
+    .act-row { display: flex; gap: 5px; }
+    .btn-ok, .btn-ko, .btn-info {
+      padding: 5px 10px; border-radius: 6px; border: 1px solid;
+      font-size: 0.72rem; font-weight: 600; cursor: pointer;
+      transition: all 0.15s; display: flex; align-items: center; gap: 3px;
     }
-    .btn-approve { background: rgba(34,211,168,0.12); color: var(--green); border: 1px solid rgba(34,211,168,0.2); }
-    .btn-approve:hover { background: rgba(34,211,168,0.22); }
-    .btn-reject { background: rgba(248,113,113,0.1); color: var(--red); border: 1px solid rgba(248,113,113,0.2); }
-    .btn-reject:hover { background: rgba(248,113,113,0.2); }
-    .btn-edit { background: rgba(167,139,250,0.1); color: var(--accent); border: 1px solid rgba(167,139,250,0.2); }
-    .btn-edit:hover { background: rgba(167,139,250,0.2); }
+    .btn-ok { background: rgba(34,211,168,.1); color: var(--green); border-color: rgba(34,211,168,.2); }
+    .btn-ok:hover { background: rgba(34,211,168,.2); }
+    .btn-ko { background: rgba(248,113,113,.08); color: var(--red); border-color: rgba(248,113,113,.2); }
+    .btn-ko:hover { background: rgba(248,113,113,.18); }
+    .btn-info { background: rgba(167,139,250,.1); color: var(--accent); border-color: rgba(167,139,250,.2); }
+    .btn-info:hover { background: rgba(167,139,250,.2); }
 
-    /* ── RECENT ACTIVITY ── */
-    .activity-list { display: flex; flex-direction: column; }
-    .activity-item {
-      display: flex; align-items: center; gap: 12px;
-      padding: 12px 20px;
-      border-bottom: 1px solid rgba(255,255,255,0.04);
+    /* ── USER AVATAR ── */
+    .u-cell { display: flex; align-items: center; gap: 8px; }
+    .u-av {
+      width: 28px; height: 28px; border-radius: 50%;
+      background: linear-gradient(135deg, var(--accent2), var(--blue));
+      display: inline-flex; align-items: center; justify-content: center;
+      font-size: 0.7rem; font-weight: 700; color: #fff; flex-shrink: 0;
     }
-    .activity-item:last-child { border-bottom: none; }
-    .activity-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
-    .activity-dot.green { background: var(--green); }
-    .activity-dot.yellow { background: var(--yellow); }
-    .activity-dot.red { background: var(--red); }
-    .activity-info { flex: 1; }
-    .activity-label { font-size: 0.825rem; color: var(--text); }
-    .activity-meta { font-size: 0.72rem; color: var(--text3); margin-top: 1px; }
-    .activity-amount { font-size: 0.825rem; font-weight: 600; }
-    .activity-amount.positive { color: var(--green); }
-    .activity-amount.negative { color: var(--red); }
 
-    /* ── SETTINGS PAGE ── */
-    .settings-section { max-width: 560px; }
-    .settings-card {
-      background: var(--bg2);
-      border: 1px solid var(--border);
-      border-radius: 12px;
-      padding: 24px;
-      margin-bottom: 16px;
+    /* ── SETTINGS ── */
+    .settings-wrap { max-width: 540px; }
+    .s-card {
+      background: var(--bg2); border: 1px solid var(--border);
+      border-radius: 12px; padding: 22px; margin-bottom: 14px;
     }
-    .settings-title {
-      font-size: 0.9rem;
-      font-weight: 600;
-      margin-bottom: 4px;
+    .s-title { font-size: 0.9rem; font-weight: 600; margin-bottom: 4px; }
+    .s-desc { font-size: 0.77rem; color: var(--text3); line-height: 1.5; margin-bottom: 14px; }
+    .current-addr {
+      background: var(--bg3); border: 1px solid var(--border);
+      border-radius: 8px; padding: 9px 14px;
+      font-family: 'SF Mono', monospace; font-size: 0.78rem;
+      color: var(--green); word-break: break-all; margin-bottom: 14px;
     }
-    .settings-desc {
-      font-size: 0.78rem;
-      color: var(--text3);
-      margin-bottom: 18px;
-      line-height: 1.5;
+    .f-label { display: block; font-size: 0.76rem; font-weight: 600; color: var(--text2); margin-bottom: 5px; }
+    .f-input {
+      width: 100%; background: var(--bg3); border: 1px solid var(--border);
+      border-radius: 8px; padding: 9px 13px;
+      color: var(--text); font-size: 0.85rem; outline: none;
+      transition: border-color 0.15s; margin-bottom: 12px;
     }
-    .current-addr-box {
-      background: var(--bg3);
-      border: 1px solid var(--border);
-      border-radius: 8px;
-      padding: 10px 14px;
-      font-family: 'SF Mono', 'Fira Code', monospace;
-      font-size: 0.8rem;
-      color: var(--green);
-      word-break: break-all;
-      margin-bottom: 14px;
-    }
-    .form-group { margin-bottom: 14px; }
-    .form-label { display: block; font-size: 0.78rem; font-weight: 600; color: var(--text2); margin-bottom: 6px; }
-    .form-input {
-      width: 100%;
-      background: var(--bg3);
-      border: 1px solid var(--border);
-      border-radius: 8px;
-      padding: 10px 14px;
-      color: var(--text);
-      font-size: 0.875rem;
-      outline: none;
-      transition: border-color 0.15s;
-    }
-    .form-input:focus { border-color: rgba(167,139,250,0.5); }
-    .form-input::placeholder { color: var(--text3); }
-    .form-hint { font-size: 0.72rem; color: var(--text3); margin-top: 5px; }
+    .f-input:focus { border-color: rgba(167,139,250,.5); }
+    .f-input::placeholder { color: var(--text3); }
     .btn-save {
-      padding: 10px 22px;
+      padding: 9px 20px;
       background: linear-gradient(135deg, var(--accent2), var(--accent));
-      color: #fff;
-      border: none;
-      border-radius: 8px;
-      font-size: 0.875rem;
-      font-weight: 600;
-      cursor: pointer;
-      transition: opacity 0.15s;
+      color: #fff; border: none; border-radius: 8px;
+      font-size: 0.85rem; font-weight: 600; cursor: pointer; transition: opacity .15s;
     }
-    .btn-save:hover { opacity: 0.85; }
-    .form-success { color: var(--green); font-size: 0.8rem; margin-top: 10px; display: none; }
-    .form-error { color: var(--red); font-size: 0.8rem; margin-top: 10px; display: none; }
+    .btn-save:hover { opacity: .85; }
+    .f-ok { color: var(--green); font-size: 0.78rem; margin-top: 8px; display: none; }
+    .f-err { color: var(--red); font-size: 0.78rem; margin-top: 8px; display: none; }
+    .info-row {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 8px 0; border-bottom: 1px solid rgba(255,255,255,.04);
+      font-size: 0.82rem;
+    }
+    .info-row:last-child { border-bottom: none; }
+    .info-key { color: var(--text3); }
+    .info-val { color: var(--text); font-weight: 500; }
 
-    /* ── USER DETAIL PANEL ── */
-    .modal-overlay {
-      position: fixed; inset: 0;
-      background: rgba(0,0,0,0.7);
-      z-index: 200;
-      display: none;
-      align-items: center;
-      justify-content: center;
+    /* ── MODAL ── */
+    .overlay {
+      position: fixed; inset: 0; background: rgba(0,0,0,.75);
+      z-index: 200; display: none; align-items: center; justify-content: center;
     }
-    .modal-overlay.open { display: flex; }
+    .overlay.open { display: flex; }
     .modal {
-      background: var(--bg2);
-      border: 1px solid var(--border);
-      border-radius: 14px;
-      padding: 28px;
-      width: 90%;
-      max-width: 440px;
+      background: var(--bg2); border: 1px solid var(--border);
+      border-radius: 14px; padding: 26px;
+      width: 90%; max-width: 420px;
     }
-    .modal-title { font-size: 1rem; font-weight: 700; margin-bottom: 16px; }
-    .modal-row { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px solid rgba(255,255,255,0.04); font-size: 0.825rem; }
+    .modal-title { font-size: 0.95rem; font-weight: 700; margin-bottom: 14px; }
+    .modal-row {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 7px 0; border-bottom: 1px solid rgba(255,255,255,.04);
+      font-size: 0.8rem;
+    }
     .modal-row:last-of-type { border-bottom: none; }
     .modal-key { color: var(--text3); }
-    .modal-val { color: var(--text); font-weight: 500; }
-    .modal-actions { display: flex; gap: 10px; margin-top: 18px; flex-wrap: wrap; }
-    .modal-close { background: var(--bg3); border: 1px solid var(--border); color: var(--text2); padding: 8px 16px; border-radius: 8px; cursor: pointer; font-size: 0.825rem; }
-    .modal-close:hover { color: var(--text); }
+    .modal-val { color: var(--text); font-weight: 500; font-family: 'SF Mono', monospace; font-size: 0.75rem; }
     .adjust-row { display: flex; gap: 8px; margin-top: 14px; }
-    .adjust-input {
-      flex: 1;
-      background: var(--bg3); border: 1px solid var(--border);
-      border-radius: 8px; padding: 8px 12px;
-      color: var(--text); font-size: 0.825rem; outline: none;
+    .adj-input {
+      flex: 1; background: var(--bg3); border: 1px solid var(--border);
+      border-radius: 8px; padding: 7px 11px;
+      color: var(--text); font-size: 0.82rem; outline: none;
     }
-    .adjust-input:focus { border-color: rgba(167,139,250,0.5); }
+    .adj-input:focus { border-color: rgba(167,139,250,.5); }
+    .modal-footer { display: flex; gap: 8px; margin-top: 16px; }
+    .btn-close { background: var(--bg3); border: 1px solid var(--border); color: var(--text2); padding: 7px 16px; border-radius: 8px; cursor: pointer; font-size: 0.8rem; }
+    .btn-close:hover { color: var(--text); }
 
     /* ── TOAST ── */
     .toast {
-      position: fixed;
-      bottom: 24px; right: 24px;
-      background: var(--bg3);
-      border: 1px solid var(--border);
-      color: var(--text);
-      padding: 12px 20px;
-      border-radius: 10px;
-      font-size: 0.85rem;
-      font-weight: 500;
-      z-index: 9999;
-      opacity: 0;
-      transform: translateY(8px);
-      transition: all 0.25s;
-      pointer-events: none;
-      box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+      position: fixed; bottom: 22px; right: 22px;
+      background: var(--bg3); border: 1px solid var(--border);
+      color: var(--text); padding: 11px 18px; border-radius: 10px;
+      font-size: 0.83rem; font-weight: 500;
+      z-index: 9999; opacity: 0; transform: translateY(8px);
+      transition: all .25s; pointer-events: none;
+      box-shadow: 0 8px 32px rgba(0,0,0,.5);
     }
     .toast.show { opacity: 1; transform: translateY(0); }
-    .toast.success { border-color: rgba(34,211,168,0.3); background: rgba(34,211,168,0.08); color: var(--green); }
-    .toast.error { border-color: rgba(248,113,113,0.3); background: rgba(248,113,113,0.08); color: var(--red); }
-
-    /* ── OVERVIEW 2-COL ── */
-    .overview-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
-    @media (max-width: 760px) { .overview-grid { grid-template-columns: 1fr; } }
-
-    /* ── USERS AVATAR ── */
-    .user-avatar {
-      width: 30px; height: 30px;
-      border-radius: 50%;
-      background: linear-gradient(135deg, var(--accent2), var(--blue));
-      display: inline-flex; align-items: center; justify-content: center;
-      font-size: 0.75rem; font-weight: 700; color: #fff;
-      flex-shrink: 0;
-    }
-    .user-cell { display: flex; align-items: center; gap: 10px; }
-    .user-email-text { font-size: 0.825rem; color: var(--text2); }
-
-    /* Scrollable sidebar on small heights */
-    .sidebar-nav { overflow-y: auto; }
+    .toast.success { border-color: rgba(34,211,168,.3); background: rgba(34,211,168,.07); color: var(--green); }
+    .toast.error { border-color: rgba(248,113,113,.3); background: rgba(248,113,113,.07); color: var(--red); }
   </style>
 </head>
 <body>
 
-  <!-- ── SIDEBAR ── -->
-  <aside class="sidebar">
-    <div class="sidebar-logo">
-      <div class="logo-mark">Q</div>
-      <div>
-        <div class="logo-text">QuestInvest</div>
-        <div class="logo-sub">Panel Admin</div>
-      </div>
-    </div>
-    <nav class="sidebar-nav">
-      <button class="nav-item active" data-page="overview">
-        <span class="nav-icon">📊</span> Vue d'ensemble
-      </button>
-      <button class="nav-item" data-page="deposits">
-        <span class="nav-icon">💳</span> Dépôts
-        <span class="nav-badge" id="nav-badge-deposits" style="display:none"></span>
-      </button>
-      <button class="nav-item" data-page="withdrawals">
-        <span class="nav-icon">💸</span> Retraits
-        <span class="nav-badge" id="nav-badge-withdrawals" style="display:none"></span>
-      </button>
-      <button class="nav-item" data-page="users">
-        <span class="nav-icon">👥</span> Utilisateurs
-      </button>
-      <button class="nav-item" data-page="settings">
-        <span class="nav-icon">⚙️</span> Paramètres
-      </button>
-    </nav>
-    <div class="sidebar-footer">
-      <a href="/">← Retour au site</a>
-    </div>
-  </aside>
+  <!-- ══ TOPBAR ══ -->
+  <div class="topbar">
+    <div class="topbar-inner">
+      <a href="/" class="topbar-logo">
+        <div class="logo-mark">Q</div>
+        <div class="logo-texts">
+          <div class="logo-name">QuestInvest</div>
+          <div class="logo-role">Panel Admin</div>
+        </div>
+      </a>
 
-  <!-- ── MAIN ── -->
-  <div class="main-content">
-    <header class="topbar">
-      <div>
-        <div class="topbar-title" id="topbar-title">Vue d'ensemble</div>
-        <div class="topbar-meta" id="topbar-meta">Dernière actualisation: —</div>
-      </div>
+      <nav class="nav-tabs">
+        <button class="nav-tab active" data-page="overview">
+          <span class="tab-icon">📊</span> Vue d'ensemble
+        </button>
+        <button class="nav-tab" data-page="deposits">
+          <span class="tab-icon">💳</span> Dépôts
+          <span class="nav-badge" id="nb-dep"></span>
+        </button>
+        <button class="nav-tab" data-page="withdrawals">
+          <span class="tab-icon">💸</span> Retraits
+          <span class="nav-badge" id="nb-with"></span>
+        </button>
+        <button class="nav-tab" data-page="users">
+          <span class="tab-icon">👥</span> Utilisateurs
+        </button>
+        <button class="nav-tab" data-page="settings">
+          <span class="tab-icon">⚙️</span> Paramètres
+        </button>
+      </nav>
+
       <div class="topbar-right">
-        <button class="btn-refresh-top" onclick="refreshAll()">↻ Actualiser</button>
+        <button class="btn-refresh" onclick="refreshAll()">↻ Actualiser</button>
+        <a href="/" class="back-link">← Site</a>
       </div>
-    </header>
+    </div>
+  </div>
 
-    <!-- ── OVERVIEW PAGE ── -->
+  <!-- META BAR -->
+  <div class="meta-bar-wrap">
+    <div class="meta-bar">
+      <div class="meta-title" id="meta-title">Vue d'ensemble</div>
+      <div class="meta-time" id="meta-time">—</div>
+    </div>
+  </div>
+
+  <!-- ══ PAGES ══ -->
+  <div class="page-wrap">
+
+    <!-- OVERVIEW -->
     <div class="page active" id="page-overview">
       <div class="stats-grid">
         <div class="stat-card c-purple">
@@ -510,187 +469,146 @@
           <div class="stat-value" id="s-twith">—</div>
         </div>
       </div>
-
-      <div class="overview-grid">
+      <div class="two-col">
         <div class="card">
           <div class="card-header">
             <div>
               <div class="card-title">Derniers dépôts</div>
-              <div class="card-subtitle">Les 5 plus récents</div>
+              <div class="card-sub">Les 5 plus récents</div>
             </div>
           </div>
-          <div class="activity-list" id="overview-deposits"></div>
+          <div id="ov-dep"></div>
         </div>
         <div class="card">
           <div class="card-header">
             <div>
               <div class="card-title">Derniers retraits</div>
-              <div class="card-subtitle">Les 5 plus récents</div>
+              <div class="card-sub">Les 5 plus récents</div>
             </div>
           </div>
-          <div class="activity-list" id="overview-withdrawals"></div>
+          <div id="ov-with"></div>
         </div>
       </div>
     </div>
 
-    <!-- ── DEPOSITS PAGE ── -->
+    <!-- DEPOSITS -->
     <div class="page" id="page-deposits">
       <div class="card">
         <div class="card-header">
           <div>
             <div class="card-title">Gestion des dépôts</div>
-            <div class="card-subtitle">Approuvez ou rejetez les dépôts en attente</div>
+            <div class="card-sub">Approuvez ou rejetez les dépôts</div>
           </div>
           <div class="filter-row">
-            <input class="search-input" type="text" placeholder="🔍 Rechercher..." id="dep-search" oninput="renderDeposits()">
-            <button class="filter-chip active" data-filter="all" onclick="setDepFilter(this,'all')">Tous</button>
-            <button class="filter-chip" data-filter="pending" onclick="setDepFilter(this,'pending')">En attente</button>
-            <button class="filter-chip" data-filter="confirmed" onclick="setDepFilter(this,'confirmed')">Confirmés</button>
-            <button class="filter-chip" data-filter="rejected" onclick="setDepFilter(this,'rejected')">Rejetés</button>
+            <input class="search-box" type="text" placeholder="🔍 Email ou hash..." id="dep-search" oninput="renderDeposits()">
+            <button class="chip active" onclick="setDepF(this,'all')">Tous</button>
+            <button class="chip" onclick="setDepF(this,'pending')">En attente</button>
+            <button class="chip" onclick="setDepF(this,'confirmed')">Confirmés</button>
+            <button class="chip" onclick="setDepF(this,'rejected')">Rejetés</button>
           </div>
         </div>
-        <div class="table-wrap">
+        <div class="tbl-wrap">
           <table>
-            <thead>
-              <tr>
-                <th>ID</th>
-                <th>Utilisateur</th>
-                <th>Montant</th>
-                <th>Hash Transaction</th>
-                <th>Date</th>
-                <th>Statut</th>
-                <th>Actions</th>
-              </tr>
-            </thead>
+            <thead><tr>
+              <th>ID</th><th>Utilisateur</th><th>Montant</th><th>Hash Tx</th><th>Date</th><th>Statut</th><th>Actions</th>
+            </tr></thead>
             <tbody id="dep-tbody"></tbody>
           </table>
         </div>
       </div>
     </div>
 
-    <!-- ── WITHDRAWALS PAGE ── -->
+    <!-- WITHDRAWALS -->
     <div class="page" id="page-withdrawals">
       <div class="card">
         <div class="card-header">
           <div>
             <div class="card-title">Gestion des retraits</div>
-            <div class="card-subtitle">Traitez les demandes de retrait</div>
+            <div class="card-sub">Traitez les demandes de retrait</div>
           </div>
           <div class="filter-row">
-            <input class="search-input" type="text" placeholder="🔍 Rechercher..." id="with-search" oninput="renderWithdrawals()">
-            <button class="filter-chip active" data-filter="all" onclick="setWithFilter(this,'all')">Tous</button>
-            <button class="filter-chip" data-filter="pending" onclick="setWithFilter(this,'pending')">En attente</button>
-            <button class="filter-chip" data-filter="confirmed" onclick="setWithFilter(this,'confirmed')">Confirmés</button>
-            <button class="filter-chip" data-filter="rejected" onclick="setWithFilter(this,'rejected')">Rejetés</button>
+            <input class="search-box" type="text" placeholder="🔍 Email ou adresse..." id="with-search" oninput="renderWithdrawals()">
+            <button class="chip active" onclick="setWithF(this,'all')">Tous</button>
+            <button class="chip" onclick="setWithF(this,'pending')">En attente</button>
+            <button class="chip" onclick="setWithF(this,'confirmed')">Confirmés</button>
+            <button class="chip" onclick="setWithF(this,'rejected')">Rejetés</button>
           </div>
         </div>
-        <div class="table-wrap">
+        <div class="tbl-wrap">
           <table>
-            <thead>
-              <tr>
-                <th>ID</th>
-                <th>Utilisateur</th>
-                <th>Montant</th>
-                <th>Adresse USDT</th>
-                <th>Date</th>
-                <th>Statut</th>
-                <th>Actions</th>
-              </tr>
-            </thead>
+            <thead><tr>
+              <th>ID</th><th>Utilisateur</th><th>Montant</th><th>Adresse USDT</th><th>Date</th><th>Statut</th><th>Actions</th>
+            </tr></thead>
             <tbody id="with-tbody"></tbody>
           </table>
         </div>
       </div>
     </div>
 
-    <!-- ── USERS PAGE ── -->
+    <!-- USERS -->
     <div class="page" id="page-users">
       <div class="card">
         <div class="card-header">
           <div>
             <div class="card-title">Utilisateurs</div>
-            <div class="card-subtitle">Tous les comptes enregistrés</div>
+            <div class="card-sub">Tous les comptes enregistrés</div>
           </div>
-          <input class="search-input" type="text" placeholder="🔍 Rechercher un email..." id="user-search" oninput="renderUsers()">
+          <input class="search-box" type="text" placeholder="🔍 Rechercher un email..." id="user-search" oninput="renderUsers()">
         </div>
-        <div class="table-wrap">
+        <div class="tbl-wrap">
           <table>
-            <thead>
-              <tr>
-                <th>Utilisateur</th>
-                <th>Solde</th>
-                <th>Dépôt total</th>
-                <th>Retiré</th>
-                <th>Parrainages</th>
-                <th>Inscription</th>
-                <th>Actions</th>
-              </tr>
-            </thead>
+            <thead><tr>
+              <th>Utilisateur</th><th>Solde</th><th>Déposé</th><th>Retiré</th><th>Parrainages</th><th>Inscription</th><th>Actions</th>
+            </tr></thead>
             <tbody id="users-tbody"></tbody>
           </table>
         </div>
       </div>
     </div>
 
-    <!-- ── SETTINGS PAGE ── -->
+    <!-- SETTINGS -->
     <div class="page" id="page-settings">
-      <div class="settings-section">
-        <div class="settings-card">
-          <div class="settings-title">💳 Adresse de dépôt USDT (TRC20)</div>
-          <div class="settings-desc">
-            Cette adresse est affichée à tous les utilisateurs lorsqu'ils veulent effectuer un dépôt. Modifiez-la ici pour rediriger les paiements.
-          </div>
-          <div class="settings-desc" style="color:var(--text2);font-size:0.8rem;margin-bottom:6px;">Adresse actuelle :</div>
-          <div class="current-addr-box" id="current-dep-addr">Chargement...</div>
-          <form id="settings-form" onsubmit="saveDepositAddress(event)">
-            <div class="form-group">
-              <label class="form-label">Nouvelle adresse</label>
-              <input class="form-input" type="text" id="new-dep-addr" placeholder="Ex: TYyUwQELkUW957jE7Svt42LSaeQWneWtQG" autocomplete="off">
-              <div class="form-hint">L'adresse doit être une adresse USDT TRC20 valide (min. 10 caractères).</div>
-            </div>
-            <button type="submit" class="btn-save">Enregistrer l'adresse</button>
-            <div class="form-success" id="settings-success">✓ Adresse mise à jour avec succès !</div>
-            <div class="form-error" id="settings-error"></div>
+      <div class="settings-wrap">
+        <div class="s-card">
+          <div class="s-title">💳 Adresse de dépôt USDT (TRC20)</div>
+          <div class="s-desc">Adresse affichée aux utilisateurs lors d'un dépôt. Modifiez-la pour rediriger les paiements.</div>
+          <div style="font-size:.75rem;color:var(--text2);margin-bottom:6px;">Adresse actuelle :</div>
+          <div class="current-addr" id="cur-addr">Chargement…</div>
+          <form onsubmit="saveAddr(event)">
+            <label class="f-label">Nouvelle adresse</label>
+            <input class="f-input" type="text" id="new-addr" placeholder="TYyUwQELkUW957jE7Svt42LSaeQWneWtQG" autocomplete="off">
+            <button type="submit" class="btn-save">Enregistrer</button>
+            <div class="f-ok" id="addr-ok">✓ Adresse mise à jour !</div>
+            <div class="f-err" id="addr-err"></div>
           </form>
         </div>
-
-        <div class="settings-card">
-          <div class="settings-title">🔑 Informations du compte admin</div>
-          <div class="settings-desc">Code d'accès admin pour se connecter au panel.</div>
-          <div class="modal-row">
-            <span class="modal-key">Code d'accès</span>
-            <span class="modal-val" style="font-family:monospace">1289</span>
-          </div>
-          <div class="modal-row">
-            <span class="modal-key">Dépôt minimum</span>
-            <span class="modal-val">$55 USDT</span>
-          </div>
-          <div class="modal-row">
-            <span class="modal-key">Retrait minimum</span>
-            <span class="modal-val">$50 USDT</span>
-          </div>
-          <div class="modal-row" style="border-bottom:none">
-            <span class="modal-key">Retrait maximum</span>
-            <span class="modal-val">$500 USDT</span>
-          </div>
+        <div class="s-card">
+          <div class="s-title">🔑 Paramètres de la plateforme</div>
+          <div class="s-desc">Informations de configuration de QuestInvest.</div>
+          <div class="info-row"><span class="info-key">Code d'accès admin</span><span class="info-val">1289</span></div>
+          <div class="info-row"><span class="info-key">Dépôt minimum</span><span class="info-val">$55 USDT</span></div>
+          <div class="info-row"><span class="info-key">Retrait minimum</span><span class="info-val">$50 USDT</span></div>
+          <div class="info-row"><span class="info-key">Retrait maximum</span><span class="info-val">$500 USDT</span></div>
+          <div class="info-row"><span class="info-key">Cycle de gain</span><span class="info-val">14 jours</span></div>
         </div>
       </div>
     </div>
-  </div>
 
-  <!-- ── USER DETAIL MODAL ── -->
-  <div class="modal-overlay" id="user-modal">
+  </div><!-- /page-wrap -->
+
+  <!-- MODAL UTILISATEUR -->
+  <div class="overlay" id="user-modal">
     <div class="modal">
       <div class="modal-title">👤 Détail utilisateur</div>
-      <div id="modal-content"></div>
+      <div id="modal-rows"></div>
       <div class="adjust-row">
-        <input class="adjust-input" type="number" id="adjust-amount" placeholder="Montant (+ ou −)" step="0.01">
-        <button class="btn-edit" onclick="adjustBalance()">Ajuster solde</button>
+        <input class="adj-input" type="number" id="adj-amt" placeholder="Montant à ajuster (+ ou −)" step="0.01">
+        <button class="btn-info" onclick="adjustBalance()">Ajuster solde</button>
       </div>
-      <div class="form-error" id="modal-error" style="display:none;margin-top:8px;"></div>
-      <div class="form-success" id="modal-success" style="display:none;margin-top:8px;"></div>
-      <div class="modal-actions">
-        <button class="modal-close" onclick="closeUserModal()">Fermer</button>
+      <div class="f-err" id="m-err" style="margin-top:8px;"></div>
+      <div class="f-ok" id="m-ok" style="margin-top:8px;"></div>
+      <div class="modal-footer">
+        <button class="btn-close" onclick="closeModal()">Fermer</button>
       </div>
     </div>
   </div>
@@ -700,25 +618,22 @@
   <script>
     let allDeposits = [], allWithdrawals = [], allUsers = [];
     let depFilter = 'all', withFilter = 'all';
-    let selectedUserId = null;
+    let selUserId = null;
 
-    const pageTitles = {
-      overview: 'Vue d\'ensemble',
-      deposits: 'Dépôts',
-      withdrawals: 'Retraits',
-      users: 'Utilisateurs',
-      settings: 'Paramètres'
+    const PAGE_LABELS = {
+      overview:'Vue d\'ensemble', deposits:'Dépôts',
+      withdrawals:'Retraits', users:'Utilisateurs', settings:'Paramètres'
     };
 
     // ── NAVIGATION ──
-    document.querySelectorAll('.nav-item').forEach(btn => {
+    document.querySelectorAll('.nav-tab').forEach(btn => {
       btn.addEventListener('click', () => {
         const page = btn.dataset.page;
-        document.querySelectorAll('.nav-item').forEach(b => b.classList.remove('active'));
+        document.querySelectorAll('.nav-tab').forEach(b => b.classList.remove('active'));
         document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
         btn.classList.add('active');
         document.getElementById('page-' + page).classList.add('active');
-        document.getElementById('topbar-title').textContent = pageTitles[page];
+        document.getElementById('meta-title').textContent = PAGE_LABELS[page];
         if (page === 'settings') loadSettings();
       });
     });
@@ -726,329 +641,242 @@
     // ── INIT ──
     document.addEventListener('DOMContentLoaded', () => {
       refreshAll();
-      setInterval(() => { refreshAll(); }, 30000);
+      setInterval(refreshAll, 30000);
     });
 
     async function refreshAll() {
       await Promise.all([loadStats(), loadDeposits(), loadWithdrawals(), loadUsers()]);
-      const now = new Date();
-      document.getElementById('topbar-meta').textContent = 'Dernière actualisation: ' + now.toLocaleTimeString('fr-FR');
+      document.getElementById('meta-time').textContent =
+        'Actualisé à ' + new Date().toLocaleTimeString('fr-FR');
     }
 
     // ── STATS ──
     async function loadStats() {
       try {
-        const res = await fetch('/api/admin/stats');
-        if (!res.ok) return;
-        const s = await res.json();
+        const r = await fetch('/api/admin/stats');
+        if (!r.ok) return;
+        const s = await r.json();
         document.getElementById('s-users').textContent = s.totalUsers;
         document.getElementById('s-pdep').textContent = s.pendingDeposits;
-        document.getElementById('s-cdep').textContent = '$' + parseFloat(s.confirmedDeposits).toLocaleString('fr-FR', {minimumFractionDigits:0});
+        document.getElementById('s-cdep').textContent = '$' + fmtNum(s.confirmedDeposits);
         document.getElementById('s-pwith').textContent = s.pendingWithdrawals;
-        document.getElementById('s-twith').textContent = '$' + parseFloat(s.totalWithdrawn).toLocaleString('fr-FR', {minimumFractionDigits:0});
-
-        const db2 = document.getElementById('nav-badge-deposits');
-        if (s.pendingDeposits > 0) { db2.textContent = s.pendingDeposits; db2.style.display = ''; }
-        else db2.style.display = 'none';
-        const wb = document.getElementById('nav-badge-withdrawals');
-        if (s.pendingWithdrawals > 0) { wb.textContent = s.pendingWithdrawals; wb.style.display = ''; }
-        else wb.style.display = 'none';
+        document.getElementById('s-twith').textContent = '$' + fmtNum(s.totalWithdrawn);
+        badge('nb-dep', s.pendingDeposits);
+        badge('nb-with', s.pendingWithdrawals);
       } catch {}
+    }
+    function badge(id, n) {
+      const el = document.getElementById(id);
+      if (n > 0) { el.textContent = n; el.style.display = ''; }
+      else el.style.display = 'none';
     }
 
     // ── DEPOSITS ──
     async function loadDeposits() {
       try {
-        const res = await fetch('/api/admin/deposits');
-        if (res.ok) { allDeposits = await res.json(); renderDeposits(); renderOverviewDeposits(); }
+        const r = await fetch('/api/admin/deposits');
+        if (r.ok) { allDeposits = await r.json(); renderDeposits(); renderOvDep(); }
       } catch {}
     }
-
-    function setDepFilter(el, f) {
+    function setDepF(el, f) {
       depFilter = f;
-      document.querySelectorAll('#page-deposits .filter-chip').forEach(b => b.classList.remove('active'));
+      document.querySelectorAll('#page-deposits .chip').forEach(b => b.classList.remove('active'));
       el.classList.add('active');
       renderDeposits();
     }
-
     function renderDeposits() {
-      const search = (document.getElementById('dep-search')?.value || '').toLowerCase();
+      const q = (document.getElementById('dep-search')?.value || '').toLowerCase();
       let list = depFilter === 'all' ? allDeposits : allDeposits.filter(d => d.status === depFilter);
-      if (search) list = list.filter(d => d.user_email.toLowerCase().includes(search) || (d.tx_hash || '').toLowerCase().includes(search));
-      const tbody = document.getElementById('dep-tbody');
-      if (!list.length) { tbody.innerHTML = '<tr class="empty-row"><td colspan="7">Aucun dépôt trouvé</td></tr>'; return; }
-      tbody.innerHTML = list.map(d => `
-        <tr>
-          <td style="color:var(--text3);font-size:0.75rem">#${d.id}</td>
-          <td class="td-email">${d.user_email}</td>
-          <td class="td-amount">$${parseFloat(d.amount).toFixed(2)}</td>
-          <td class="td-mono" title="${d.tx_hash||''}">${d.tx_hash || '—'}</td>
-          <td style="color:var(--text3);font-size:0.775rem;white-space:nowrap">${new Date(d.created_at).toLocaleDateString('fr-FR')}</td>
-          <td>${statusBadge(d.status)}</td>
-          <td>
-            ${d.status === 'pending' ? `
-              <div class="action-row">
-                <button class="btn-approve" onclick="approveDeposit(${d.id})">✓ Approuver</button>
-                <button class="btn-reject" onclick="rejectDeposit(${d.id})">✕ Rejeter</button>
-              </div>` : '<span style="color:var(--text3);font-size:0.75rem">—</span>'}
-          </td>
-        </tr>`).join('');
+      if (q) list = list.filter(d => d.user_email.toLowerCase().includes(q) || (d.tx_hash||'').toLowerCase().includes(q));
+      const tb = document.getElementById('dep-tbody');
+      if (!list.length) { tb.innerHTML = '<tr class="empty-row"><td colspan="7">Aucun dépôt trouvé</td></tr>'; return; }
+      tb.innerHTML = list.map(d => `<tr>
+        <td class="td-id">#${d.id}</td>
+        <td class="td-email">${d.user_email}</td>
+        <td class="td-amount">$${parseFloat(d.amount).toFixed(2)}</td>
+        <td class="td-mono" title="${d.tx_hash||''}">${d.tx_hash||'—'}</td>
+        <td class="td-date">${fmt(d.created_at)}</td>
+        <td>${sbadge(d.status)}</td>
+        <td>${d.status==='pending'
+          ? `<div class="act-row"><button class="btn-ok" onclick="approveDep(${d.id})">✓ Approuver</button><button class="btn-ko" onclick="rejectDep(${d.id})">✕ Rejeter</button></div>`
+          : '<span style="color:var(--text3);font-size:.72rem">—</span>'}</td>
+      </tr>`).join('');
     }
-
-    function renderOverviewDeposits() {
-      const el = document.getElementById('overview-deposits');
-      const list = allDeposits.slice(0, 5);
-      if (!list.length) { el.innerHTML = '<div class="activity-item"><span style="color:var(--text3);font-size:0.8rem">Aucun dépôt</span></div>'; return; }
-      el.innerHTML = list.map(d => {
-        const dotClass = d.status === 'confirmed' ? 'green' : d.status === 'rejected' ? 'red' : 'yellow';
-        return `<div class="activity-item">
-          <div class="activity-dot ${dotClass}"></div>
-          <div class="activity-info">
-            <div class="activity-label">${d.user_email}</div>
-            <div class="activity-meta">${new Date(d.created_at).toLocaleDateString('fr-FR')} · ${d.status === 'pending' ? 'En attente' : d.status === 'confirmed' ? 'Confirmé' : 'Rejeté'}</div>
-          </div>
-          <div class="activity-amount positive">+$${parseFloat(d.amount).toFixed(2)}</div>
-        </div>`;
-      }).join('');
+    function renderOvDep() {
+      const el = document.getElementById('ov-dep');
+      const list = allDeposits.slice(0,5);
+      if (!list.length) { el.innerHTML = '<div class="activity-item"><span style="color:var(--text3);font-size:.78rem">Aucun dépôt</span></div>'; return; }
+      el.innerHTML = list.map(d => `<div class="activity-item">
+        <div class="dot ${d.status==='confirmed'?'green':d.status==='rejected'?'red':'yellow'}"></div>
+        <div class="act-info"><div class="act-label">${d.user_email}</div><div class="act-meta">${fmt(d.created_at)} · ${slabel(d.status)}</div></div>
+        <div class="act-amount pos">+$${parseFloat(d.amount).toFixed(2)}</div>
+      </div>`).join('');
     }
-
-    async function approveDeposit(id) {
+    async function approveDep(id) {
       if (!confirm('Approuver ce dépôt ?')) return;
-      try {
-        const res = await fetch(`/api/admin/deposits/${id}/approve`, { method: 'POST' });
-        const r = await res.json();
-        if (res.ok) { showToast('Dépôt approuvé !', 'success'); refreshAll(); }
-        else showToast(r.error, 'error');
-      } catch { showToast('Erreur', 'error'); }
+      const r = await fetch(`/api/admin/deposits/${id}/approve`,{method:'POST'});
+      const j = await r.json();
+      r.ok ? (showToast('Dépôt approuvé !','success'), refreshAll()) : showToast(j.error,'error');
     }
-
-    async function rejectDeposit(id) {
+    async function rejectDep(id) {
       if (!confirm('Rejeter ce dépôt ?')) return;
-      try {
-        const res = await fetch(`/api/admin/deposits/${id}/reject`, { method: 'POST' });
-        const r = await res.json();
-        if (res.ok) { showToast('Dépôt rejeté', 'success'); refreshAll(); }
-        else showToast(r.error, 'error');
-      } catch { showToast('Erreur', 'error'); }
+      const r = await fetch(`/api/admin/deposits/${id}/reject`,{method:'POST'});
+      const j = await r.json();
+      r.ok ? (showToast('Dépôt rejeté','success'), refreshAll()) : showToast(j.error,'error');
     }
 
     // ── WITHDRAWALS ──
     async function loadWithdrawals() {
       try {
-        const res = await fetch('/api/admin/withdrawals');
-        if (res.ok) { allWithdrawals = await res.json(); renderWithdrawals(); renderOverviewWithdrawals(); }
+        const r = await fetch('/api/admin/withdrawals');
+        if (r.ok) { allWithdrawals = await r.json(); renderWithdrawals(); renderOvWith(); }
       } catch {}
     }
-
-    function setWithFilter(el, f) {
+    function setWithF(el, f) {
       withFilter = f;
-      document.querySelectorAll('#page-withdrawals .filter-chip').forEach(b => b.classList.remove('active'));
+      document.querySelectorAll('#page-withdrawals .chip').forEach(b => b.classList.remove('active'));
       el.classList.add('active');
       renderWithdrawals();
     }
-
     function renderWithdrawals() {
-      const search = (document.getElementById('with-search')?.value || '').toLowerCase();
+      const q = (document.getElementById('with-search')?.value || '').toLowerCase();
       let list = withFilter === 'all' ? allWithdrawals : allWithdrawals.filter(w => w.status === withFilter);
-      if (search) list = list.filter(w => w.user_email.toLowerCase().includes(search) || w.address.toLowerCase().includes(search));
-      const tbody = document.getElementById('with-tbody');
-      if (!list.length) { tbody.innerHTML = '<tr class="empty-row"><td colspan="7">Aucun retrait trouvé</td></tr>'; return; }
-      tbody.innerHTML = list.map(w => `
-        <tr>
-          <td style="color:var(--text3);font-size:0.75rem">#${w.id}</td>
-          <td class="td-email">${w.user_email}</td>
-          <td class="td-amount">$${parseFloat(w.amount).toFixed(2)}</td>
-          <td class="td-mono" title="${w.address}">${w.address}</td>
-          <td style="color:var(--text3);font-size:0.775rem;white-space:nowrap">${new Date(w.created_at).toLocaleDateString('fr-FR')}</td>
-          <td>${statusBadge(w.status)}</td>
-          <td>
-            ${w.status === 'pending' ? `
-              <div class="action-row">
-                <button class="btn-approve" onclick="approveWithdrawal(${w.id})">✓ Confirmer</button>
-                <button class="btn-reject" onclick="rejectWithdrawal(${w.id})">✕ Rejeter</button>
-              </div>` : '<span style="color:var(--text3);font-size:0.75rem">—</span>'}
-          </td>
-        </tr>`).join('');
+      if (q) list = list.filter(w => w.user_email.toLowerCase().includes(q) || w.address.toLowerCase().includes(q));
+      const tb = document.getElementById('with-tbody');
+      if (!list.length) { tb.innerHTML = '<tr class="empty-row"><td colspan="7">Aucun retrait trouvé</td></tr>'; return; }
+      tb.innerHTML = list.map(w => `<tr>
+        <td class="td-id">#${w.id}</td>
+        <td class="td-email">${w.user_email}</td>
+        <td class="td-amount">$${parseFloat(w.amount).toFixed(2)}</td>
+        <td class="td-mono" title="${w.address}">${w.address}</td>
+        <td class="td-date">${fmt(w.created_at)}</td>
+        <td>${sbadge(w.status)}</td>
+        <td>${w.status==='pending'
+          ? `<div class="act-row"><button class="btn-ok" onclick="approveWith(${w.id})">✓ Confirmer</button><button class="btn-ko" onclick="rejectWith(${w.id})">✕ Rejeter</button></div>`
+          : '<span style="color:var(--text3);font-size:.72rem">—</span>'}</td>
+      </tr>`).join('');
     }
-
-    function renderOverviewWithdrawals() {
-      const el = document.getElementById('overview-withdrawals');
-      const list = allWithdrawals.slice(0, 5);
-      if (!list.length) { el.innerHTML = '<div class="activity-item"><span style="color:var(--text3);font-size:0.8rem">Aucun retrait</span></div>'; return; }
-      el.innerHTML = list.map(w => {
-        const dotClass = w.status === 'confirmed' ? 'green' : w.status === 'rejected' ? 'red' : 'yellow';
-        return `<div class="activity-item">
-          <div class="activity-dot ${dotClass}"></div>
-          <div class="activity-info">
-            <div class="activity-label">${w.user_email}</div>
-            <div class="activity-meta">${new Date(w.created_at).toLocaleDateString('fr-FR')} · ${w.status === 'pending' ? 'En attente' : w.status === 'confirmed' ? 'Confirmé' : 'Rejeté'}</div>
-          </div>
-          <div class="activity-amount negative">-$${parseFloat(w.amount).toFixed(2)}</div>
-        </div>`;
-      }).join('');
+    function renderOvWith() {
+      const el = document.getElementById('ov-with');
+      const list = allWithdrawals.slice(0,5);
+      if (!list.length) { el.innerHTML = '<div class="activity-item"><span style="color:var(--text3);font-size:.78rem">Aucun retrait</span></div>'; return; }
+      el.innerHTML = list.map(w => `<div class="activity-item">
+        <div class="dot ${w.status==='confirmed'?'green':w.status==='rejected'?'red':'yellow'}"></div>
+        <div class="act-info"><div class="act-label">${w.user_email}</div><div class="act-meta">${fmt(w.created_at)} · ${slabel(w.status)}</div></div>
+        <div class="act-amount neg">-$${parseFloat(w.amount).toFixed(2)}</div>
+      </div>`).join('');
     }
-
-    async function approveWithdrawal(id) {
-      if (!confirm('Confirmer ce retrait ? Le paiement a été envoyé ?')) return;
-      try {
-        const res = await fetch(`/api/admin/withdrawals/${id}/approve`, { method: 'POST' });
-        const r = await res.json();
-        if (res.ok) { showToast('Retrait confirmé !', 'success'); refreshAll(); }
-        else showToast(r.error, 'error');
-      } catch { showToast('Erreur', 'error'); }
+    async function approveWith(id) {
+      if (!confirm('Confirmer ce retrait ?')) return;
+      const r = await fetch(`/api/admin/withdrawals/${id}/approve`,{method:'POST'});
+      const j = await r.json();
+      r.ok ? (showToast('Retrait confirmé !','success'), refreshAll()) : showToast(j.error,'error');
     }
-
-    async function rejectWithdrawal(id) {
+    async function rejectWith(id) {
       if (!confirm('Rejeter ce retrait ? Le solde sera recrédité.')) return;
-      try {
-        const res = await fetch(`/api/admin/withdrawals/${id}/reject`, { method: 'POST' });
-        const r = await res.json();
-        if (res.ok) { showToast('Retrait rejeté, solde recrédité', 'success'); refreshAll(); }
-        else showToast(r.error, 'error');
-      } catch { showToast('Erreur', 'error'); }
+      const r = await fetch(`/api/admin/withdrawals/${id}/reject`,{method:'POST'});
+      const j = await r.json();
+      r.ok ? (showToast('Retrait rejeté, solde recrédité','success'), refreshAll()) : showToast(j.error,'error');
     }
 
     // ── USERS ──
     async function loadUsers() {
       try {
-        const res = await fetch('/api/admin/users');
-        if (res.ok) { allUsers = await res.json(); renderUsers(); }
+        const r = await fetch('/api/admin/users');
+        if (r.ok) { allUsers = await r.json(); renderUsers(); }
       } catch {}
     }
-
     function renderUsers() {
-      const search = (document.getElementById('user-search')?.value || '').toLowerCase();
-      let list = search ? allUsers.filter(u => u.email.toLowerCase().includes(search)) : allUsers;
-      const tbody = document.getElementById('users-tbody');
-      if (!list.length) { tbody.innerHTML = '<tr class="empty-row"><td colspan="7">Aucun utilisateur trouvé</td></tr>'; return; }
-      tbody.innerHTML = list.map(u => `
-        <tr>
-          <td>
-            <div class="user-cell">
-              <div class="user-avatar">${u.email.charAt(0).toUpperCase()}</div>
-              <span class="user-email-text">${u.email}</span>
-            </div>
-          </td>
-          <td class="td-amount">$${parseFloat(u.balance).toFixed(2)}</td>
-          <td style="color:var(--text2)">$${parseFloat(u.total_deposited||0).toFixed(2)}</td>
-          <td style="color:var(--text2)">$${parseFloat(u.total_withdrawn||0).toFixed(2)}</td>
-          <td style="text-align:center;color:var(--text2)">${u.referrals_count}</td>
-          <td style="color:var(--text3);font-size:0.775rem;white-space:nowrap">${new Date(u.created_at).toLocaleDateString('fr-FR')}</td>
-          <td>
-            <button class="btn-edit" onclick="openUserModal(${u.id})">Détails</button>
-          </td>
-        </tr>`).join('');
+      const q = (document.getElementById('user-search')?.value || '').toLowerCase();
+      let list = q ? allUsers.filter(u => u.email.toLowerCase().includes(q)) : allUsers;
+      const tb = document.getElementById('users-tbody');
+      if (!list.length) { tb.innerHTML = '<tr class="empty-row"><td colspan="7">Aucun utilisateur trouvé</td></tr>'; return; }
+      tb.innerHTML = list.map(u => `<tr>
+        <td><div class="u-cell"><div class="u-av">${u.email[0].toUpperCase()}</div><span style="color:var(--text2);font-size:.8rem">${u.email}</span></div></td>
+        <td class="td-amount" style="color:var(--green)">$${parseFloat(u.balance).toFixed(2)}</td>
+        <td style="color:var(--text2)">$${parseFloat(u.total_deposited||0).toFixed(2)}</td>
+        <td style="color:var(--text2)">$${parseFloat(u.total_withdrawn||0).toFixed(2)}</td>
+        <td style="text-align:center;color:var(--text2)">${u.referrals_count}</td>
+        <td class="td-date">${fmt(u.created_at)}</td>
+        <td><button class="btn-info" onclick="openModal(${u.id})">Détails</button></td>
+      </tr>`).join('');
     }
-
-    function openUserModal(userId) {
-      selectedUserId = userId;
-      const u = allUsers.find(x => x.id === userId);
+    function openModal(id) {
+      selUserId = id;
+      const u = allUsers.find(x => x.id === id);
       if (!u) return;
-      document.getElementById('modal-content').innerHTML = `
-        <div class="modal-row"><span class="modal-key">Email</span><span class="modal-val">${u.email}</span></div>
+      document.getElementById('modal-rows').innerHTML = `
+        <div class="modal-row"><span class="modal-key">Email</span><span class="modal-val" style="font-family:sans-serif">${u.email}</span></div>
         <div class="modal-row"><span class="modal-key">Solde</span><span class="modal-val" style="color:var(--green)">$${parseFloat(u.balance).toFixed(2)}</span></div>
-        <div class="modal-row"><span class="modal-key">Dépôt total confirmé</span><span class="modal-val">$${parseFloat(u.total_deposited||0).toFixed(2)}</span></div>
+        <div class="modal-row"><span class="modal-key">Dépôt confirmé</span><span class="modal-val">$${parseFloat(u.total_deposited||0).toFixed(2)}</span></div>
         <div class="modal-row"><span class="modal-key">Total retiré</span><span class="modal-val">$${parseFloat(u.total_withdrawn||0).toFixed(2)}</span></div>
         <div class="modal-row"><span class="modal-key">Parrainages</span><span class="modal-val">${u.referrals_count}</span></div>
-        <div class="modal-row"><span class="modal-key">Code parrainage</span><span class="modal-val" style="font-family:monospace">${u.referral_code || '—'}</span></div>
-        <div class="modal-row"><span class="modal-key">Inscription</span><span class="modal-val">${new Date(u.created_at).toLocaleDateString('fr-FR')}</span></div>
-      `;
-      document.getElementById('adjust-amount').value = '';
-      document.getElementById('modal-error').style.display = 'none';
-      document.getElementById('modal-success').style.display = 'none';
+        <div class="modal-row"><span class="modal-key">Code parrainage</span><span class="modal-val">${u.referral_code||'—'}</span></div>
+        <div class="modal-row"><span class="modal-key">Inscription</span><span class="modal-val">${fmt(u.created_at)}</span></div>`;
+      document.getElementById('adj-amt').value = '';
+      document.getElementById('m-err').style.display = 'none';
+      document.getElementById('m-ok').style.display = 'none';
       document.getElementById('user-modal').classList.add('open');
     }
-
-    function closeUserModal() {
+    function closeModal() {
       document.getElementById('user-modal').classList.remove('open');
-      selectedUserId = null;
+      selUserId = null;
     }
-
     async function adjustBalance() {
-      const amount = parseFloat(document.getElementById('adjust-amount').value);
-      const errEl = document.getElementById('modal-error');
-      const okEl = document.getElementById('modal-success');
-      errEl.style.display = 'none';
-      okEl.style.display = 'none';
-      if (isNaN(amount) || amount === 0) { errEl.textContent = 'Entrez un montant valide (+ ou −)'; errEl.style.display = 'block'; return; }
-      if (!confirm(`Ajuster le solde de ${amount > 0 ? '+' : ''}$${amount} ?`)) return;
-      try {
-        const res = await fetch(`/api/admin/users/${selectedUserId}/adjust-balance`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ amount })
-        });
-        const r = await res.json();
-        if (res.ok) {
-          okEl.textContent = `✓ Nouveau solde: $${parseFloat(r.newBalance).toFixed(2)}`;
-          okEl.style.display = 'block';
-          await loadUsers();
-        } else {
-          errEl.textContent = r.error;
-          errEl.style.display = 'block';
-        }
-      } catch { errEl.textContent = 'Erreur serveur'; errEl.style.display = 'block'; }
+      const amt = parseFloat(document.getElementById('adj-amt').value);
+      const errEl = document.getElementById('m-err');
+      const okEl = document.getElementById('m-ok');
+      errEl.style.display = 'none'; okEl.style.display = 'none';
+      if (isNaN(amt)||amt===0) { errEl.textContent='Entrez un montant valide (+ ou −)'; errEl.style.display='block'; return; }
+      if (!confirm(`Ajuster le solde de ${amt>0?'+':''}$${amt} ?`)) return;
+      const r = await fetch(`/api/admin/users/${selUserId}/adjust-balance`,{
+        method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({amount:amt})
+      });
+      const j = await r.json();
+      if (r.ok) { okEl.textContent=`✓ Nouveau solde : $${parseFloat(j.newBalance).toFixed(2)}`; okEl.style.display='block'; loadUsers(); }
+      else { errEl.textContent=j.error; errEl.style.display='block'; }
     }
+    document.getElementById('user-modal').addEventListener('click', e => { if(e.target===e.currentTarget) closeModal(); });
 
     // ── SETTINGS ──
     async function loadSettings() {
       try {
-        const res = await fetch('/api/admin/settings');
-        if (res.ok) {
-          const s = await res.json();
-          document.getElementById('current-dep-addr').textContent = s.deposit_address;
-        }
+        const r = await fetch('/api/admin/settings');
+        if (r.ok) { const s = await r.json(); document.getElementById('cur-addr').textContent = s.deposit_address; }
       } catch {}
     }
-
-    async function saveDepositAddress(e) {
+    async function saveAddr(e) {
       e.preventDefault();
-      const addr = document.getElementById('new-dep-addr').value.trim();
-      const ok = document.getElementById('settings-success');
-      const err = document.getElementById('settings-error');
-      ok.style.display = 'none';
-      err.style.display = 'none';
-      try {
-        const res = await fetch('/api/admin/settings', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ deposit_address: addr })
-        });
-        const r = await res.json();
-        if (res.ok) {
-          ok.style.display = 'block';
-          document.getElementById('current-dep-addr').textContent = r.deposit_address;
-          document.getElementById('new-dep-addr').value = '';
-          showToast('Adresse mise à jour !', 'success');
-        } else {
-          err.textContent = r.error;
-          err.style.display = 'block';
-        }
-      } catch { err.textContent = 'Erreur serveur'; err.style.display = 'block'; }
+      const addr = document.getElementById('new-addr').value.trim();
+      const ok = document.getElementById('addr-ok');
+      const err = document.getElementById('addr-err');
+      ok.style.display='none'; err.style.display='none';
+      const r = await fetch('/api/admin/settings',{
+        method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({deposit_address:addr})
+      });
+      const j = await r.json();
+      if (r.ok) {
+        ok.style.display='block';
+        document.getElementById('cur-addr').textContent = j.deposit_address;
+        document.getElementById('new-addr').value = '';
+        showToast('Adresse mise à jour !','success');
+      } else { err.textContent=j.error; err.style.display='block'; }
     }
 
     // ── HELPERS ──
-    function statusBadge(status) {
-      const map = {
-        pending: '<span class="badge badge-pending">⏳ En attente</span>',
-        confirmed: '<span class="badge badge-confirmed">✓ Confirmé</span>',
-        rejected: '<span class="badge badge-rejected">✕ Rejeté</span>'
-      };
-      return map[status] || status;
+    function fmt(d) { return new Date(d).toLocaleDateString('fr-FR'); }
+    function fmtNum(n) { return parseFloat(n).toLocaleString('fr-FR',{minimumFractionDigits:0}); }
+    function slabel(s) { return {pending:'En attente',confirmed:'Confirmé',rejected:'Rejeté'}[s]||s; }
+    function sbadge(s) {
+      const m = {pending:'<span class="badge b-pending">⏳ En attente</span>',confirmed:'<span class="badge b-confirmed">✓ Confirmé</span>',rejected:'<span class="badge b-rejected">✕ Rejeté</span>'};
+      return m[s]||s;
     }
-
     function showToast(msg, type) {
       const t = document.getElementById('toast');
-      t.textContent = msg;
-      t.className = 'toast ' + type;
+      t.textContent = msg; t.className = 'toast ' + type;
       t.classList.add('show');
       setTimeout(() => t.classList.remove('show'), 3200);
     }
-
-    // Close modal on overlay click
-    document.getElementById('user-modal').addEventListener('click', function(e) {
-      if (e.target === this) closeUserModal();
-    });
   </script>
 </body>
 </html>
