@@ -133,7 +133,7 @@ function initDB() {
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       title TEXT NOT NULL,
       description TEXT,
-      reward_percentage REAL DEFAULT 45
+      reward_percentage REAL DEFAULT 40
     );
   `);
 
@@ -179,12 +179,12 @@ function initDB() {
   const questCount = db.prepare('SELECT COUNT(*) as count FROM quests').get();
   if (questCount.count === 0) {
     const insertQuest = db.prepare('INSERT INTO quests (title, description, reward_percentage) VALUES (?, ?, ?)');
-    insertQuest.run('Partager sur les réseaux', 'Partagez notre plateforme sur vos réseaux sociaux', 45);
-    insertQuest.run('Regarder une vidéo', 'Regardez une vidéo promotionnelle de 30 secondes', 45);
-    insertQuest.run('Visiter notre partenaire', 'Visitez le site de notre partenaire pour découvrir de nouvelles opportunités', 45);
+    insertQuest.run('Partager sur les réseaux', 'Partagez notre plateforme sur vos réseaux sociaux', 40);
+    insertQuest.run('Regarder une vidéo', 'Regardez une vidéo promotionnelle de 30 secondes', 40);
+    insertQuest.run('Visiter notre partenaire', 'Visitez le site de notre partenaire pour découvrir de nouvelles opportunités', 40);
   }
 
-  db.prepare('UPDATE quests SET reward_percentage = ?').run(45);
+  db.prepare('UPDATE quests SET reward_percentage = ?').run(40);
 
   const adminCount = db.prepare('SELECT COUNT(*) as count FROM admins').get();
   if (adminCount.count === 0) {
