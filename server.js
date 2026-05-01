@@ -603,6 +603,15 @@ app.get('/api/history', requireAuth, (req, res) => {
   }
 });
 
+app.get('/api/deposits', requireAuth, (req, res) => {
+  try {
+    const deposits = db.prepare('SELECT amount, status, tx_hash, created_at FROM deposits WHERE user_id = ? ORDER BY created_at DESC LIMIT 20').all(req.session.userId);
+    res.json({ deposits });
+  } catch (err) {
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+});
+
 app.post('/api/withdraw', requireAuth, (req, res) => {
   const { amount, address } = req.body;
   const minWithdraw = 50;

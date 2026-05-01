@@ -1,10 +1,84 @@
 let currentUser = null;
+let depositPollingInterval = null;
+const lastDepositStatuses = new Map();
 
 document.addEventListener('DOMContentLoaded', () => {
   checkAuth();
   setupEventListeners();
   setupLandingListeners();
 });
+
+function startDepositPolling() {
+  stopDepositPolling();
+  refreshLiveDeposits();
+  depositPollingInterval = setInterval(refreshLiveDeposits, 10000);
+}
+
+function stopDepositPolling() {
+  if (depositPollingInterval) {
+    clearInterval(depositPollingInterval);
+    depositPollingInterval = null;
+  }
+}
+
+async function refreshLiveDeposits() {
+  try {
+    const res = await fetch('/api/deposits');
+    if (!res.ok) return;
+    const data = await res.json();
+    const deposits = data.deposits || [];
+
+    deposits.forEach(d => {
+      const prev = lastDepositStatuses.get(d.tx_hash || d.created_at);
+      if (prev && prev !== d.status) {
+        if (d.status === 'confirmed') {
+          showToast(`✅ Dépôt de $${parseFloat(d.amount).toFixed(2)} confirmé !`, 'success');
+          loadUserData();
+          loadQuests();
+        } else if (d.status === 'rejected') {
+          showToast(`❌ Dépôt de $${parseFloat(d.amount).toFixed(2)} rejeté.`, 'error');
+        }
+      }
+      lastDepositStatuses.set(d.tx_hash || d.created_at, d.status);
+    });
+
+    renderLiveDeposits(deposits);
+  } catch (err) {}
+}
+
+function renderLiveDeposits(deposits) {
+  const container = document.getElementById('live-deposits-list');
+  if (!container) return;
+
+  if (!deposits || deposits.length === 0) {
+    container.innerHTML = '<p class="empty-state">Aucun dépôt pour le moment</p>';
+    return;
+  }
+
+  const statusConfig = {
+    pending:   { label: 'En attente',  cls: 'status-pending'   },
+    confirmed: { label: 'Confirmé',    cls: 'status-confirmed' },
+    rejected:  { label: 'Rejeté',      cls: 'status-rejected'  }
+  };
+
+  container.innerHTML = deposits.slice(0, 10).map(d => {
+    const cfg = statusConfig[d.status] || { label: d.status, cls: '' };
+    const date = new Date(d.created_at).toLocaleString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+    const short = d.tx_hash ? d.tx_hash.substring(0, 16) + '…' : '—';
+    return `
+      <div class="live-deposit-item">
+        <div class="ldi-left">
+          <div class="ldi-amount">+$${parseFloat(d.amount).toFixed(2)}</div>
+          <div class="ldi-hash" title="${d.tx_hash || ''}">${short}</div>
+        </div>
+        <div class="ldi-right">
+          <span class="ldi-status ${cfg.cls}">${cfg.label}${d.status === 'pending' ? '<span class="spin-dot"></span>' : ''}</span>
+          <div class="ldi-date">${date}</div>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
 
 function setupLandingListeners() {
   const getStartedBtn = document.getElementById('get-started-btn');
@@ -141,6 +215,7 @@ function setupEventListeners() {
         e.target.reset();
         loadHistory();
         showToast('Transaction soumise avec succes!', 'success');
+        refreshLiveDeposits();
       } else {
         document.getElementById('deposit-error').textContent = result.error;
       }
@@ -286,6 +361,7 @@ function showDashboard() {
   loadUserData();
   loadQuests();
   loadHistory();
+  startDepositPolling();
 }
 
 async function loadUserData() {
@@ -477,6 +553,8 @@ async function loadHistory() {
 
 async function logout() {
   try {
+    stopDepositPolling();
+    lastDepositStatuses.clear();
     await fetch('/api/logout', { method: 'POST' });
     showAuth();
   } catch (err) {
