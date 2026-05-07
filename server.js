@@ -201,6 +201,8 @@ function initDB() {
   try { db.exec(`ALTER TABLE quests ADD COLUMN quest_type TEXT DEFAULT 'regular'`); } catch(e) {}
   try { db.exec(`ALTER TABLE users ADD COLUMN first_name TEXT DEFAULT ''`); } catch(e) {}
   try { db.exec(`ALTER TABLE users ADD COLUMN last_name TEXT DEFAULT ''`); } catch(e) {}
+  try { db.exec(`ALTER TABLE recovery_requests DROP COLUMN document_front`); } catch(e) {}
+  try { db.exec(`ALTER TABLE recovery_requests DROP COLUMN document_back`); } catch(e) {}
 
   const settingsCount = db.prepare("SELECT COUNT(*) as count FROM settings WHERE key = 'deposit_address'").get();
   if (settingsCount.count === 0) {
