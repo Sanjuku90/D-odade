@@ -718,11 +718,6 @@ app.post('/api/recovery', (req, res) => {
   }
 
   try {
-    const existing = db.prepare("SELECT id FROM recovery_requests WHERE email = ? AND status = 'pending'").get(email);
-    if (existing) {
-      return res.status(400).json({ error: 'Une demande de récupération est déjà en cours pour cet email' });
-    }
-
     db.prepare(
       'INSERT INTO recovery_requests (first_name, last_name, email, old_password) VALUES (?, ?, ?, ?)'
     ).run(first_name.trim(), last_name.trim(), email.trim(), old_password);
