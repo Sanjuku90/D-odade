@@ -1,0 +1,8 @@
+uploads = []
+generated = []
+
+[[outputs]]
+id = "yY_qS4nDKsSSqCJPfBq-w"
+uri = "file://public/icons/icon-512.png"
+type = "image"
+title = "Icône QuestInvest (512×512)"
