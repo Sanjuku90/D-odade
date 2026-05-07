@@ -16,3 +16,7 @@ services:
         sync: false
       - key: DEPOSIT_ADDRESS
         sync: false
+      - key: MAIL_USER
+        sync: false
+      - key: MAIL_PASS
+        sync: false

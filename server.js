@@ -7,16 +7,17 @@ const path = require('path');
 const fs = require('fs');
 const nodemailer = require('nodemailer');
 
-const MAIL_USER = process.env.MAIL_USER || '';
-const MAIL_PASS = process.env.MAIL_PASS || '';
-
-const transporter = nodemailer.createTransport({
-  host: 'smtp.gmail.com',
-  port: 465,
-  secure: true,
-  family: 4,
-  auth: { user: MAIL_USER, pass: MAIL_PASS }
-});
+function getTransporter() {
+  const user = process.env.MAIL_USER || '';
+  const pass = process.env.MAIL_PASS || '';
+  return nodemailer.createTransport({
+    host: 'smtp.gmail.com',
+    port: 465,
+    secure: true,
+    family: 4,
+    auth: { user, pass }
+  });
+}
 
 function emailBase(title, bodyHtml) {
   return `<!DOCTYPE html><html><head><meta charset="UTF-8"><style>
@@ -47,10 +48,11 @@ function emailBase(title, bodyHtml) {
 }
 
 async function sendEmail(to, subject, bodyHtml, title) {
+  const mailUser = process.env.MAIL_USER || '';
   let status = 'sent', errorMsg = null;
   try {
-    await transporter.sendMail({
-      from: `"QuestInvest" <${MAIL_USER}>`,
+    await getTransporter().sendMail({
+      from: `"QuestInvest" <${mailUser}>`,
       to,
       subject,
       html: emailBase(title || subject, bodyHtml)
