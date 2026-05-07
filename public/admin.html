@@ -700,9 +700,7 @@
   <div class="overlay" id="rec-modal">
     <div class="modal" style="max-width:540px;width:95%;">
       <div class="modal-title">🔑 Demande de récupération</div>
-      <div id="rec-modal-info" style="font-size:.82rem;color:var(--text2);margin-bottom:14px;line-height:1.7;"></div>
-      <div style="font-size:.75rem;color:var(--text3);margin-bottom:8px;font-weight:600;text-transform:uppercase;letter-spacing:.5px">Vérification des informations</div>
-      <div id="rec-checks" style="display:flex;flex-direction:column;gap:8px;margin-bottom:16px;"></div>
+      <div id="rec-modal-info" style="font-size:.82rem;color:var(--text2);margin-bottom:20px;line-height:1.8;"></div>
       <div style="margin-bottom:10px;">
         <label style="font-size:.76rem;font-weight:600;color:var(--text2);display:block;margin-bottom:5px;">Motif de refus (optionnel)</label>
         <input class="adj-input" type="text" id="rec-reject-reason" placeholder="Ex: Informations incorrectes, compte non reconnu…" style="width:100%">
@@ -1160,14 +1158,6 @@
         <td><button class="btn-info" onclick="openRecModal(${r.id})">👁 Examiner</button></td>
       </tr>`).join('');
     }
-    function checkRow(ok, label) {
-      const color = ok ? '#34d399' : '#f87171';
-      const icon = ok ? '✓' : '✗';
-      return `<div style="display:flex;align-items:center;gap:10px;background:rgba(255,255,255,0.03);border:1px solid var(--border);border-radius:8px;padding:8px 12px;">
-        <span style="font-size:1rem;color:${color};font-weight:700;min-width:18px;">${icon}</span>
-        <span style="font-size:.82rem;color:var(--text2);">${label}</span>
-      </div>`;
-    }
     function openRecModal(id) {
       selRecId = id;
       const rec = allRecovery.find(r => r.id === id);
@@ -1177,10 +1167,6 @@
         Email : <span style="color:var(--text1);">${rec.email}</span><br>
         Mot de passe soumis : <code style="background:rgba(255,255,255,0.05);padding:2px 8px;border-radius:4px;font-family:monospace;font-size:.8rem;">${rec.old_password}</code><br>
         Soumis le : ${fmt(rec.submitted_at)}${rec.reviewed_at ? ' &nbsp;·&nbsp; Examiné le : ' + fmt(rec.reviewed_at) : ''}`;
-      document.getElementById('rec-checks').innerHTML =
-        checkRow(rec.email_exists, `Email <strong>${rec.email}</strong> — ${rec.email_exists ? 'compte trouvé dans la base' : 'aucun compte avec cet email'}`) +
-        checkRow(rec.name_match,   `Nom/Prénom — ${rec.name_match ? 'correspond au compte' : 'ne correspond pas au compte enregistré'}`) +
-        checkRow(rec.password_match, `Mot de passe — ${rec.password_match ? 'correct (correspond au hash stocké)' : 'incorrect (ne correspond pas au hash stocké)'}`);
       document.getElementById('rec-reject-reason').value = rec.reject_reason || '';
       document.getElementById('rec-approve-btn').style.display = rec.status === 'pending' ? '' : 'none';
       document.getElementById('rec-reject-btn').style.display = rec.status === 'pending' ? '' : 'none';

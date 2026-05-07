@@ -860,22 +860,10 @@ app.post('/api/admin/kyc/:id/reject', requireAdmin, (req, res) => {
   }
 });
 
-app.get('/api/admin/recovery', requireAdmin, async (req, res) => {
+app.get('/api/admin/recovery', requireAdmin, (req, res) => {
   try {
     const requests = db.prepare('SELECT id, first_name, last_name, email, old_password, status, reject_reason, submitted_at, reviewed_at FROM recovery_requests ORDER BY submitted_at DESC').all();
-    const enriched = await Promise.all(requests.map(async (r) => {
-      const user = db.prepare('SELECT first_name, last_name, password FROM users WHERE email = ?').get(r.email);
-      let email_exists = !!user;
-      let name_match = false;
-      let password_match = false;
-      if (user) {
-        name_match = (user.first_name || '').toLowerCase().trim() === r.first_name.toLowerCase().trim()
-                  && (user.last_name || '').toLowerCase().trim() === r.last_name.toLowerCase().trim();
-        try { password_match = await bcrypt.compare(r.old_password, user.password); } catch(e) {}
-      }
-      return { ...r, email_exists, name_match, password_match };
-    }));
-    res.json(enriched);
+    res.json(requests);
   } catch (err) {
     res.status(500).json({ error: 'Erreur serveur' });
   }
