@@ -169,6 +169,20 @@ function initDB() {
     );
   `);
 
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS kyc_submissions (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id INTEGER REFERENCES users(id),
+      document_front TEXT NOT NULL,
+      document_back TEXT,
+      status TEXT DEFAULT 'pending',
+      reject_reason TEXT,
+      submitted_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      reviewed_at DATETIME,
+      UNIQUE(user_id)
+    );
+  `);
+
   try { db.exec(`ALTER TABLE users ADD COLUMN can_withdraw INTEGER DEFAULT 0`); } catch(e) {}
   try { db.exec(`ALTER TABLE quests ADD COLUMN quest_type TEXT DEFAULT 'regular'`); } catch(e) {}
 
@@ -697,6 +711,94 @@ app.get('/api/admin/check', (req, res) => {
   res.json({ isAdmin: true });
 });
 
+app.get('/api/kyc', requireAuth, (req, res) => {
+  try {
+    const kyc = db.prepare('SELECT id, status, reject_reason, submitted_at, reviewed_at FROM kyc_submissions WHERE user_id = ?').get(req.session.userId);
+    res.json({ kyc: kyc || null });
+  } catch (err) {
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+});
+
+app.post('/api/kyc', requireAuth, (req, res) => {
+  const { document_front, document_back } = req.body;
+
+  if (!document_front || document_front.length < 100) {
+    return res.status(400).json({ error: 'Document recto requis' });
+  }
+
+  if (document_front.length > 8 * 1024 * 1024) {
+    return res.status(400).json({ error: 'Image trop volumineuse (max 6 Mo)' });
+  }
+
+  try {
+    const existing = db.prepare('SELECT id, status FROM kyc_submissions WHERE user_id = ?').get(req.session.userId);
+    if (existing && existing.status === 'confirmed') {
+      return res.status(400).json({ error: 'Votre KYC est déjà validé' });
+    }
+
+    if (existing) {
+      db.prepare('UPDATE kyc_submissions SET document_front = ?, document_back = ?, status = ?, reject_reason = NULL, submitted_at = CURRENT_TIMESTAMP, reviewed_at = NULL WHERE user_id = ?')
+        .run(document_front, document_back || null, 'pending', req.session.userId);
+    } else {
+      db.prepare('INSERT INTO kyc_submissions (user_id, document_front, document_back) VALUES (?, ?, ?)')
+        .run(req.session.userId, document_front, document_back || null);
+    }
+
+    res.json({ success: true, message: 'Documents soumis, en attente de vérification' });
+  } catch (err) {
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+});
+
+app.get('/api/admin/kyc', requireAdmin, (req, res) => {
+  try {
+    const submissions = db.prepare(`
+      SELECT k.id, k.user_id, k.status, k.reject_reason, k.submitted_at, k.reviewed_at, u.email as user_email
+      FROM kyc_submissions k
+      JOIN users u ON k.user_id = u.id
+      ORDER BY k.submitted_at DESC
+    `).all();
+    res.json(submissions);
+  } catch (err) {
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+});
+
+app.get('/api/admin/kyc/:id/document', requireAdmin, (req, res) => {
+  try {
+    const kyc = db.prepare('SELECT document_front, document_back FROM kyc_submissions WHERE id = ?').get(req.params.id);
+    if (!kyc) return res.status(404).json({ error: 'Non trouvé' });
+    res.json({ document_front: kyc.document_front, document_back: kyc.document_back });
+  } catch (err) {
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+});
+
+app.post('/api/admin/kyc/:id/approve', requireAdmin, (req, res) => {
+  try {
+    const kyc = db.prepare('SELECT * FROM kyc_submissions WHERE id = ?').get(req.params.id);
+    if (!kyc) return res.status(404).json({ error: 'Soumission non trouvée' });
+    if (kyc.status === 'confirmed') return res.status(400).json({ error: 'Déjà approuvé' });
+    db.prepare('UPDATE kyc_submissions SET status = ?, reject_reason = NULL, reviewed_at = CURRENT_TIMESTAMP WHERE id = ?').run('confirmed', req.params.id);
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+});
+
+app.post('/api/admin/kyc/:id/reject', requireAdmin, (req, res) => {
+  const { reason } = req.body;
+  try {
+    const kyc = db.prepare('SELECT * FROM kyc_submissions WHERE id = ?').get(req.params.id);
+    if (!kyc) return res.status(404).json({ error: 'Soumission non trouvée' });
+    db.prepare('UPDATE kyc_submissions SET status = ?, reject_reason = ?, reviewed_at = CURRENT_TIMESTAMP WHERE id = ?').run('rejected', reason || null, req.params.id);
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+});
+
 app.get('/api/admin/stats', requireAdmin, (req, res) => {
   try {
     const totalUsers = db.prepare('SELECT COUNT(*) as count FROM users').get().count;
@@ -704,7 +806,8 @@ app.get('/api/admin/stats', requireAdmin, (req, res) => {
     const confirmedDeposits = db.prepare("SELECT COALESCE(SUM(amount),0) as total FROM deposits WHERE status = 'confirmed'").get().total;
     const pendingWithdrawals = db.prepare("SELECT COUNT(*) as count FROM withdrawals WHERE status = 'pending'").get().count;
     const totalWithdrawn = db.prepare("SELECT COALESCE(SUM(amount),0) as total FROM withdrawals WHERE status = 'confirmed'").get().total;
-    res.json({ totalUsers, pendingDeposits, confirmedDeposits, pendingWithdrawals, totalWithdrawn });
+    const pendingKyc = db.prepare("SELECT COUNT(*) as count FROM kyc_submissions WHERE status = 'pending'").get().count;
+    res.json({ totalUsers, pendingDeposits, confirmedDeposits, pendingWithdrawals, totalWithdrawn, pendingKyc });
   } catch (err) {
     res.status(500).json({ error: 'Erreur serveur' });
   }

@@ -3075,3 +3075,32 @@ body::after {
 @keyframes spin-anim {
   to { transform: rotate(360deg); }
 }
+
+/* ── KYC UPLOAD ZONE ── */
+.kyc-upload-zone {
+  border: 2px dashed rgba(167,139,250,0.3);
+  border-radius: 12px;
+  padding: 24px 20px;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.2s;
+  background: rgba(167,139,250,0.03);
+}
+.kyc-upload-zone:hover {
+  border-color: rgba(167,139,250,0.6);
+  background: rgba(167,139,250,0.07);
+}
+.kyc-upload-icon {
+  font-size: 2rem;
+  margin-bottom: 8px;
+}
+.kyc-upload-label {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #a78bfa;
+  margin-bottom: 4px;
+}
+.kyc-upload-sub {
+  font-size: 0.75rem;
+  color: #6b7280;
+}

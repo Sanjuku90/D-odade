@@ -361,6 +361,7 @@ function showDashboard() {
   loadUserData();
   loadQuests();
   loadHistory();
+  loadKyc();
   startDepositPolling();
 }
 
@@ -561,6 +562,126 @@ async function logout() {
     console.error('Error logging out');
   }
 }
+
+let kycFrontBase64 = null;
+let kycBackBase64 = null;
+
+function handleKycFile(side, input) {
+  const file = input.files[0];
+  if (!file) return;
+
+  const maxSize = 6 * 1024 * 1024;
+  if (file.size > maxSize) {
+    showToast('Fichier trop volumineux (max 6 Mo)', 'error');
+    input.value = '';
+    return;
+  }
+
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    const base64 = e.target.result;
+    const labelId = side === 'front' ? 'kyc-front-label' : 'kyc-back-label';
+    const previewId = side === 'front' ? 'kyc-front-preview' : 'kyc-back-preview';
+    const zoneId = side === 'front' ? 'kyc-front-zone' : 'kyc-back-zone';
+
+    document.getElementById(labelId).textContent = file.name;
+    document.getElementById(zoneId).style.borderColor = 'rgba(167,139,250,0.6)';
+
+    if (file.type.startsWith('image/')) {
+      const preview = document.getElementById(previewId);
+      preview.src = base64;
+      preview.style.display = 'block';
+    }
+
+    if (side === 'front') kycFrontBase64 = base64;
+    else kycBackBase64 = base64;
+  };
+  reader.readAsDataURL(file);
+}
+
+async function loadKyc() {
+  try {
+    const res = await fetch('/api/kyc');
+    if (!res.ok) return;
+    const data = await res.json();
+    renderKycStatus(data.kyc);
+  } catch (err) {}
+}
+
+function renderKycStatus(kyc) {
+  const banner = document.getElementById('kyc-status-banner');
+  const formCard = document.getElementById('kyc-form-card');
+
+  if (!kyc) {
+    banner.className = 'hidden';
+    formCard.style.display = '';
+    return;
+  }
+
+  banner.classList.remove('hidden');
+
+  if (kyc.status === 'confirmed') {
+    banner.style.cssText = 'margin-bottom:20px;padding:16px 20px;border-radius:12px;border:1px solid rgba(34,211,168,.3);background:rgba(34,211,168,.08);color:#22d3a8;font-size:.875rem;line-height:1.5;';
+    banner.innerHTML = '<strong>✅ KYC Vérifié</strong><br>Votre identité a été confirmée avec succès. Votre compte est pleinement vérifié.';
+    formCard.style.display = 'none';
+  } else if (kyc.status === 'pending') {
+    banner.style.cssText = 'margin-bottom:20px;padding:16px 20px;border-radius:12px;border:1px solid rgba(251,191,36,.3);background:rgba(251,191,36,.08);color:#fbbf24;font-size:.875rem;line-height:1.5;';
+    banner.innerHTML = '<strong>⏳ Vérification en cours</strong><br>Vos documents ont été soumis et sont en cours d\'examen. Vous serez notifié dès la validation.';
+    formCard.style.display = 'none';
+  } else if (kyc.status === 'rejected') {
+    banner.style.cssText = 'margin-bottom:20px;padding:16px 20px;border-radius:12px;border:1px solid rgba(248,113,113,.3);background:rgba(248,113,113,.08);color:#f87171;font-size:.875rem;line-height:1.5;';
+    const reason = kyc.reject_reason ? `<br><em>Motif : ${kyc.reject_reason}</em>` : '';
+    banner.innerHTML = `<strong>❌ Documents refusés</strong>${reason}<br>Veuillez soumettre de nouveaux documents valides.`;
+    formCard.style.display = '';
+  }
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  const kycForm = document.getElementById('kyc-form');
+  if (kycForm) {
+    kycForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const errEl = document.getElementById('kyc-error');
+      const okEl = document.getElementById('kyc-success');
+      const btn = document.getElementById('kyc-submit-btn');
+      errEl.textContent = '';
+      okEl.textContent = '';
+
+      if (!kycFrontBase64) {
+        errEl.textContent = 'Veuillez sélectionner le recto de votre pièce d\'identité.';
+        return;
+      }
+
+      btn.disabled = true;
+      btn.textContent = 'Envoi en cours…';
+
+      try {
+        const res = await fetch('/api/kyc', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ document_front: kycFrontBase64, document_back: kycBackBase64 })
+        });
+        const result = await res.json();
+        if (res.ok) {
+          okEl.textContent = 'Documents soumis avec succès ! En attente de vérification.';
+          showToast('Documents KYC soumis !', 'success');
+          kycFrontBase64 = null;
+          kycBackBase64 = null;
+          kycForm.reset();
+          ['kyc-front-preview', 'kyc-back-preview'].forEach(id => { document.getElementById(id).style.display = 'none'; });
+          loadKyc();
+        } else {
+          errEl.textContent = result.error;
+        }
+      } catch (err) {
+        errEl.textContent = 'Erreur lors de l\'envoi';
+      } finally {
+        btn.disabled = false;
+        btn.textContent = 'Envoyer pour vérification';
+      }
+    });
+  }
+});
 
 function copyAddress() {
   const address = document.getElementById('deposit-address').textContent;

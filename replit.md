@@ -62,6 +62,21 @@ QuestInvest est une plateforme d'investissement où les utilisateurs peuvent dé
 - `POST /api/admin/deposits/:id/approve` - Approuver un dépôt
 - `POST /api/admin/deposits/:id/reject` - Rejeter un dépôt
 
+## Fonctionnalités KYC
+- **Soumission utilisateur** : L'utilisateur peut soumettre recto/verso de sa pièce d'identité depuis l'onglet "Vérification KYC" du tableau de bord (fichier image JPG/PNG, max 6 Mo)
+- **Statuts KYC** : `pending` (en attente), `confirmed` (validé), `rejected` (refusé avec motif)
+- **Admin** : Page "KYC" dans le panel admin avec liste filtrée, visualisation des documents et boutons Valider/Refuser
+- **Badge de notification** : Nombre de KYC en attente affiché dans le menu admin
+- **Table** : `kyc_submissions` (id, user_id, document_front, document_back, status, reject_reason, submitted_at, reviewed_at)
+
+## API Endpoints KYC
+- `GET /api/kyc` — Statut KYC de l'utilisateur connecté
+- `POST /api/kyc` — Soumettre des documents (base64)
+- `GET /api/admin/kyc` — Liste toutes les soumissions
+- `GET /api/admin/kyc/:id/document` — Récupérer les images d'une soumission
+- `POST /api/admin/kyc/:id/approve` — Valider un KYC
+- `POST /api/admin/kyc/:id/reject` — Refuser un KYC (avec motif optionnel)
+
 ## Changements Récents
 - 29 Avr 2026: Programme de bienvenue — pendant les 14 premiers jours suivant l'inscription, les nouveaux utilisateurs voient 4 quêtes spéciales à 20% chacune (total +80%). Après ce délai, ils basculent automatiquement sur le cycle normal de 3 quêtes à 40%. Ajout de la colonne `quest_type` ('newcomer' ou 'regular') dans la table `quests` et nouvelle bannière "Bienvenue" sur la page Quêtes.
 - 13 Avr 2026: Retraits limités à une demande par utilisateur sur chaque cycle de 2 semaines

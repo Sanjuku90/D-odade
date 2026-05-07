@@ -681,6 +681,10 @@
                 <span class="nav-icon">↑</span>
                 <span class="nav-label">Retirer</span>
               </button>
+              <button class="dash-tab" data-view="kyc">
+                <span class="nav-icon">🪪</span>
+                <span class="nav-label">Vérification KYC</span>
+              </button>
               <button class="dash-tab" data-view="profile">
                 <span class="nav-icon">◉</span>
                 <span class="nav-label">Profil</span>
@@ -877,6 +881,52 @@
                 <p class="error-msg" id="withdraw-error"></p>
                 <p class="success-msg" id="withdraw-success"></p>
               </div>
+            </div>
+          </div>
+
+          <!-- ========== KYC ========== -->
+          <div id="kyc-view" class="dashboard-view hidden">
+            <div class="dash-header">
+              <div>
+                <div class="eyebrow">Vérification</div>
+                <h1 class="dash-title">Vérification d'identité (KYC)</h1>
+                <p class="dash-subtitle">Pour récupérer votre compte ou effectuer certaines opérations, soumettez une pièce d'identité valide. Vos données sont traitées de manière confidentielle.</p>
+              </div>
+            </div>
+
+            <div id="kyc-status-banner" class="hidden" style="margin-bottom:20px;padding:16px 20px;border-radius:12px;border:1px solid;font-size:.875rem;line-height:1.5;"></div>
+
+            <div class="card" id="kyc-form-card">
+              <div class="card-head"><h3>Soumettre vos documents</h3></div>
+              <p class="muted-text" style="margin-bottom:18px;">Formats acceptés : JPG, PNG, PDF. Taille max : 6 Mo par fichier.<br>La photo doit être nette, bien éclairée et entièrement lisible.</p>
+
+              <form id="kyc-form">
+                <div class="form-group">
+                  <label>Recto de la pièce d'identité <span style="color:#f87171">*</span></label>
+                  <div class="kyc-upload-zone" id="kyc-front-zone" onclick="document.getElementById('kyc-front-input').click()">
+                    <input type="file" id="kyc-front-input" accept="image/*,application/pdf" style="display:none" onchange="handleKycFile('front', this)">
+                    <div class="kyc-upload-icon">🪪</div>
+                    <div class="kyc-upload-label" id="kyc-front-label">Cliquez pour choisir un fichier</div>
+                    <div class="kyc-upload-sub">Recto de passeport, CNI ou titre de séjour</div>
+                  </div>
+                  <img id="kyc-front-preview" style="display:none;max-width:100%;max-height:200px;margin-top:10px;border-radius:8px;border:1px solid rgba(255,255,255,.1);" alt="Aperçu recto">
+                </div>
+
+                <div class="form-group">
+                  <label>Verso de la pièce d'identité <span class="optional">(optionnel)</span></label>
+                  <div class="kyc-upload-zone" id="kyc-back-zone" onclick="document.getElementById('kyc-back-input').click()">
+                    <input type="file" id="kyc-back-input" accept="image/*,application/pdf" style="display:none" onchange="handleKycFile('back', this)">
+                    <div class="kyc-upload-icon">📄</div>
+                    <div class="kyc-upload-label" id="kyc-back-label">Cliquez pour choisir un fichier</div>
+                    <div class="kyc-upload-sub">Verso de la CNI (si applicable)</div>
+                  </div>
+                  <img id="kyc-back-preview" style="display:none;max-width:100%;max-height:200px;margin-top:10px;border-radius:8px;border:1px solid rgba(255,255,255,.1);" alt="Aperçu verso">
+                </div>
+
+                <button type="submit" class="btn btn-primary" id="kyc-submit-btn">Envoyer pour vérification</button>
+                <p class="error-msg" id="kyc-error"></p>
+                <p class="success-msg" id="kyc-success"></p>
+              </form>
             </div>
           </div>
 

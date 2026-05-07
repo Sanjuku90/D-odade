@@ -454,6 +454,10 @@
           <button class="nav-item" data-page="users">
             <span class="item-icon">👥</span> Utilisateurs
           </button>
+          <button class="nav-item" data-page="kyc">
+            <span class="item-icon">🪪</span> KYC
+            <span class="nav-badge" id="nb-kyc"></span>
+          </button>
           <button class="nav-item" data-page="settings">
             <span class="item-icon">⚙️</span> Paramètres
           </button>
@@ -604,6 +608,33 @@
       </div>
     </div>
 
+    <!-- KYC -->
+    <div class="page" id="page-kyc">
+      <div class="card">
+        <div class="card-header">
+          <div>
+            <div class="card-title">Vérifications KYC</div>
+            <div class="card-sub">Examinez et validez les pièces d'identité des utilisateurs</div>
+          </div>
+          <div class="filter-row">
+            <input class="search-box" type="text" placeholder="🔍 Email..." id="kyc-search" oninput="renderKycList()">
+            <button class="chip active" onclick="setKycF(this,'all')">Tous</button>
+            <button class="chip" onclick="setKycF(this,'pending')">En attente</button>
+            <button class="chip" onclick="setKycF(this,'confirmed')">Validés</button>
+            <button class="chip" onclick="setKycF(this,'rejected')">Refusés</button>
+          </div>
+        </div>
+        <div class="tbl-wrap">
+          <table>
+            <thead><tr>
+              <th>ID</th><th>Utilisateur</th><th>Soumis le</th><th>Examiné le</th><th>Statut</th><th>Actions</th>
+            </tr></thead>
+            <tbody id="kyc-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
     <!-- SETTINGS -->
     <div class="page" id="page-settings">
       <div class="settings-wrap">
@@ -634,6 +665,29 @@
 
   </div><!-- /page-wrap -->
 
+  <!-- MODAL KYC DOCUMENT -->
+  <div class="overlay" id="kyc-modal">
+    <div class="modal" style="max-width:560px;width:95%">
+      <div class="modal-title">🪪 Document d'identité</div>
+      <div id="kyc-modal-email" style="font-size:.8rem;color:var(--text2);margin-bottom:14px;"></div>
+      <div style="font-size:.75rem;color:var(--text3);margin-bottom:6px;font-weight:600;text-transform:uppercase;letter-spacing:.4px">Recto</div>
+      <img id="kyc-doc-front" style="max-width:100%;border-radius:8px;border:1px solid var(--border);margin-bottom:12px;" alt="Recto">
+      <div id="kyc-doc-back-wrap" style="display:none">
+        <div style="font-size:.75rem;color:var(--text3);margin-bottom:6px;font-weight:600;text-transform:uppercase;letter-spacing:.4px">Verso</div>
+        <img id="kyc-doc-back" style="max-width:100%;border-radius:8px;border:1px solid var(--border);margin-bottom:12px;" alt="Verso">
+      </div>
+      <div style="margin-bottom:10px;">
+        <label style="font-size:.76rem;font-weight:600;color:var(--text2);display:block;margin-bottom:5px;">Motif de refus (optionnel)</label>
+        <input class="adj-input" type="text" id="kyc-reject-reason" placeholder="Ex: Photo floue, document expiré…" style="width:100%">
+      </div>
+      <div class="modal-footer">
+        <button class="btn-ok" onclick="approveKyc()" id="kyc-approve-btn">✓ Valider le KYC</button>
+        <button class="btn-ko" onclick="rejectKyc()" id="kyc-reject-btn">✕ Refuser</button>
+        <button class="btn-close" onclick="closeKycModal()">Fermer</button>
+      </div>
+    </div>
+  </div>
+
   <!-- MODAL UTILISATEUR -->
   <div class="overlay" id="user-modal">
     <div class="modal">
@@ -660,10 +714,10 @@
 
     const PAGE_LABELS = {
       overview:'Vue d\'ensemble', deposits:'Dépôts',
-      withdrawals:'Retraits', users:'Utilisateurs', settings:'Paramètres'
+      withdrawals:'Retraits', users:'Utilisateurs', kyc:'KYC', settings:'Paramètres'
     };
     const PAGE_ICONS = {
-      overview:'📊', deposits:'💳', withdrawals:'💸', users:'👥', settings:'⚙️'
+      overview:'📊', deposits:'💳', withdrawals:'💸', users:'👥', kyc:'🪪', settings:'⚙️'
     };
 
     // ── DROPDOWN TOGGLE ──
@@ -704,7 +758,7 @@
     });
 
     async function refreshAll() {
-      await Promise.all([loadStats(), loadDeposits(), loadWithdrawals(), loadUsers()]);
+      await Promise.all([loadStats(), loadDeposits(), loadWithdrawals(), loadUsers(), loadKycList()]);
       document.getElementById('meta-time').textContent =
         'Actualisé à ' + new Date().toLocaleTimeString('fr-FR');
     }
@@ -722,6 +776,7 @@
         document.getElementById('s-twith').textContent = '$' + fmtNum(s.totalWithdrawn);
         badge('nb-dep', s.pendingDeposits);
         badge('nb-with', s.pendingWithdrawals);
+        badge('nb-kyc', s.pendingKyc);
       } catch {}
     }
     function badge(id, n) {
@@ -941,6 +996,87 @@
         showToast('Adresse mise à jour !','success');
       } else { err.textContent=j.error; err.style.display='block'; }
     }
+
+    // ── KYC ──
+    let allKyc = [], kycFilter = 'all', selKycId = null;
+
+    async function loadKycList() {
+      try {
+        const r = await fetch('/api/admin/kyc');
+        if (r.ok) { allKyc = await r.json(); renderKycList(); }
+      } catch {}
+    }
+    function setKycF(el, f) {
+      kycFilter = f;
+      document.querySelectorAll('#page-kyc .chip').forEach(b => b.classList.remove('active'));
+      el.classList.add('active');
+      renderKycList();
+    }
+    function renderKycList() {
+      const q = (document.getElementById('kyc-search')?.value || '').toLowerCase();
+      let list = kycFilter === 'all' ? allKyc : allKyc.filter(k => k.status === kycFilter);
+      if (q) list = list.filter(k => k.user_email.toLowerCase().includes(q));
+      const tb = document.getElementById('kyc-tbody');
+      if (!list.length) { tb.innerHTML = '<tr class="empty-row"><td colspan="6">Aucune soumission KYC</td></tr>'; return; }
+      tb.innerHTML = list.map(k => `<tr>
+        <td class="td-id">#${k.id}</td>
+        <td class="td-email">${k.user_email}</td>
+        <td class="td-date">${fmt(k.submitted_at)}</td>
+        <td class="td-date">${k.reviewed_at ? fmt(k.reviewed_at) : '—'}</td>
+        <td>${sbadge(k.status)}${k.reject_reason ? `<div style="font-size:.68rem;color:var(--text3);margin-top:2px">${k.reject_reason}</div>` : ''}</td>
+        <td><button class="btn-info" onclick="openKycModal(${k.id})">👁 Voir le document</button></td>
+      </tr>`).join('');
+    }
+    async function openKycModal(id) {
+      selKycId = id;
+      const kyc = allKyc.find(k => k.id === id);
+      if (!kyc) return;
+      document.getElementById('kyc-modal-email').textContent = kyc.user_email + ' — soumis le ' + fmt(kyc.submitted_at);
+      document.getElementById('kyc-reject-reason').value = kyc.reject_reason || '';
+      document.getElementById('kyc-doc-front').src = '';
+      document.getElementById('kyc-doc-back').src = '';
+      document.getElementById('kyc-doc-back-wrap').style.display = 'none';
+      const isPending = kyc.status === 'pending';
+      document.getElementById('kyc-approve-btn').style.display = kyc.status !== 'confirmed' ? '' : 'none';
+      document.getElementById('kyc-reject-btn').style.display = kyc.status !== 'rejected' ? '' : 'none';
+      document.getElementById('kyc-modal').classList.add('open');
+      try {
+        const r = await fetch(`/api/admin/kyc/${id}/document`);
+        if (r.ok) {
+          const d = await r.json();
+          document.getElementById('kyc-doc-front').src = d.document_front;
+          if (d.document_back) {
+            document.getElementById('kyc-doc-back').src = d.document_back;
+            document.getElementById('kyc-doc-back-wrap').style.display = 'block';
+          }
+        }
+      } catch {}
+    }
+    function closeKycModal() {
+      document.getElementById('kyc-modal').classList.remove('open');
+      selKycId = null;
+    }
+    async function approveKyc() {
+      if (!selKycId) return;
+      if (!confirm('Valider ce KYC ?')) return;
+      const r = await fetch(`/api/admin/kyc/${selKycId}/approve`, { method: 'POST' });
+      const j = await r.json();
+      if (r.ok) { showToast('KYC validé !', 'success'); closeKycModal(); refreshAll(); }
+      else showToast(j.error, 'error');
+    }
+    async function rejectKyc() {
+      if (!selKycId) return;
+      const reason = document.getElementById('kyc-reject-reason').value.trim();
+      if (!confirm('Refuser ce KYC ?')) return;
+      const r = await fetch(`/api/admin/kyc/${selKycId}/reject`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ reason })
+      });
+      const j = await r.json();
+      if (r.ok) { showToast('KYC refusé', 'success'); closeKycModal(); refreshAll(); }
+      else showToast(j.error, 'error');
+    }
+    document.getElementById('kyc-modal').addEventListener('click', e => { if (e.target === e.currentTarget) closeKycModal(); });
 
     // ── HELPERS ──
     function fmt(d) { return new Date(d).toLocaleDateString('fr-FR'); }
