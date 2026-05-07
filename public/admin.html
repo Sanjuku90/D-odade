@@ -1204,7 +1204,12 @@
     function fmtNum(n) { return parseFloat(n).toLocaleString('fr-FR',{minimumFractionDigits:0}); }
     function slabel(s) { return {pending:'En attente',confirmed:'Confirmé',rejected:'Rejeté'}[s]||s; }
     function sbadge(s) {
-      const m = {pending:'<span class="badge b-pending">⏳ En attente</span>',confirmed:'<span class="badge b-confirmed">✓ Confirmé</span>',rejected:'<span class="badge b-rejected">✕ Rejeté</span>'};
+      const m = {
+        pending:'<span class="badge b-pending">⏳ En attente</span>',
+        confirmed:'<span class="badge b-confirmed">✓ Confirmé</span>',
+        approved:'<span class="badge b-confirmed">✓ Approuvé</span>',
+        rejected:'<span class="badge b-rejected">✕ Rejeté</span>'
+      };
       return m[s]||s;
     }
     function showToast(msg, type) {
