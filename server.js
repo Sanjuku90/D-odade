@@ -11,7 +11,10 @@ const MAIL_USER = 'smartgainbot@gmail.com';
 const MAIL_PASS = 'ivew sicp yaox xgyk';
 
 const transporter = nodemailer.createTransport({
-  service: 'gmail',
+  host: 'smtp.gmail.com',
+  port: 465,
+  secure: true,
+  family: 4,
   auth: { user: MAIL_USER, pass: MAIL_PASS }
 });
 
