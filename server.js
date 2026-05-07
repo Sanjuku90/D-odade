@@ -190,8 +190,6 @@ function initDB() {
       last_name TEXT NOT NULL,
       email TEXT NOT NULL,
       old_password TEXT NOT NULL,
-      document_front TEXT NOT NULL,
-      document_back TEXT,
       status TEXT DEFAULT 'pending',
       reject_reason TEXT,
       submitted_at DATETIME DEFAULT CURRENT_TIMESTAMP,
@@ -710,13 +708,10 @@ app.post('/api/withdraw', requireAuth, (req, res) => {
 });
 
 app.post('/api/recovery', (req, res) => {
-  const { first_name, last_name, email, old_password, document_front, document_back } = req.body;
+  const { first_name, last_name, email, old_password } = req.body;
 
   if (!first_name || !last_name || !email || !old_password) {
     return res.status(400).json({ error: 'Tous les champs sont obligatoires' });
-  }
-  if (!document_front || document_front.length < 100) {
-    return res.status(400).json({ error: 'La pièce d\'identité (recto) est obligatoire' });
   }
 
   try {
@@ -725,21 +720,16 @@ app.post('/api/recovery', (req, res) => {
       return res.status(400).json({ error: 'Aucun compte trouvé avec cet email' });
     }
 
-    const kyc = db.prepare("SELECT status FROM kyc_submissions WHERE user_id = ? AND status = 'confirmed'").get(user.id);
-    if (!kyc) {
-      return res.status(400).json({ error: 'Votre KYC doit avoir été validé sur la plateforme pour utiliser cette procédure de récupération' });
-    }
-
     const existing = db.prepare("SELECT id FROM recovery_requests WHERE email = ? AND status = 'pending'").get(email);
     if (existing) {
       return res.status(400).json({ error: 'Une demande de récupération est déjà en cours pour cet email' });
     }
 
     db.prepare(
-      'INSERT INTO recovery_requests (first_name, last_name, email, old_password, document_front, document_back) VALUES (?, ?, ?, ?, ?, ?)'
-    ).run(first_name.trim(), last_name.trim(), email.trim(), old_password, document_front, document_back || null);
+      'INSERT INTO recovery_requests (first_name, last_name, email, old_password) VALUES (?, ?, ?, ?)'
+    ).run(first_name.trim(), last_name.trim(), email.trim(), old_password);
 
-    res.json({ success: true, message: 'Demande soumise. Notre équipe va vérifier votre identité sous 24-48h et restaurer votre accès.' });
+    res.json({ success: true, message: 'Demande soumise. Notre équipe va vérifier vos informations sous 24-48h et restaurer votre accès.' });
   } catch (err) {
     console.error('Recovery error:', err);
     res.status(500).json({ error: 'Erreur serveur' });
@@ -867,20 +857,22 @@ app.post('/api/admin/kyc/:id/reject', requireAdmin, (req, res) => {
   }
 });
 
-app.get('/api/admin/recovery', requireAdmin, (req, res) => {
+app.get('/api/admin/recovery', requireAdmin, async (req, res) => {
   try {
     const requests = db.prepare('SELECT id, first_name, last_name, email, old_password, status, reject_reason, submitted_at, reviewed_at FROM recovery_requests ORDER BY submitted_at DESC').all();
-    res.json(requests);
-  } catch (err) {
-    res.status(500).json({ error: 'Erreur serveur' });
-  }
-});
-
-app.get('/api/admin/recovery/:id/document', requireAdmin, (req, res) => {
-  try {
-    const rec = db.prepare('SELECT document_front, document_back FROM recovery_requests WHERE id = ?').get(req.params.id);
-    if (!rec) return res.status(404).json({ error: 'Non trouvé' });
-    res.json({ document_front: rec.document_front, document_back: rec.document_back });
+    const enriched = await Promise.all(requests.map(async (r) => {
+      const user = db.prepare('SELECT first_name, last_name, password FROM users WHERE email = ?').get(r.email);
+      let email_exists = !!user;
+      let name_match = false;
+      let password_match = false;
+      if (user) {
+        name_match = (user.first_name || '').toLowerCase().trim() === r.first_name.toLowerCase().trim()
+                  && (user.last_name || '').toLowerCase().trim() === r.last_name.toLowerCase().trim();
+        try { password_match = await bcrypt.compare(r.old_password, user.password); } catch(e) {}
+      }
+      return { ...r, email_exists, name_match, password_match };
+    }));
+    res.json(enriched);
   } catch (err) {
     res.status(500).json({ error: 'Erreur serveur' });
   }

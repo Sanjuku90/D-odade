@@ -672,8 +672,8 @@
             <div id="recovery-form-wrap" class="hidden">
               <button type="button" onclick="hideRecovery()" style="background:none;border:none;color:#64748b;font-size:0.8rem;cursor:pointer;margin-bottom:16px;display:flex;align-items:center;gap:4px;">← Retour à la connexion</button>
               <h2 style="font-size:1.3rem;font-weight:700;color:#f5f5fa;margin-bottom:4px;">Récupération de compte</h2>
-              <p class="auth-sub" style="margin-bottom:4px;">Suite à la mise à jour, entrez vos anciennes informations et votre pièce d'identité.</p>
-              <p style="font-size:0.75rem;color:#fbbf24;background:rgba(251,191,36,0.07);border:1px solid rgba(251,191,36,0.2);border-radius:8px;padding:8px 12px;margin-bottom:16px;line-height:1.5;">Cette procédure est réservée aux utilisateurs dont le <strong>KYC a déjà été validé</strong> sur la plateforme.</p>
+              <p class="auth-sub" style="margin-bottom:4px;">Entrez les informations que vous aviez utilisées lors de la création de votre compte.</p>
+              <p style="font-size:0.75rem;color:#94a3b8;background:rgba(148,163,184,0.06);border:1px solid rgba(148,163,184,0.15);border-radius:8px;padding:8px 12px;margin-bottom:16px;line-height:1.5;">Un administrateur va vérifier vos informations sous 24-48h. Une fois validées, vous pourrez vous connecter avec votre ancien mot de passe.</p>
               <form id="recovery-form" class="auth-form" style="padding:0;">
                 <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
                   <div class="form-group" style="margin-bottom:0;">
@@ -690,26 +690,8 @@
                   <input type="email" name="email" required placeholder="vous@exemple.com">
                 </div>
                 <div class="form-group">
-                  <label>Ancien mot de passe utilisé à l'inscription</label>
-                  <input type="password" name="old_password" required placeholder="Votre mot de passe d'origine">
-                </div>
-                <div class="form-group">
-                  <label>Pièce d'identité — Recto <span style="color:#f87171;">*</span></label>
-                  <div id="rec-front-zone" style="border:1.5px dashed rgba(148,163,184,0.3);border-radius:10px;padding:16px;text-align:center;cursor:pointer;transition:border-color .2s;" onclick="document.getElementById('rec-front-input').click()">
-                    <div style="font-size:1.5rem;margin-bottom:4px;">🪪</div>
-                    <div id="rec-front-label" style="font-size:0.8rem;color:#64748b;">Cliquez pour sélectionner une image (JPG/PNG, max 6 Mo)</div>
-                    <img id="rec-front-preview" style="display:none;max-width:100%;max-height:120px;margin-top:10px;border-radius:6px;object-fit:contain;" alt="">
-                    <input type="file" id="rec-front-input" accept="image/*" style="display:none;" onchange="handleRecFile('front',this)">
-                  </div>
-                </div>
-                <div class="form-group">
-                  <label>Pièce d'identité — Verso <span class="optional">(optionnel)</span></label>
-                  <div id="rec-back-zone" style="border:1.5px dashed rgba(148,163,184,0.3);border-radius:10px;padding:16px;text-align:center;cursor:pointer;transition:border-color .2s;" onclick="document.getElementById('rec-back-input').click()">
-                    <div style="font-size:1.5rem;margin-bottom:4px;">🪪</div>
-                    <div id="rec-back-label" style="font-size:0.8rem;color:#64748b;">Cliquez pour sélectionner une image (optionnel)</div>
-                    <img id="rec-back-preview" style="display:none;max-width:100%;max-height:120px;margin-top:10px;border-radius:6px;object-fit:contain;" alt="">
-                    <input type="file" id="rec-back-input" accept="image/*" style="display:none;" onchange="handleRecFile('back',this)">
-                  </div>
+                  <label>Mot de passe utilisé lors de l'inscription</label>
+                  <input type="password" name="old_password" required placeholder="Votre mot de passe d'origine" autocomplete="current-password">
                 </div>
                 <button type="submit" class="btn btn-primary" id="recovery-submit-btn">Envoyer ma demande de récupération</button>
                 <p class="error-msg" id="recovery-error"></p>

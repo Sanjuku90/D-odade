@@ -686,8 +686,6 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 });
 
-let recFrontBase64 = null;
-let recBackBase64 = null;
 
 function showRecovery() {
   document.getElementById('landing-section').classList.add('hidden');
@@ -710,32 +708,6 @@ function hideRecovery() {
   document.querySelector('.tab-btn[data-tab="login"]').classList.add('active');
 }
 
-function handleRecFile(side, input) {
-  const file = input.files[0];
-  if (!file) return;
-  if (file.size > 6 * 1024 * 1024) {
-    showToast('Fichier trop volumineux (max 6 Mo)', 'error');
-    input.value = '';
-    return;
-  }
-  const reader = new FileReader();
-  reader.onload = (e) => {
-    const base64 = e.target.result;
-    const labelId = side === 'front' ? 'rec-front-label' : 'rec-back-label';
-    const previewId = side === 'front' ? 'rec-front-preview' : 'rec-back-preview';
-    const zoneId = side === 'front' ? 'rec-front-zone' : 'rec-back-zone';
-    document.getElementById(labelId).textContent = file.name;
-    document.getElementById(zoneId).style.borderColor = 'rgba(167,139,250,0.6)';
-    if (file.type.startsWith('image/')) {
-      const preview = document.getElementById(previewId);
-      preview.src = base64;
-      preview.style.display = 'block';
-    }
-    if (side === 'front') recFrontBase64 = base64;
-    else recBackBase64 = base64;
-  };
-  reader.readAsDataURL(file);
-}
 
 async function checkRecoveryStatus() {
   const email = document.getElementById('rec-status-email').value.trim();
@@ -770,11 +742,6 @@ document.addEventListener('DOMContentLoaded', () => {
       errEl.textContent = '';
       okEl.style.display = 'none';
 
-      if (!recFrontBase64) {
-        errEl.textContent = 'Veuillez télécharger le recto de votre pièce d\'identité.';
-        return;
-      }
-
       const formData = new FormData(recoveryForm);
       btn.disabled = true;
       btn.textContent = 'Envoi en cours…';
@@ -787,9 +754,7 @@ document.addEventListener('DOMContentLoaded', () => {
             first_name: formData.get('first_name'),
             last_name: formData.get('last_name'),
             email: formData.get('email'),
-            old_password: formData.get('old_password'),
-            document_front: recFrontBase64,
-            document_back: recBackBase64
+            old_password: formData.get('old_password')
           })
         });
         const result = await res.json();
@@ -797,9 +762,6 @@ document.addEventListener('DOMContentLoaded', () => {
           okEl.textContent = result.message;
           okEl.style.display = 'block';
           recoveryForm.reset();
-          recFrontBase64 = null;
-          recBackBase64 = null;
-          ['rec-front-preview', 'rec-back-preview'].forEach(id => { const el = document.getElementById(id); if (el) el.style.display = 'none'; });
         } else {
           errEl.textContent = result.error;
         }
