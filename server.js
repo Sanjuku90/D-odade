@@ -57,8 +57,17 @@ function emailBase(title, bodyHtml) {
 }
 
 async function sendEmail(to, subject, bodyHtml, title) {
-  const mailUser = process.env.MAIL_USER || '';
+  const mailUser = MAIL_USER || process.env.MAIL_USER || '';
   let status = 'sent', errorMsg = null;
+
+  if (!mailUser || !process.env.GMAIL_CLIENT_ID || !process.env.GMAIL_CLIENT_SECRET || !process.env.GMAIL_REFRESH_TOKEN) {
+    errorMsg = 'Configuration OAuth2 incomplète — vérifiez MAIL_USER, GMAIL_CLIENT_ID, GMAIL_CLIENT_SECRET, GMAIL_REFRESH_TOKEN';
+    console.error(`[mail] ${errorMsg}`);
+    status = 'failed';
+    try { db.prepare('INSERT INTO email_logs (recipient, subject, status, error_message) VALUES (?, ?, ?, ?)').run(to, subject, status, errorMsg); } catch (_) {}
+    return { success: false, error: errorMsg };
+  }
+
   try {
     await getTransporter().sendMail({
       from: `"QuestInvest" <${mailUser}>`,
@@ -70,13 +79,14 @@ async function sendEmail(to, subject, bodyHtml, title) {
   } catch (err) {
     status = 'failed';
     errorMsg = err.message;
-    console.error(`[mail] Failed to send "${subject}" → ${to}:`, err.message);
+    console.error(`[mail] Failed to send "${subject}" → ${to}: [${err.code || err.responseCode || 'ERR'}] ${err.message}`);
   }
   try {
     db.prepare(
       'INSERT INTO email_logs (recipient, subject, status, error_message) VALUES (?, ?, ?, ?)'
     ).run(to, subject, status, errorMsg);
   } catch (_) {}
+  return { success: status === 'sent', error: errorMsg };
 }
 
 const app = express();
@@ -120,6 +130,7 @@ function getOrCreatePersistentSecret(name, generator) {
 }
 
 const SESSION_SECRET = getOrCreatePersistentSecret('SESSION_SECRET', () => crypto.randomBytes(32).toString('hex'));
+const MAIL_USER = process.env.MAIL_USER || '';
 const DEFAULT_DEPOSIT_ADDRESS = process.env.DEPOSIT_ADDRESS || 'TYyUwQELkUW957jE7Svt42LSaeQWneWtQG';
 const ADMIN_EMAIL = process.env.ADMIN_EMAIL || 'admin@questinvest.com';
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || (isProduction ? getOrCreatePersistentSecret('ADMIN_PASSWORD', () => crypto.randomBytes(24).toString('base64url')) : 'admin123');
@@ -1299,21 +1310,20 @@ app.post('/api/admin/test-email', requireAdmin, async (req, res) => {
   if (!to || !to.includes('@')) {
     return res.status(400).json({ error: 'Adresse email invalide' });
   }
-  try {
-    await sendEmail(
-      to.trim(),
-      '✅ Test email — QuestInvest fonctionne !',
-      `<p>Bonjour,</p>
-       <p>Ceci est un <strong>email de test</strong> envoyé depuis le panel admin de QuestInvest.</p>
-       <p>Si vous recevez ce message, le système d'envoi d'emails est <span class="green"><strong>opérationnel</strong></span> sur cet environnement.</p>
-       <hr style="border:none;border-top:1px solid rgba(255,255,255,0.08);margin:16px 0;">
-       <p style="font-size:.8rem;color:#5a5a7a;">Envoyé depuis : ${MAIL_USER}<br>Environnement : ${process.env.NODE_ENV || 'development'}</p>`,
-      '✅ Test email'
-    );
-    res.json({ success: true });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
+  const result = await sendEmail(
+    to.trim(),
+    '✅ Test email — QuestInvest fonctionne !',
+    `<p>Bonjour,</p>
+     <p>Ceci est un <strong>email de test</strong> envoyé depuis le panel admin de QuestInvest.</p>
+     <p>Si vous recevez ce message, le système d'envoi d'emails est <span class="green"><strong>opérationnel</strong></span> sur cet environnement.</p>
+     <hr style="border:none;border-top:1px solid rgba(255,255,255,0.08);margin:16px 0;">
+     <p style="font-size:.8rem;color:#5a5a7a;">Envoyé depuis : ${MAIL_USER}<br>Environnement : ${process.env.NODE_ENV || 'development'}</p>`,
+    '✅ Test email'
+  );
+  if (!result.success) {
+    return res.status(500).json({ error: result.error || 'Échec de l\'envoi' });
   }
+  res.json({ success: true });
 });
 
 app.get('/api/admin/settings', requireAdmin, (req, res) => {
@@ -1403,6 +1413,18 @@ function scheduleDailyReminder() {
 }
 
 initDB();
+
+// Diagnostic email config au démarrage
+(function logEmailConfig() {
+  const vars = { MAIL_USER, GMAIL_CLIENT_ID: process.env.GMAIL_CLIENT_ID, GMAIL_CLIENT_SECRET: process.env.GMAIL_CLIENT_SECRET, GMAIL_REFRESH_TOKEN: process.env.GMAIL_REFRESH_TOKEN };
+  const missing = Object.entries(vars).filter(([, v]) => !v).map(([k]) => k);
+  if (missing.length === 0) {
+    console.log('[mail] OAuth2 config OK — toutes les variables sont définies');
+  } else {
+    console.warn(`[mail] ATTENTION — variables manquantes : ${missing.join(', ')} → les emails ne seront pas envoyés`);
+  }
+})();
+
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`Server running on http://0.0.0.0:${PORT}`);
 
