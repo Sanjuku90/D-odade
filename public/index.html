@@ -121,7 +121,12 @@
             <a href="#testimonials">Avis</a>
             <a href="#faq">FAQ</a>
           </nav>
-          <div class="header-cta" id="nav-links"></div>
+          <div class="header-cta" id="nav-links">
+            <button id="nav-install-btn" onclick="openInstallFlow()" style="display:none;align-items:center;gap:6px;background:linear-gradient(135deg,#7c3aed,#a78bfa);color:#fff;border:none;border-radius:8px;padding:8px 14px;font-size:0.8rem;font-weight:600;cursor:pointer;">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 16V4M6 10l6 6 6-6"/><path d="M4 20h16"/></svg>
+              Installer l'app
+            </button>
+          </div>
         </div>
       </header>
 
@@ -1099,15 +1104,76 @@
 
   <div id="toast" class="toast hidden"></div>
 
-  <!-- PWA Install Banner -->
-  <div id="pwa-install-banner" style="display:none;position:fixed;bottom:0;left:0;right:0;z-index:9990;background:linear-gradient(135deg,#16162a,#1e1e35);border-top:1px solid rgba(167,139,250,0.25);padding:14px 20px 14px 20px;padding-bottom:calc(14px + env(safe-area-inset-bottom));align-items:center;gap:14px;box-shadow:0 -8px 32px rgba(0,0,0,0.5);">
-    <img src="/icons/icon-192.png" style="width:44px;height:44px;border-radius:10px;flex-shrink:0;" alt="QuestInvest">
-    <div style="flex:1;min-width:0;">
-      <div style="font-weight:700;font-size:0.88rem;color:#f5f5fa;">Installer QuestInvest</div>
-      <div style="font-size:0.75rem;color:#9898b8;margin-top:2px;">Accédez à l'app depuis votre écran d'accueil</div>
+  <!-- PWA Install Banner (Android / Chrome) -->
+  <div id="pwa-install-banner" style="display:none;position:fixed;bottom:0;left:0;right:0;z-index:9990;flex-direction:column;background:#13131f;border-top:1px solid rgba(167,139,250,0.2);padding:0;box-shadow:0 -12px 40px rgba(0,0,0,0.6);">
+    <div style="display:flex;align-items:center;gap:14px;padding:16px 18px;padding-bottom:calc(16px + env(safe-area-inset-bottom,0px));">
+      <img src="/icons/icon-180.png" style="width:48px;height:48px;border-radius:12px;flex-shrink:0;box-shadow:0 4px 12px rgba(124,58,237,0.4);" alt="">
+      <div style="flex:1;min-width:0;">
+        <div style="font-weight:700;font-size:0.92rem;color:#f5f5fa;letter-spacing:.01em;">Installer QuestInvest</div>
+        <div style="font-size:0.75rem;color:#8888aa;margin-top:3px;line-height:1.4;">Accès rapide depuis votre écran d'accueil, sans navigateur</div>
+      </div>
+      <button onclick="dismissInstall()" aria-label="Fermer" style="background:none;border:none;color:#555577;font-size:1.4rem;cursor:pointer;line-height:1;padding:4px;flex-shrink:0;">✕</button>
     </div>
-    <button onclick="installPWA()" style="background:linear-gradient(135deg,#7c3aed,#a78bfa);color:#fff;border:none;border-radius:8px;padding:8px 16px;font-size:0.8rem;font-weight:600;cursor:pointer;white-space:nowrap;flex-shrink:0;">Installer</button>
-    <button onclick="dismissPWA()" style="background:none;border:none;color:#64748b;font-size:1.3rem;cursor:pointer;line-height:1;flex-shrink:0;padding:4px;">×</button>
+    <div style="display:flex;gap:10px;padding:0 18px 16px;padding-bottom:calc(16px + env(safe-area-inset-bottom,0px));">
+      <button onclick="dismissInstall()" style="flex:1;background:#1e1e32;color:#8888aa;border:1px solid rgba(255,255,255,0.08);border-radius:10px;padding:11px;font-size:0.82rem;font-weight:600;cursor:pointer;">Plus tard</button>
+      <button onclick="installPWA()" style="flex:2;background:linear-gradient(135deg,#6d28d9,#a78bfa);color:#fff;border:none;border-radius:10px;padding:11px;font-size:0.85rem;font-weight:700;cursor:pointer;letter-spacing:.02em;">⬇ Installer maintenant</button>
+    </div>
+  </div>
+
+  <!-- iOS Install Instructions Sheet -->
+  <div id="ios-install-sheet" style="display:none;position:fixed;inset:0;z-index:9995;align-items:flex-end;background:rgba(0,0,0,0.6);backdrop-filter:blur(6px);">
+    <div style="width:100%;background:#16162a;border-radius:20px 20px 0 0;border-top:1px solid rgba(167,139,250,0.2);padding:0 0 calc(24px + env(safe-area-inset-bottom,0px));box-shadow:0 -20px 60px rgba(0,0,0,0.7);">
+      <!-- Handle bar -->
+      <div style="display:flex;justify-content:center;padding:12px 0 4px;">
+        <div style="width:36px;height:4px;background:rgba(255,255,255,0.15);border-radius:2px;"></div>
+      </div>
+      <!-- Header -->
+      <div style="display:flex;align-items:center;gap:14px;padding:14px 20px 18px;">
+        <img src="/icons/icon-180.png" style="width:52px;height:52px;border-radius:12px;box-shadow:0 4px 16px rgba(124,58,237,0.45);" alt="">
+        <div>
+          <div style="font-weight:700;font-size:1rem;color:#f5f5fa;">Installer QuestInvest</div>
+          <div style="font-size:0.78rem;color:#8888aa;margin-top:2px;">Suivez les 3 étapes ci-dessous</div>
+        </div>
+        <button onclick="closeIosSheet()" style="margin-left:auto;background:rgba(255,255,255,0.08);border:none;color:#aaa;font-size:0.85rem;border-radius:50%;width:30px;height:30px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;">✕</button>
+      </div>
+      <!-- Steps -->
+      <div style="display:flex;flex-direction:column;gap:0;padding:0 20px;">
+        <div style="display:flex;align-items:flex-start;gap:14px;padding:14px 0;border-top:1px solid rgba(255,255,255,0.06);">
+          <div style="width:36px;height:36px;background:linear-gradient(135deg,#6d28d9,#a78bfa);border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:1.1rem;">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/></svg>
+          </div>
+          <div>
+            <div style="font-weight:600;font-size:0.88rem;color:#f5f5fa;">Appuyer sur Partager</div>
+            <div style="font-size:0.76rem;color:#8888aa;margin-top:3px;line-height:1.45;">Touchez l'icône <strong style="color:#a78bfa;">↑</strong> en bas de Safari (barre du bas sur iPhone)</div>
+          </div>
+        </div>
+        <div style="display:flex;align-items:flex-start;gap:14px;padding:14px 0;border-top:1px solid rgba(255,255,255,0.06);">
+          <div style="width:36px;height:36px;background:linear-gradient(135deg,#6d28d9,#a78bfa);border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:1.1rem;">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+          </div>
+          <div>
+            <div style="font-weight:600;font-size:0.88rem;color:#f5f5fa;">Choisir "Sur l'écran d'accueil"</div>
+            <div style="font-size:0.76rem;color:#8888aa;margin-top:3px;line-height:1.45;">Faites défiler le menu et appuyez sur <strong style="color:#a78bfa;">+ Sur l'écran d'accueil</strong></div>
+          </div>
+        </div>
+        <div style="display:flex;align-items:flex-start;gap:14px;padding:14px 0;border-top:1px solid rgba(255,255,255,0.06);">
+          <div style="width:36px;height:36px;background:linear-gradient(135deg,#6d28d9,#a78bfa);border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+          </div>
+          <div>
+            <div style="font-weight:600;font-size:0.88rem;color:#f5f5fa;">Confirmer l'ajout</div>
+            <div style="font-size:0.76rem;color:#8888aa;margin-top:3px;line-height:1.45;">Appuyez sur <strong style="color:#a78bfa;">Ajouter</strong> en haut à droite — c'est prêt !</div>
+          </div>
+        </div>
+      </div>
+      <!-- Flèche indicatrice bas -->
+      <div style="text-align:center;margin-top:16px;padding:0 20px;">
+        <div style="display:inline-flex;align-items:center;gap:8px;background:rgba(167,139,250,0.1);border:1px solid rgba(167,139,250,0.25);border-radius:10px;padding:10px 18px;">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#a78bfa" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><polyline points="19 12 12 19 5 12"/></svg>
+          <span style="font-size:0.8rem;color:#a78bfa;font-weight:600;">Regardez la barre du bas Safari</span>
+        </div>
+      </div>
+    </div>
   </div>
 
   <script src="app.js"></script>
@@ -1146,27 +1212,94 @@
       });
     }
 
+    // ── PWA Install Logic ──────────────────────────────────────────
+    const DISMISS_KEY = 'pwa_dismissed_until';
     let deferredPrompt = null;
+
+    function isStandalone() {
+      return window.matchMedia('(display-mode: standalone)').matches
+          || window.navigator.standalone === true;
+    }
+
+    function isIOS() {
+      return /iphone|ipad|ipod/i.test(navigator.userAgent)
+          && !window.MSStream;
+    }
+
+    function wasDismissed() {
+      const until = localStorage.getItem(DISMISS_KEY);
+      return until && Date.now() < parseInt(until, 10);
+    }
+
+    function dismissInstall() {
+      // Remember for 7 days
+      localStorage.setItem(DISMISS_KEY, Date.now() + 7 * 24 * 3600 * 1000);
+      document.getElementById('pwa-install-banner').style.display = 'none';
+      document.getElementById('nav-install-btn').style.display = 'none';
+    }
+
+    function closeIosSheet() {
+      document.getElementById('ios-install-sheet').style.display = 'none';
+    }
+
+    function openInstallFlow() {
+      if (deferredPrompt) {
+        // Android / Chrome — trigger native prompt
+        deferredPrompt.prompt();
+        deferredPrompt.userChoice.then(choice => {
+          if (choice.outcome === 'accepted') {
+            deferredPrompt = null;
+            document.getElementById('pwa-install-banner').style.display = 'none';
+            document.getElementById('nav-install-btn').style.display = 'none';
+          }
+        });
+      } else if (isIOS()) {
+        document.getElementById('ios-install-sheet').style.display = 'flex';
+      }
+    }
+
+    function installPWA() { openInstallFlow(); }
+
+    // Android: listen for Chrome's install prompt
     window.addEventListener('beforeinstallprompt', (e) => {
       e.preventDefault();
       deferredPrompt = e;
-      const banner = document.getElementById('pwa-install-banner');
-      if (banner) banner.style.display = 'flex';
-    });
-    function installPWA() {
-      if (!deferredPrompt) return;
-      deferredPrompt.prompt();
-      deferredPrompt.userChoice.then(() => {
-        deferredPrompt = null;
+      if (isStandalone() || wasDismissed()) return;
+      // Show banner after 2 s
+      setTimeout(() => {
         const banner = document.getElementById('pwa-install-banner');
-        if (banner) banner.style.display = 'none';
-      });
+        if (banner) banner.style.display = 'flex';
+        const btn = document.getElementById('nav-install-btn');
+        if (btn) btn.style.display = 'flex';
+      }, 2000);
+    });
+
+    // iOS: show button in nav after 3 s (no native prompt available)
+    if (isIOS() && !isStandalone() && !wasDismissed()) {
+      setTimeout(() => {
+        const btn = document.getElementById('nav-install-btn');
+        if (btn) btn.style.display = 'flex';
+        // Also auto-show the sheet after 5 s on first visit
+        const shown = localStorage.getItem('ios_sheet_shown');
+        if (!shown) {
+          setTimeout(() => {
+            document.getElementById('ios-install-sheet').style.display = 'flex';
+            localStorage.setItem('ios_sheet_shown', '1');
+          }, 2000);
+        }
+      }, 3000);
     }
-    function dismissPWA() {
-      deferredPrompt = null;
-      const banner = document.getElementById('pwa-install-banner');
-      if (banner) banner.style.display = 'none';
+
+    // Hide everything if already installed
+    if (isStandalone()) {
+      document.getElementById('pwa-install-banner').style.display = 'none';
+      document.getElementById('nav-install-btn').style.display = 'none';
     }
+
+    // Tap backdrop of iOS sheet to close
+    document.getElementById('ios-install-sheet').addEventListener('click', function(e) {
+      if (e.target === this) closeIosSheet();
+    });
   </script>
 </body>
 </html>
