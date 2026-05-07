@@ -138,11 +138,12 @@ app.use(session({
   secret: SESSION_SECRET,
   resave: false,
   saveUninitialized: false,
+  proxy: true,
   cookie: { 
     maxAge: 30 * 24 * 60 * 60 * 1000,
     httpOnly: true,
     secure: isProduction,
-    sameSite: 'lax'
+    sameSite: isProduction ? 'none' : 'lax'
   }
 }));
 
@@ -904,7 +905,13 @@ app.post('/api/admin/login', (req, res) => {
 
   if (code === ADMIN_ACCESS_CODE) {
     req.session.adminId = 1;
-    res.json({ success: true });
+    req.session.save((err) => {
+      if (err) {
+        console.error('[admin] Session save error:', err);
+        return res.status(500).json({ error: 'Erreur lors de la création de la session' });
+      }
+      res.json({ success: true });
+    });
   } else {
     return res.status(401).json({ error: 'Code d\'accès incorrect' });
   }
