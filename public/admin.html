@@ -712,6 +712,15 @@
           </form>
         </div>
         <div class="s-card">
+          <div class="s-title">📧 Tester l'envoi d'email</div>
+          <div class="s-desc">Envoie un email de test pour vérifier que Gmail fonctionne sur cet environnement (Replit, Render, etc.).</div>
+          <label class="f-label">Adresse de destination</label>
+          <input class="f-input" type="email" id="test-email-to" placeholder="votreadresse@gmail.com" autocomplete="off">
+          <button class="btn-save" id="test-email-btn" onclick="sendTestEmail()">Envoyer l'email de test</button>
+          <div class="f-ok" id="test-email-ok">✓ Email envoyé ! Vérifiez votre boîte de réception (et les spams).</div>
+          <div class="f-err" id="test-email-err"></div>
+        </div>
+        <div class="s-card">
           <div class="s-title">🔑 Paramètres de la plateforme</div>
           <div class="s-desc">Informations de configuration de QuestInvest.</div>
           <div class="info-row"><span class="info-key">Code d'accès admin</span><span class="info-val">1289</span></div>
@@ -1049,6 +1058,41 @@
       else { alert(j.error || 'Erreur'); }
     }
     document.getElementById('user-modal').addEventListener('click', e => { if(e.target===e.currentTarget) closeModal(); });
+
+    // ── TEST EMAIL ──
+    async function sendTestEmail() {
+      const to = document.getElementById('test-email-to').value.trim();
+      const ok = document.getElementById('test-email-ok');
+      const err = document.getElementById('test-email-err');
+      const btn = document.getElementById('test-email-btn');
+      ok.style.display = 'none'; err.style.display = 'none';
+      if (!to || !to.includes('@')) {
+        err.textContent = 'Entrez une adresse email valide.';
+        err.style.display = 'block'; return;
+      }
+      btn.disabled = true; btn.textContent = 'Envoi en cours…';
+      try {
+        const r = await fetch('/api/admin/test-email', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ to })
+        });
+        const j = await r.json();
+        if (r.ok) {
+          ok.style.display = 'block';
+          showToast('Email de test envoyé !', 'success');
+          loadEmailLogs();
+        } else {
+          err.textContent = j.error;
+          err.style.display = 'block';
+          showToast('Échec : ' + j.error, 'error');
+        }
+      } catch (e) {
+        err.textContent = 'Erreur réseau.';
+        err.style.display = 'block';
+      } finally {
+        btn.disabled = false; btn.textContent = 'Envoyer l\'email de test';
+      }
+    }
 
     // ── SETTINGS ──
     async function loadSettings() {

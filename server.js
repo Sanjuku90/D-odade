@@ -1273,6 +1273,28 @@ app.get('/api/admin/email-logs', requireAdmin, (req, res) => {
   }
 });
 
+app.post('/api/admin/test-email', requireAdmin, async (req, res) => {
+  const { to } = req.body;
+  if (!to || !to.includes('@')) {
+    return res.status(400).json({ error: 'Adresse email invalide' });
+  }
+  try {
+    await sendEmail(
+      to.trim(),
+      '✅ Test email — QuestInvest fonctionne !',
+      `<p>Bonjour,</p>
+       <p>Ceci est un <strong>email de test</strong> envoyé depuis le panel admin de QuestInvest.</p>
+       <p>Si vous recevez ce message, le système d'envoi d'emails est <span class="green"><strong>opérationnel</strong></span> sur cet environnement.</p>
+       <hr style="border:none;border-top:1px solid rgba(255,255,255,0.08);margin:16px 0;">
+       <p style="font-size:.8rem;color:#5a5a7a;">Envoyé depuis : ${MAIL_USER}<br>Environnement : ${process.env.NODE_ENV || 'development'}</p>`,
+      '✅ Test email'
+    );
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 app.get('/api/admin/settings', requireAdmin, (req, res) => {
   try {
     const depositAddress = getDepositAddress();
