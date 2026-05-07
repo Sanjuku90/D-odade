@@ -9,13 +9,22 @@ const nodemailer = require('nodemailer');
 
 function getTransporter() {
   const user = process.env.MAIL_USER || '';
-  const pass = process.env.MAIL_PASS || '';
+  const clientId = process.env.GMAIL_CLIENT_ID || '';
+  const clientSecret = process.env.GMAIL_CLIENT_SECRET || '';
+  const refreshToken = process.env.GMAIL_REFRESH_TOKEN || '';
+
   return nodemailer.createTransport({
     host: 'smtp.gmail.com',
     port: 465,
     secure: true,
     family: 4,
-    auth: { user, pass }
+    auth: {
+      type: 'OAuth2',
+      user,
+      clientId,
+      clientSecret,
+      refreshToken
+    }
   });
 }
 
