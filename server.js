@@ -647,8 +647,8 @@ app.get('/api/deposits', requireAuth, (req, res) => {
 
 app.post('/api/withdraw', requireAuth, (req, res) => {
   const { amount, address } = req.body;
-  const minWithdraw = 300;
-  const maxWithdraw = 500;
+  const minWithdraw = 50;
+  const maxWithdraw = 300;
   const questPeriod = getQuestPeriod();
 
   if (!amount || parseFloat(amount) < minWithdraw) {
