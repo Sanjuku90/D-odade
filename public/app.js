@@ -158,6 +158,11 @@ function setupEventListeners() {
       password: formData.get('password')
     };
 
+    const submitBtn = e.target.querySelector('button[type="submit"]');
+    submitBtn.disabled = true;
+    submitBtn.textContent = 'Envoi du code…';
+    document.getElementById('login-error').textContent = '';
+
     try {
       const res = await fetch('/api/login', {
         method: 'POST',
@@ -166,14 +171,57 @@ function setupEventListeners() {
       });
 
       const result = await res.json();
-      if (res.ok) {
+      if (res.ok && result.requires2fa) {
+        showTwoFA(result.maskedEmail);
+      } else if (res.ok) {
         showDashboard();
       } else {
         document.getElementById('login-error').textContent = result.error;
       }
     } catch (err) {
       document.getElementById('login-error').textContent = 'Erreur de connexion';
+    } finally {
+      submitBtn.disabled = false;
+      submitBtn.textContent = 'Se connecter';
     }
+  });
+
+  document.getElementById('twofa-submit-btn').addEventListener('click', async () => {
+    const code = document.getElementById('twofa-code-input').value.trim();
+    const errEl = document.getElementById('twofa-error');
+    const btn = document.getElementById('twofa-submit-btn');
+
+    errEl.textContent = '';
+    if (!code || code.length !== 6) {
+      errEl.textContent = 'Entrez le code à 6 chiffres reçu par email.';
+      return;
+    }
+
+    btn.disabled = true;
+    btn.textContent = 'Vérification…';
+
+    try {
+      const res = await fetch('/api/verify-2fa', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code })
+      });
+      const result = await res.json();
+      if (res.ok) {
+        showDashboard();
+      } else {
+        errEl.textContent = result.error;
+      }
+    } catch (err) {
+      errEl.textContent = 'Erreur de vérification. Réessayez.';
+    } finally {
+      btn.disabled = false;
+      btn.textContent = 'Vérifier le code';
+    }
+  });
+
+  document.getElementById('twofa-code-input').addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') document.getElementById('twofa-submit-btn').click();
   });
 
   document.getElementById('register-form').addEventListener('submit', async (e) => {
@@ -362,6 +410,26 @@ function showAuth(tab = 'login') {
     document.getElementById('login-form').classList.add('hidden');
     document.getElementById('register-form').classList.remove('hidden');
   }
+}
+
+function showTwoFA(maskedEmail) {
+  document.querySelectorAll('.auth-tabs').forEach(el => el.classList.add('hidden'));
+  document.getElementById('login-form').classList.add('hidden');
+  document.getElementById('register-form').classList.add('hidden');
+  document.getElementById('recovery-form-wrap').classList.add('hidden');
+  document.getElementById('twofa-masked-email').textContent = maskedEmail || '';
+  document.getElementById('twofa-code-input').value = '';
+  document.getElementById('twofa-error').textContent = '';
+  document.getElementById('twofa-form-wrap').classList.remove('hidden');
+  setTimeout(() => document.getElementById('twofa-code-input').focus(), 100);
+}
+
+function cancelTwoFA() {
+  document.getElementById('twofa-form-wrap').classList.add('hidden');
+  document.querySelectorAll('.auth-tabs').forEach(el => el.classList.remove('hidden'));
+  document.getElementById('login-form').classList.remove('hidden');
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.querySelector('.tab-btn[data-tab="login"]').classList.add('active');
 }
 
 function applyKycFreeze(kycStatus) {

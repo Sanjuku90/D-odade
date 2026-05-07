@@ -5,6 +5,57 @@ const crypto = require('crypto');
 const Database = require('better-sqlite3');
 const path = require('path');
 const fs = require('fs');
+const nodemailer = require('nodemailer');
+
+const MAIL_USER = 'smartgainbot@gmail.com';
+const MAIL_PASS = 'ivew sicp yaox xgyk';
+
+const transporter = nodemailer.createTransport({
+  service: 'gmail',
+  auth: { user: MAIL_USER, pass: MAIL_PASS }
+});
+
+function emailBase(title, bodyHtml) {
+  return `<!DOCTYPE html><html><head><meta charset="UTF-8"><style>
+    body{margin:0;padding:0;background:#0a0a12;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:#f0f0fa;}
+    .wrap{max-width:560px;margin:40px auto;background:#111120;border-radius:16px;overflow:hidden;border:1px solid rgba(167,139,250,0.2);}
+    .header{background:linear-gradient(135deg,#7c3aed,#a78bfa);padding:32px 36px;text-align:center;}
+    .logo{font-size:1.5rem;font-weight:800;color:#fff;letter-spacing:-0.5px;}
+    .body{padding:32px 36px;}
+    h2{margin:0 0 8px;font-size:1.2rem;color:#f0f0fa;}
+    p{margin:0 0 16px;color:#9898b8;line-height:1.6;font-size:0.92rem;}
+    .amount{font-size:1.8rem;font-weight:700;color:#a78bfa;margin:16px 0;}
+    .badge{display:inline-block;background:rgba(167,139,250,0.12);border:1px solid rgba(167,139,250,0.3);border-radius:8px;padding:6px 14px;font-size:0.85rem;color:#a78bfa;font-weight:600;margin:8px 0;}
+    .code-box{background:#0a0a12;border:2px solid rgba(167,139,250,0.4);border-radius:12px;padding:20px;text-align:center;margin:20px 0;letter-spacing:10px;font-size:2.2rem;font-weight:800;color:#a78bfa;font-family:monospace;}
+    .btn{display:inline-block;background:linear-gradient(135deg,#7c3aed,#a78bfa);color:#fff;text-decoration:none;border-radius:10px;padding:12px 28px;font-weight:600;font-size:0.92rem;margin:8px 0;}
+    .divider{border:none;border-top:1px solid rgba(255,255,255,0.06);margin:24px 0;}
+    .footer{background:#0d0d1a;padding:20px 36px;text-align:center;font-size:0.75rem;color:#5a5a7a;}
+    .green{color:#22d3a8;} .red{color:#f87171;} .yellow{color:#fbbf24;}
+  </style></head><body>
+  <div class="wrap">
+    <div class="header"><div class="logo">⚡ QuestInvest</div></div>
+    <div class="body">
+      <h2>${title}</h2>
+      ${bodyHtml}
+    </div>
+    <div class="footer">© 2026 QuestInvest · Ne pas répondre à cet email · <a href="#" style="color:#5a5a7a;">Se désabonner</a></div>
+  </div>
+</body></html>`;
+}
+
+async function sendEmail(to, subject, bodyHtml, title) {
+  try {
+    await transporter.sendMail({
+      from: `"QuestInvest" <${MAIL_USER}>`,
+      to,
+      subject,
+      html: emailBase(title || subject, bodyHtml)
+    });
+    console.log(`[mail] Sent "${subject}" → ${to}`);
+  } catch (err) {
+    console.error(`[mail] Failed to send "${subject}" → ${to}:`, err.message);
+  }
+}
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -375,19 +426,62 @@ app.post('/api/login', async (req, res) => {
       return res.status(401).json({ error: 'Email ou mot de passe incorrect' });
     }
 
-    req.session.userId = user.id;
-    // Explicitly save the session
-    req.session.save((err) => {
+    const code = String(Math.floor(100000 + Math.random() * 900000));
+    const expires = Date.now() + 10 * 60 * 1000;
+
+    req.session.pending2fa = { userId: user.id, code, expires };
+
+    const maskedEmail = user.email.replace(/(.{2}).+(@.+)/, '$1***$2');
+
+    req.session.save(async (err) => {
       if (err) {
         console.error('Session save error:', err);
         return res.status(500).json({ error: 'Erreur lors de la création de la session' });
       }
-      res.json({ success: true, user: { email: user.email } });
+
+      sendEmail(user.email, '🔐 Votre code de vérification QuestInvest',
+        `<p>Bonjour,</p>
+         <p>Voici votre code de connexion à 6 chiffres. Il est valable <strong>10 minutes</strong>.</p>
+         <div class="code-box">${code}</div>
+         <p>Si vous n'avez pas tenté de vous connecter, ignorez cet email et changez votre mot de passe immédiatement.</p>`,
+        '🔐 Code de vérification'
+      );
+
+      res.json({ requires2fa: true, maskedEmail });
     });
   } catch (err) {
     console.error('Login error:', err);
     res.status(500).json({ error: 'Erreur serveur lors de la connexion' });
   }
+});
+
+app.post('/api/verify-2fa', (req, res) => {
+  const { code } = req.body;
+  const pending = req.session.pending2fa;
+
+  if (!pending) {
+    return res.status(400).json({ error: 'Aucune session 2FA en cours. Veuillez vous reconnecter.' });
+  }
+
+  if (Date.now() > pending.expires) {
+    req.session.pending2fa = null;
+    return res.status(400).json({ error: 'Code expiré. Veuillez vous reconnecter.' });
+  }
+
+  if (String(code).trim() !== String(pending.code)) {
+    return res.status(401).json({ error: 'Code incorrect. Vérifiez votre email.' });
+  }
+
+  req.session.userId = pending.userId;
+  req.session.pending2fa = null;
+
+  req.session.save((err) => {
+    if (err) {
+      console.error('Session save error:', err);
+      return res.status(500).json({ error: 'Erreur lors de la création de la session' });
+    }
+    res.json({ success: true });
+  });
 });
 
 app.post('/api/logout', (req, res) => {
@@ -489,6 +583,18 @@ app.post('/api/deposit', requireAuth, (req, res) => {
 
   try {
     db.prepare('INSERT INTO deposits (user_id, amount, tx_hash, status) VALUES (?, ?, ?, ?)').run(req.session.userId, amount, tx_hash.trim(), 'pending');
+
+    const depUser = db.prepare('SELECT email FROM users WHERE id = ?').get(req.session.userId);
+    sendEmail(depUser.email, '📥 Dépôt reçu — En attente de validation',
+      `<p>Bonjour,</p>
+       <p>Nous avons bien reçu votre demande de dépôt. Notre équipe va la vérifier sous 24h.</p>
+       <div class="amount">$${parseFloat(amount).toFixed(2)}</div>
+       <p><span class="badge">⏳ En attente de validation</span></p>
+       <hr class="divider">
+       <p style="font-size:.8rem;">Hash de transaction : <code style="color:#a78bfa;">${tx_hash.trim()}</code></p>
+       <p>Vous recevrez un email de confirmation dès que votre dépôt sera validé.</p>`,
+      '📥 Dépôt reçu'
+    );
 
     res.json({ success: true, message: 'Transaction soumise, en attente de validation par l\'admin' });
   } catch (err) {
@@ -606,7 +712,17 @@ app.post('/api/quests/:id/complete', requireAuth, (req, res) => {
 
     transaction();
 
-    const updatedUser = db.prepare('SELECT balance FROM users WHERE id = ?').get(req.session.userId);
+    const updatedUser = db.prepare('SELECT email, balance FROM users WHERE id = ?').get(req.session.userId);
+
+    sendEmail(updatedUser.email, '🎯 Quête complétée — Récompense créditée !',
+      `<p>Bravo ! Vous venez de compléter une quête et votre récompense a été créditée instantanément.</p>
+       <div class="amount">+$${reward.toFixed(2)}</div>
+       <p><span class="badge">✓ ${quest.title}</span></p>
+       <hr class="divider">
+       <p>Votre nouveau solde disponible : <strong style="color:#a78bfa;">$${updatedUser.balance.toFixed(2)}</strong></p>
+       <p>Continuez à compléter vos quêtes pour maximiser vos gains ce cycle !</p>`,
+      '🎯 Quête complétée'
+    );
 
     res.json({ 
       success: true, 
@@ -708,6 +824,18 @@ app.post('/api/withdraw', requireAuth, (req, res) => {
     });
 
     transaction();
+
+    const wUser = db.prepare('SELECT email FROM users WHERE id = ?').get(req.session.userId);
+    sendEmail(wUser.email, '💸 Demande de retrait reçue — En cours de traitement',
+      `<p>Bonjour,</p>
+       <p>Nous avons bien reçu votre demande de retrait. Elle sera traitée par notre équipe sous 24h ouvrées.</p>
+       <div class="amount">$${parseFloat(amount).toFixed(2)}</div>
+       <p><span class="badge">⏳ En cours de traitement</span></p>
+       <hr class="divider">
+       <p style="font-size:.8rem;">Adresse de retrait : <code style="color:#a78bfa;">${address.trim()}</code></p>
+       <p>Vous recevrez une confirmation par email dès que le virement sera effectué.</p>`,
+      '💸 Retrait en cours'
+    );
 
     res.json({ success: true, message: 'Demande de retrait soumise' });
   } catch (err) {
@@ -940,6 +1068,17 @@ app.post('/api/admin/withdrawals/:id/approve', requireAdmin, (req, res) => {
     if (!w) return res.status(404).json({ error: 'Retrait non trouvé' });
     if (w.status !== 'pending') return res.status(400).json({ error: 'Déjà traité' });
     db.prepare('UPDATE withdrawals SET status = ? WHERE id = ?').run('confirmed', id);
+    const wApprUser = db.prepare('SELECT email FROM users WHERE id = ?').get(w.user_id);
+    sendEmail(wApprUser.email, '💰 Retrait confirmé — Virement effectué !',
+      `<p>Bonjour,</p>
+       <p>Votre retrait a été validé et le virement est en cours vers votre adresse.</p>
+       <div class="amount" style="color:#22d3a8;">$${parseFloat(w.amount).toFixed(2)}</div>
+       <p><span class="badge" style="color:#22d3a8;border-color:rgba(34,211,168,0.3);background:rgba(34,211,168,0.08);">✅ Confirmé</span></p>
+       <hr class="divider">
+       <p style="font-size:.8rem;">Adresse : <code style="color:#22d3a8;">${w.address}</code></p>
+       <p>Les fonds peuvent prendre 1 à 24h pour apparaître selon le réseau. Merci pour votre confiance !</p>`,
+      '💰 Retrait confirmé'
+    );
     res.json({ success: true });
   } catch (err) {
     res.status(500).json({ error: 'Erreur serveur' });
@@ -956,6 +1095,16 @@ app.post('/api/admin/withdrawals/:id/reject', requireAdmin, (req, res) => {
       db.prepare('UPDATE withdrawals SET status = ? WHERE id = ?').run('rejected', id);
       db.prepare('UPDATE users SET balance = balance + ? WHERE id = ?').run(w.amount, w.user_id);
     })();
+    const wRejUser = db.prepare('SELECT email FROM users WHERE id = ?').get(w.user_id);
+    sendEmail(wRejUser.email, '❌ Retrait rejeté — Solde recrédité',
+      `<p>Bonjour,</p>
+       <p>Votre demande de retrait de <strong>$${parseFloat(w.amount).toFixed(2)}</strong> n'a pas pu être traitée.</p>
+       <p><span class="badge" style="color:#f87171;border-color:rgba(248,113,113,0.3);background:rgba(248,113,113,0.08);">❌ Rejeté</span></p>
+       <hr class="divider">
+       <p>Votre solde a été <strong>recrédité intégralement</strong>. Vous pouvez soumettre une nouvelle demande depuis votre tableau de bord.</p>
+       <p>En cas de question, contactez notre support.</p>`,
+      '❌ Retrait rejeté'
+    );
     res.json({ success: true });
   } catch (err) {
     res.status(500).json({ error: 'Erreur serveur' });
@@ -997,6 +1146,17 @@ app.post('/api/admin/deposits/:id/approve', requireAdmin, (req, res) => {
 
     transaction();
 
+    const approvedUser = db.prepare('SELECT email FROM users WHERE id = ?').get(deposit.user_id);
+    sendEmail(approvedUser.email, '✅ Dépôt confirmé — Votre capital est actif !',
+      `<p>Bonjour,</p>
+       <p>Excellente nouvelle ! Votre dépôt a été vérifié et confirmé par notre équipe. Votre capital est désormais actif.</p>
+       <div class="amount" style="color:#22d3a8;">$${parseFloat(deposit.amount).toFixed(2)}</div>
+       <p><span class="badge" style="color:#22d3a8;border-color:rgba(34,211,168,0.3);background:rgba(34,211,168,0.08);">✅ Confirmé</span></p>
+       <hr class="divider">
+       <p>Vous pouvez maintenant <strong>compléter vos quêtes</strong> pour commencer à générer des récompenses dès aujourd'hui !</p>`,
+      '✅ Dépôt confirmé'
+    );
+
     res.json({ success: true, message: 'Dépôt approuvé' });
   } catch (err) {
     res.status(500).json({ error: 'Erreur serveur' });
@@ -1018,6 +1178,17 @@ app.post('/api/admin/deposits/:id/reject', requireAdmin, (req, res) => {
     }
 
     db.prepare('UPDATE deposits SET status = ? WHERE id = ?').run('rejected', depositId);
+
+    const rejectedUser = db.prepare('SELECT email FROM users WHERE id = ?').get(deposit.user_id);
+    sendEmail(rejectedUser.email, '❌ Dépôt rejeté — Action requise',
+      `<p>Bonjour,</p>
+       <p>Votre dépôt de <strong>$${parseFloat(deposit.amount).toFixed(2)}</strong> n'a pas pu être confirmé.</p>
+       <p><span class="badge" style="color:#f87171;border-color:rgba(248,113,113,0.3);background:rgba(248,113,113,0.08);">❌ Rejeté</span></p>
+       <hr class="divider">
+       <p>Cela peut être dû à un hash de transaction invalide ou une transaction non trouvée sur la blockchain. Veuillez vérifier le hash et soumettre à nouveau votre dépôt.</p>
+       <p style="font-size:.8rem;color:#5a5a7a;">Hash soumis : <code style="color:#f87171;">${deposit.tx_hash || 'N/A'}</code></p>`,
+      '❌ Dépôt rejeté'
+    );
 
     res.json({ success: true, message: 'Dépôt rejeté' });
   } catch (err) {
@@ -1106,9 +1277,63 @@ app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
+function sendQuestReminders() {
+  try {
+    const period = getQuestPeriod();
+    const users = db.prepare(`
+      SELECT u.id, u.email, u.deposit_amount,
+        (SELECT COUNT(DISTINCT uq.quest_id)
+         FROM user_quests uq
+         JOIN quests q ON q.id = uq.quest_id
+         WHERE uq.user_id = u.id
+           AND uq.completed_date BETWEEN ? AND ?
+           AND COALESCE(q.quest_type,'regular') = 'regular'
+        ) as completed_regular,
+        (SELECT COUNT(*) FROM quests WHERE COALESCE(quest_type,'regular') = 'regular') as total_regular
+      FROM users u
+      WHERE u.deposit_amount >= ?
+    `).all(period.startDate, period.endDate, MIN_DEPOSIT);
+
+    for (const u of users) {
+      const remaining = u.total_regular - u.completed_regular;
+      if (remaining > 0) {
+        const reward = (parseFloat(u.deposit_amount) * 40 / 100) * remaining;
+        sendEmail(u.email, '⚡ Rappel — Vos quêtes vous attendent !',
+          `<p>Bonjour,</p>
+           <p>Vous avez encore <strong>${remaining} quête${remaining > 1 ? 's' : ''}</strong> disponible${remaining > 1 ? 's' : ''} ce cycle. Ne laissez pas vos récompenses expirer !</p>
+           <div class="amount">+$${reward.toFixed(2)} à gagner</div>
+           <p><span class="badge">📅 Cycle se termine le ${new Date(period.endDate).toLocaleDateString('fr-FR')}</span></p>
+           <hr class="divider">
+           <p>Connectez-vous maintenant et complétez vos quêtes — cela ne prend que quelques minutes.</p>`,
+          '⚡ Rappel quêtes disponibles'
+        );
+      }
+    }
+    console.log(`[reminder] Sent quest reminders (${users.length} users checked)`);
+  } catch (err) {
+    console.error('[reminder] Error sending reminders:', err.message);
+  }
+}
+
+const MS_IN_DAY = 24 * 60 * 60 * 1000;
+function scheduleDailyReminder() {
+  const now = new Date();
+  const nextRun = new Date(now);
+  nextRun.setUTCHours(9, 0, 0, 0);
+  if (nextRun <= now) nextRun.setUTCDate(nextRun.getUTCDate() + 1);
+  const delay = nextRun - now;
+  setTimeout(() => {
+    sendQuestReminders();
+    setInterval(sendQuestReminders, MS_IN_DAY);
+  }, delay);
+  console.log(`[reminder] Daily quest reminders scheduled at 09:00 UTC (next in ${Math.round(delay / 60000)} min)`);
+}
+
 initDB();
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`Server running on http://0.0.0.0:${PORT}`);
+
+  scheduleDailyReminder();
 
   if (isProduction && process.env.RENDER_EXTERNAL_URL) {
     const appUrl = process.env.RENDER_EXTERNAL_URL;

@@ -7,7 +7,8 @@ QuestInvest est une plateforme d'investissement où les utilisateurs peuvent dé
 - **Backend**: Node.js + Express.js
 - **Base de données**: SQLite avec better-sqlite3
 - **Frontend**: HTML/CSS/JavaScript vanilla
-- **Authentification**: Sessions avec express-session + bcryptjs
+- **Authentification**: Sessions avec express-session + bcryptjs + 2FA par email
+- **Emails**: Nodemailer via Gmail (smartgainbot@gmail.com)
 
 ## Structure du Projet
 ```

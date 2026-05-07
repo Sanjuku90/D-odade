@@ -703,6 +703,22 @@
               <p class="error-msg" id="register-error"></p>
             </form>
 
+            <!-- FORMULAIRE 2FA -->
+            <div id="twofa-form-wrap" class="hidden">
+              <h2 style="font-size:1.2rem;font-weight:700;color:#f5f5fa;margin-bottom:6px;">Vérification en deux étapes</h2>
+              <p class="auth-sub" style="margin-bottom:4px;">Un code à 6 chiffres a été envoyé à <strong id="twofa-masked-email" style="color:#a78bfa;"></strong></p>
+              <p style="font-size:0.75rem;color:#94a3b8;background:rgba(167,139,250,0.06);border:1px solid rgba(167,139,250,0.15);border-radius:8px;padding:8px 12px;margin-bottom:20px;line-height:1.5;">Vérifiez votre boîte mail (et vos spams). Le code est valable <strong>10 minutes</strong>.</p>
+              <div class="form-group">
+                <label>Code de vérification</label>
+                <input type="text" id="twofa-code-input" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" placeholder="• • • • • •" autocomplete="one-time-code" style="font-size:1.6rem;letter-spacing:8px;text-align:center;font-weight:700;">
+              </div>
+              <button id="twofa-submit-btn" class="btn btn-primary" style="width:100%;">Vérifier le code</button>
+              <p class="error-msg" id="twofa-error" style="margin-top:10px;"></p>
+              <div style="margin-top:16px;text-align:center;">
+                <button type="button" onclick="cancelTwoFA()" style="background:none;border:none;color:#64748b;font-size:0.8rem;cursor:pointer;">← Retour à la connexion</button>
+              </div>
+            </div>
+
             <!-- FORMULAIRE DE RÉCUPÉRATION -->
             <div id="recovery-form-wrap" class="hidden">
               <button type="button" onclick="hideRecovery()" style="background:none;border:none;color:#64748b;font-size:0.8rem;cursor:pointer;margin-bottom:16px;display:flex;align-items:center;gap:4px;">← Retour à la connexion</button>
