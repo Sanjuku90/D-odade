@@ -5,27 +5,50 @@ const crypto = require('crypto');
 const Database = require('better-sqlite3');
 const path = require('path');
 const fs = require('fs');
-const nodemailer = require('nodemailer');
-
-function getTransporter() {
-  const user = process.env.MAIL_USER || '';
-  const clientId = process.env.GMAIL_CLIENT_ID || '';
-  const clientSecret = process.env.GMAIL_CLIENT_SECRET || '';
-  const refreshToken = process.env.GMAIL_REFRESH_TOKEN || '';
-
-  return nodemailer.createTransport({
-    host: 'smtp.gmail.com',
-    port: 465,
-    secure: true,
-    family: 4,
-    auth: {
-      type: 'OAuth2',
-      user,
-      clientId,
-      clientSecret,
-      refreshToken
-    }
+// Gmail REST API — fonctionne sur tous les hébergeurs (pas de SMTP bloqué)
+async function getGmailAccessToken() {
+  const res = await fetch('https://oauth2.googleapis.com/token', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams({
+      client_id:     process.env.GMAIL_CLIENT_ID     || '',
+      client_secret: process.env.GMAIL_CLIENT_SECRET || '',
+      refresh_token: process.env.GMAIL_REFRESH_TOKEN || '',
+      grant_type:    'refresh_token'
+    })
   });
+  const data = await res.json();
+  if (!res.ok) throw new Error(`OAuth2 token error: ${data.error_description || data.error}`);
+  return data.access_token;
+}
+
+function buildRawEmail(from, to, subject, htmlBody) {
+  const msg = [
+    `From: ${from}`,
+    `To: ${to}`,
+    `Subject: ${subject}`,
+    'MIME-Version: 1.0',
+    'Content-Type: text/html; charset=UTF-8',
+    '',
+    htmlBody
+  ].join('\r\n');
+  return Buffer.from(msg).toString('base64url');
+}
+
+async function sendViaGmailApi(to, subject, htmlBody) {
+  const accessToken = await getGmailAccessToken();
+  const raw = buildRawEmail(`"QuestInvest" <${MAIL_USER}>`, to, subject, htmlBody);
+  const res = await fetch('https://gmail.googleapis.com/gmail/v1/users/me/messages/send', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${accessToken}`,
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({ raw })
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(`Gmail API error: ${data.error?.message || JSON.stringify(data)}`);
+  return data;
 }
 
 function emailBase(title, bodyHtml) {
@@ -57,10 +80,9 @@ function emailBase(title, bodyHtml) {
 }
 
 async function sendEmail(to, subject, bodyHtml, title) {
-  const mailUser = MAIL_USER || process.env.MAIL_USER || '';
   let status = 'sent', errorMsg = null;
 
-  if (!mailUser || !process.env.GMAIL_CLIENT_ID || !process.env.GMAIL_CLIENT_SECRET || !process.env.GMAIL_REFRESH_TOKEN) {
+  if (!MAIL_USER || !process.env.GMAIL_CLIENT_ID || !process.env.GMAIL_CLIENT_SECRET || !process.env.GMAIL_REFRESH_TOKEN) {
     errorMsg = 'Configuration OAuth2 incomplète — vérifiez MAIL_USER, GMAIL_CLIENT_ID, GMAIL_CLIENT_SECRET, GMAIL_REFRESH_TOKEN';
     console.error(`[mail] ${errorMsg}`);
     status = 'failed';
@@ -69,17 +91,12 @@ async function sendEmail(to, subject, bodyHtml, title) {
   }
 
   try {
-    await getTransporter().sendMail({
-      from: `"QuestInvest" <${mailUser}>`,
-      to,
-      subject,
-      html: emailBase(title || subject, bodyHtml)
-    });
+    await sendViaGmailApi(to, subject, emailBase(title || subject, bodyHtml));
     console.log(`[mail] Sent "${subject}" → ${to}`);
   } catch (err) {
     status = 'failed';
     errorMsg = err.message;
-    console.error(`[mail] Failed to send "${subject}" → ${to}: [${err.code || err.responseCode || 'ERR'}] ${err.message}`);
+    console.error(`[mail] Failed to send "${subject}" → ${to}: ${err.message}`);
   }
   try {
     db.prepare(
