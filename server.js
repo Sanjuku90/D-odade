@@ -154,7 +154,46 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(express.static(path.join(__dirname, 'public')));
 
+// Store de sessions SQLite — survit aux redémarrages/redéploiements
+class SqliteSessionStore extends session.Store {
+  constructor(database) {
+    super();
+    this.db = database;
+    this.db.exec(`
+      CREATE TABLE IF NOT EXISTS sessions (
+        sid TEXT PRIMARY KEY,
+        sess TEXT NOT NULL,
+        expired INTEGER NOT NULL
+      )
+    `);
+    setInterval(() => {
+      try { this.db.prepare('DELETE FROM sessions WHERE expired < ?').run(Date.now()); } catch (_) {}
+    }, 15 * 60 * 1000);
+  }
+  get(sid, cb) {
+    try {
+      const row = this.db.prepare('SELECT sess, expired FROM sessions WHERE sid = ?').get(sid);
+      if (!row) return cb(null, null);
+      if (row.expired < Date.now()) { this.destroy(sid, () => {}); return cb(null, null); }
+      cb(null, JSON.parse(row.sess));
+    } catch (e) { cb(e); }
+  }
+  set(sid, sess, cb) {
+    try {
+      const expired = sess.cookie && sess.cookie.expires
+        ? new Date(sess.cookie.expires).getTime()
+        : Date.now() + 30 * 24 * 60 * 60 * 1000;
+      this.db.prepare('INSERT OR REPLACE INTO sessions (sid, sess, expired) VALUES (?, ?, ?)').run(sid, JSON.stringify(sess), expired);
+      cb(null);
+    } catch (e) { cb(e); }
+  }
+  destroy(sid, cb) {
+    try { this.db.prepare('DELETE FROM sessions WHERE sid = ?').run(sid); cb(null); } catch (e) { cb(e); }
+  }
+}
+
 app.use(session({
+  store: new SqliteSessionStore(db),
   secret: SESSION_SECRET,
   resave: false,
   saveUninitialized: false,
