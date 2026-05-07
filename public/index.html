@@ -533,7 +533,7 @@
                   <span>Quelle est la limite de retrait ?</span>
                   <span class="faq-toggle">+</span>
                 </div>
-                <div class="faq-answer"><p>Vous pouvez retirer entre $50 et $500 par retrait, et un seul retrait par cycle de 2 semaines. Cette limite garantit la stabilité de la plateforme pour tous les utilisateurs.</p></div>
+                <div class="faq-answer"><p>Vous pouvez retirer entre $300 et $500 par retrait, et un seul retrait par cycle de 2 semaines. Cette limite garantit la stabilité de la plateforme pour tous les utilisateurs.</p></div>
               </div>
             </div>
           </div>
@@ -761,6 +761,18 @@
         </aside>
 
         <main class="dashboard-main">
+
+          <!-- ========== OVERLAY GEL KYC ========== -->
+          <div id="kyc-freeze-overlay" class="hidden" style="position:absolute;inset:0;z-index:100;background:rgba(8,10,18,0.82);backdrop-filter:blur(6px);display:flex;align-items:center;justify-content:center;border-radius:0 16px 16px 0;">
+            <div style="text-align:center;max-width:440px;padding:40px 32px;background:rgba(15,17,30,0.97);border:1px solid rgba(251,191,36,0.25);border-radius:20px;box-shadow:0 24px 64px rgba(0,0,0,0.6);">
+              <div style="font-size:3rem;margin-bottom:16px;">🔒</div>
+              <h2 style="font-size:1.35rem;font-weight:700;color:#f5f5fa;margin-bottom:10px;">Compte temporairement gelé</h2>
+              <p style="font-size:.875rem;color:#94a3b8;line-height:1.7;margin-bottom:24px;">Votre compte a été récupéré avec succès.<br>Pour accéder à toutes les fonctionnalités, vous devez <strong style="color:#fbbf24;">valider votre identité (KYC)</strong>. Vos fonds sont en sécurité.</p>
+              <button onclick="document.querySelector('[data-view=kyc]').click()" style="background:linear-gradient(135deg,#a78bfa,#7c3aed);border:none;color:#fff;font-size:.9rem;font-weight:600;padding:12px 28px;border-radius:10px;cursor:pointer;width:100%;">Accéder à la vérification KYC →</button>
+              <p id="kyc-freeze-status" style="font-size:.78rem;color:#64748b;margin-top:14px;"></p>
+            </div>
+          </div>
+
           <!-- ========== OVERVIEW ========== -->
           <div id="overview-view" class="dashboard-view">
             <div class="dash-header">

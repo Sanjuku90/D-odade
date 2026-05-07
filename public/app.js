@@ -138,6 +138,15 @@ function setupEventListeners() {
       
       document.querySelectorAll('.dashboard-view').forEach(v => v.classList.add('hidden'));
       document.getElementById(view + '-view').classList.remove('hidden');
+
+      const overlay = document.getElementById('kyc-freeze-overlay');
+      if (overlay) {
+        if (view === 'kyc') {
+          overlay.style.display = 'none';
+        } else if (currentUser && currentUser.kyc_status !== 'confirmed') {
+          overlay.style.display = 'flex';
+        }
+      }
     });
   });
 
@@ -355,6 +364,29 @@ function showAuth(tab = 'login') {
   }
 }
 
+function applyKycFreeze(kycStatus) {
+  const overlay = document.getElementById('kyc-freeze-overlay');
+  const statusEl = document.getElementById('kyc-freeze-status');
+  if (!overlay) return;
+  if (kycStatus === 'confirmed') {
+    overlay.classList.add('hidden');
+    overlay.style.display = 'none';
+  } else {
+    overlay.classList.remove('hidden');
+    overlay.style.display = 'flex';
+    if (kycStatus === 'pending') {
+      statusEl.textContent = '⏳ Votre KYC est en cours de vérification par notre équipe.';
+      statusEl.style.color = '#fbbf24';
+    } else if (kycStatus === 'rejected') {
+      statusEl.textContent = '❌ Votre KYC a été refusé. Soumettez à nouveau vos documents.';
+      statusEl.style.color = '#f87171';
+    } else {
+      statusEl.textContent = 'Aucun KYC soumis — cliquez ci-dessus pour commencer.';
+      statusEl.style.color = '#64748b';
+    }
+  }
+}
+
 function showDashboard() {
   document.getElementById('landing-section').classList.add('hidden');
   document.getElementById('auth-section').classList.add('hidden');
@@ -386,6 +418,8 @@ async function loadUserData() {
       if (user.created_at) {
         document.getElementById('profile-date').textContent = new Date(user.created_at).toLocaleDateString('fr-FR');
       }
+
+      applyKycFreeze(user.kyc_status);
     }
   } catch (err) {
     console.error('Error loading user data');

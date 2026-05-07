@@ -394,7 +394,10 @@ app.get('/api/user', requireAuth, (req, res) => {
   try {
     const user = db.prepare('SELECT id, email, balance, deposit_amount, created_at, referral_code FROM users WHERE id = ?').get(req.session.userId);
     user.deposit_address = getDepositAddress();
-    
+
+    const kycRow = db.prepare('SELECT status FROM kyc_submissions WHERE user_id = ? ORDER BY submitted_at DESC LIMIT 1').get(req.session.userId);
+    user.kyc_status = kycRow ? kycRow.status : null;
+
     const referralsCount = db.prepare('SELECT COUNT(*) as count FROM referrals WHERE referrer_id = ?').get(req.session.userId);
     user.referrals_count = referralsCount.count;
 
@@ -644,7 +647,7 @@ app.get('/api/deposits', requireAuth, (req, res) => {
 
 app.post('/api/withdraw', requireAuth, (req, res) => {
   const { amount, address } = req.body;
-  const minWithdraw = 50;
+  const minWithdraw = 300;
   const maxWithdraw = 500;
   const questPeriod = getQuestPeriod();
 
