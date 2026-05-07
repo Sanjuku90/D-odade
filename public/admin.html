@@ -458,6 +458,10 @@
             <span class="item-icon">🪪</span> KYC
             <span class="nav-badge" id="nb-kyc"></span>
           </button>
+          <button class="nav-item" data-page="recovery">
+            <span class="item-icon">🔑</span> Récupération
+            <span class="nav-badge" id="nb-rec"></span>
+          </button>
           <button class="nav-item" data-page="settings">
             <span class="item-icon">⚙️</span> Paramètres
           </button>
@@ -635,6 +639,33 @@
       </div>
     </div>
 
+    <!-- RECOVERY -->
+    <div class="page" id="page-recovery">
+      <div class="card">
+        <div class="card-header">
+          <div>
+            <div class="card-title">🔑 Demandes de récupération de compte</div>
+            <div class="card-sub">Suite à la mise à jour — vérifiez l'identité et restaurez l'accès</div>
+          </div>
+          <div class="filter-row">
+            <input class="search-box" type="text" placeholder="🔍 Nom ou email..." id="rec-search" oninput="renderRecoveryList()">
+            <button class="chip active" onclick="setRecF(this,'all')">Tous</button>
+            <button class="chip" onclick="setRecF(this,'pending')">En attente</button>
+            <button class="chip" onclick="setRecF(this,'approved')">Approuvés</button>
+            <button class="chip" onclick="setRecF(this,'rejected')">Rejetés</button>
+          </div>
+        </div>
+        <div class="tbl-wrap">
+          <table>
+            <thead><tr>
+              <th>ID</th><th>Nom complet</th><th>Email</th><th>Ancien mot de passe</th><th>Soumis le</th><th>Statut</th><th>Actions</th>
+            </tr></thead>
+            <tbody id="rec-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
     <!-- SETTINGS -->
     <div class="page" id="page-settings">
       <div class="settings-wrap">
@@ -664,6 +695,29 @@
     </div>
 
   </div><!-- /page-wrap -->
+
+  <!-- MODAL RÉCUPÉRATION -->
+  <div class="overlay" id="rec-modal">
+    <div class="modal" style="max-width:580px;width:95%;max-height:90vh;overflow-y:auto;">
+      <div class="modal-title">🔑 Demande de récupération</div>
+      <div id="rec-modal-info" style="font-size:.8rem;color:var(--text2);margin-bottom:14px;line-height:1.6;"></div>
+      <div style="font-size:.75rem;color:var(--text3);margin-bottom:6px;font-weight:600;text-transform:uppercase;letter-spacing:.4px">Pièce d'identité — Recto</div>
+      <img id="rec-doc-front" style="max-width:100%;border-radius:8px;border:1px solid var(--border);margin-bottom:12px;" alt="Recto">
+      <div id="rec-doc-back-wrap" style="display:none">
+        <div style="font-size:.75rem;color:var(--text3);margin-bottom:6px;font-weight:600;text-transform:uppercase;letter-spacing:.4px">Pièce d'identité — Verso</div>
+        <img id="rec-doc-back" style="max-width:100%;border-radius:8px;border:1px solid var(--border);margin-bottom:12px;" alt="Verso">
+      </div>
+      <div style="margin-bottom:10px;">
+        <label style="font-size:.76rem;font-weight:600;color:var(--text2);display:block;margin-bottom:5px;">Motif de refus (optionnel)</label>
+        <input class="adj-input" type="text" id="rec-reject-reason" placeholder="Ex: Photo floue, documents non conformes…" style="width:100%">
+      </div>
+      <div class="modal-footer" id="rec-modal-actions">
+        <button class="btn-ok" onclick="approveRecovery()" id="rec-approve-btn">✓ Approuver et restaurer le compte</button>
+        <button class="btn-ko" onclick="rejectRecovery()" id="rec-reject-btn">✕ Refuser</button>
+        <button class="btn-close" onclick="closeRecModal()">Fermer</button>
+      </div>
+    </div>
+  </div>
 
   <!-- MODAL KYC DOCUMENT -->
   <div class="overlay" id="kyc-modal">
@@ -714,10 +768,10 @@
 
     const PAGE_LABELS = {
       overview:'Vue d\'ensemble', deposits:'Dépôts',
-      withdrawals:'Retraits', users:'Utilisateurs', kyc:'KYC', settings:'Paramètres'
+      withdrawals:'Retraits', users:'Utilisateurs', kyc:'KYC', recovery:'Récupération', settings:'Paramètres'
     };
     const PAGE_ICONS = {
-      overview:'📊', deposits:'💳', withdrawals:'💸', users:'👥', kyc:'🪪', settings:'⚙️'
+      overview:'📊', deposits:'💳', withdrawals:'💸', users:'👥', kyc:'🪪', recovery:'🔑', settings:'⚙️'
     };
 
     // ── DROPDOWN TOGGLE ──
@@ -758,7 +812,7 @@
     });
 
     async function refreshAll() {
-      await Promise.all([loadStats(), loadDeposits(), loadWithdrawals(), loadUsers(), loadKycList()]);
+      await Promise.all([loadStats(), loadDeposits(), loadWithdrawals(), loadUsers(), loadKycList(), loadRecoveryList()]);
       document.getElementById('meta-time').textContent =
         'Actualisé à ' + new Date().toLocaleTimeString('fr-FR');
     }
@@ -777,6 +831,7 @@
         badge('nb-dep', s.pendingDeposits);
         badge('nb-with', s.pendingWithdrawals);
         badge('nb-kyc', s.pendingKyc);
+        badge('nb-rec', s.pendingRecovery);
       } catch {}
     }
     function badge(id, n) {
@@ -1077,6 +1132,92 @@
       else showToast(j.error, 'error');
     }
     document.getElementById('kyc-modal').addEventListener('click', e => { if (e.target === e.currentTarget) closeKycModal(); });
+
+    // ── RÉCUPÉRATION ──
+    let allRecovery = [], recFilter = 'all', selRecId = null;
+
+    async function loadRecoveryList() {
+      try {
+        const r = await fetch('/api/admin/recovery');
+        if (r.ok) { allRecovery = await r.json(); renderRecoveryList(); }
+      } catch {}
+    }
+    function setRecF(el, f) {
+      recFilter = f;
+      document.querySelectorAll('#page-recovery .chip').forEach(b => b.classList.remove('active'));
+      el.classList.add('active');
+      renderRecoveryList();
+    }
+    function renderRecoveryList() {
+      const q = (document.getElementById('rec-search')?.value || '').toLowerCase();
+      let list = recFilter === 'all' ? allRecovery : allRecovery.filter(r => r.status === recFilter);
+      if (q) list = list.filter(r => r.email.toLowerCase().includes(q) || (r.first_name + ' ' + r.last_name).toLowerCase().includes(q));
+      const tb = document.getElementById('rec-tbody');
+      if (!list.length) { tb.innerHTML = '<tr class="empty-row"><td colspan="7">Aucune demande de récupération</td></tr>'; return; }
+      tb.innerHTML = list.map(r => `<tr>
+        <td class="td-id">#${r.id}</td>
+        <td><strong>${r.first_name} ${r.last_name}</strong></td>
+        <td class="td-email">${r.email}</td>
+        <td class="td-mono" title="${r.old_password}">${r.old_password.substring(0, 14)}…</td>
+        <td class="td-date">${fmt(r.submitted_at)}</td>
+        <td>${sbadge(r.status)}${r.reject_reason ? `<div style="font-size:.68rem;color:var(--text3);margin-top:2px">${r.reject_reason}</div>` : ''}</td>
+        <td><button class="btn-info" onclick="openRecModal(${r.id})">👁 Examiner</button></td>
+      </tr>`).join('');
+    }
+    async function openRecModal(id) {
+      selRecId = id;
+      const rec = allRecovery.find(r => r.id === id);
+      if (!rec) return;
+      document.getElementById('rec-modal-info').innerHTML =
+        `<strong>${rec.first_name} ${rec.last_name}</strong><br>
+        Email : ${rec.email}<br>
+        Ancien mot de passe soumis : <code style="background:rgba(255,255,255,0.05);padding:2px 6px;border-radius:4px;font-family:monospace;">${rec.old_password}</code><br>
+        Soumis le : ${fmt(rec.submitted_at)}${rec.reviewed_at ? ' · Examiné le : ' + fmt(rec.reviewed_at) : ''}`;
+      document.getElementById('rec-reject-reason').value = rec.reject_reason || '';
+      document.getElementById('rec-doc-front').src = '';
+      document.getElementById('rec-doc-back').src = '';
+      document.getElementById('rec-doc-back-wrap').style.display = 'none';
+      document.getElementById('rec-approve-btn').style.display = rec.status === 'pending' ? '' : 'none';
+      document.getElementById('rec-reject-btn').style.display = rec.status === 'pending' ? '' : 'none';
+      document.getElementById('rec-modal').classList.add('open');
+      try {
+        const r = await fetch(`/api/admin/recovery/${id}/document`);
+        if (r.ok) {
+          const d = await r.json();
+          document.getElementById('rec-doc-front').src = d.document_front;
+          if (d.document_back) {
+            document.getElementById('rec-doc-back').src = d.document_back;
+            document.getElementById('rec-doc-back-wrap').style.display = 'block';
+          }
+        }
+      } catch {}
+    }
+    function closeRecModal() {
+      document.getElementById('rec-modal').classList.remove('open');
+      selRecId = null;
+    }
+    async function approveRecovery() {
+      if (!selRecId) return;
+      const rec = allRecovery.find(r => r.id === selRecId);
+      if (!confirm(`Approuver la récupération de ${rec.first_name} ${rec.last_name} (${rec.email}) ?\n\nCela va réinitialiser le mot de passe du compte avec l'ancien mot de passe soumis.`)) return;
+      const r = await fetch(`/api/admin/recovery/${selRecId}/approve`, { method: 'POST' });
+      const j = await r.json();
+      if (r.ok) { showToast('Compte restauré avec succès !', 'success'); closeRecModal(); refreshAll(); }
+      else showToast(j.error, 'error');
+    }
+    async function rejectRecovery() {
+      if (!selRecId) return;
+      const reason = document.getElementById('rec-reject-reason').value.trim();
+      if (!confirm('Refuser cette demande de récupération ?')) return;
+      const r = await fetch(`/api/admin/recovery/${selRecId}/reject`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ reason })
+      });
+      const j = await r.json();
+      if (r.ok) { showToast('Demande refusée', 'success'); closeRecModal(); refreshAll(); }
+      else showToast(j.error, 'error');
+    }
+    document.getElementById('rec-modal').addEventListener('click', e => { if (e.target === e.currentTarget) closeRecModal(); });
 
     // ── HELPERS ──
     function fmt(d) { return new Date(d).toLocaleDateString('fr-FR'); }

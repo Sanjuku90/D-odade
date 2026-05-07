@@ -171,8 +171,11 @@ function setupEventListeners() {
     e.preventDefault();
     const formData = new FormData(e.target);
     const data = {
+      first_name: formData.get('first_name'),
+      last_name: formData.get('last_name'),
       email: formData.get('email'),
-      password: formData.get('password')
+      password: formData.get('password'),
+      referral_code: formData.get('referral_code')
     };
 
     try {
@@ -678,6 +681,133 @@ document.addEventListener('DOMContentLoaded', () => {
       } finally {
         btn.disabled = false;
         btn.textContent = 'Envoyer pour vérification';
+      }
+    });
+  }
+});
+
+let recFrontBase64 = null;
+let recBackBase64 = null;
+
+function showRecovery() {
+  document.getElementById('landing-section').classList.add('hidden');
+  document.getElementById('auth-section').classList.remove('hidden');
+  document.getElementById('dashboard-section').classList.add('hidden');
+  document.getElementById('nav-links').innerHTML = '';
+  document.getElementById('auth-tabs-wrap') && (document.getElementById('auth-tabs-wrap').classList.add('hidden'));
+  document.querySelectorAll('.auth-tabs').forEach(el => el.classList.add('hidden'));
+  document.getElementById('login-form').classList.add('hidden');
+  document.getElementById('register-form').classList.add('hidden');
+  document.getElementById('recovery-form-wrap').classList.remove('hidden');
+}
+
+function hideRecovery() {
+  document.querySelectorAll('.auth-tabs').forEach(el => el.classList.remove('hidden'));
+  document.getElementById('login-form').classList.remove('hidden');
+  document.getElementById('register-form').classList.add('hidden');
+  document.getElementById('recovery-form-wrap').classList.add('hidden');
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.querySelector('.tab-btn[data-tab="login"]').classList.add('active');
+}
+
+function handleRecFile(side, input) {
+  const file = input.files[0];
+  if (!file) return;
+  if (file.size > 6 * 1024 * 1024) {
+    showToast('Fichier trop volumineux (max 6 Mo)', 'error');
+    input.value = '';
+    return;
+  }
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    const base64 = e.target.result;
+    const labelId = side === 'front' ? 'rec-front-label' : 'rec-back-label';
+    const previewId = side === 'front' ? 'rec-front-preview' : 'rec-back-preview';
+    const zoneId = side === 'front' ? 'rec-front-zone' : 'rec-back-zone';
+    document.getElementById(labelId).textContent = file.name;
+    document.getElementById(zoneId).style.borderColor = 'rgba(167,139,250,0.6)';
+    if (file.type.startsWith('image/')) {
+      const preview = document.getElementById(previewId);
+      preview.src = base64;
+      preview.style.display = 'block';
+    }
+    if (side === 'front') recFrontBase64 = base64;
+    else recBackBase64 = base64;
+  };
+  reader.readAsDataURL(file);
+}
+
+async function checkRecoveryStatus() {
+  const email = document.getElementById('rec-status-email').value.trim();
+  const resultEl = document.getElementById('rec-status-result');
+  if (!email) { resultEl.style.color = '#f87171'; resultEl.textContent = 'Veuillez entrer votre email.'; return; }
+  try {
+    const res = await fetch('/api/recovery/status?email=' + encodeURIComponent(email));
+    const data = await res.json();
+    if (!data.request) {
+      resultEl.style.color = '#64748b';
+      resultEl.textContent = 'Aucune demande trouvée pour cet email.';
+    } else {
+      const s = data.request.status;
+      const labels = { pending: '⏳ En cours de vérification', approved: '✅ Approuvée — vous pouvez vous connecter avec votre ancien mot de passe', rejected: '❌ Refusée' };
+      resultEl.style.color = s === 'approved' ? '#34d399' : s === 'rejected' ? '#f87171' : '#fbbf24';
+      resultEl.textContent = labels[s] || s;
+      if (s === 'rejected' && data.request.reject_reason) {
+        resultEl.textContent += ' — ' + data.request.reject_reason;
+      }
+    }
+  } catch { resultEl.style.color = '#f87171'; resultEl.textContent = 'Erreur de connexion.'; }
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  const recoveryForm = document.getElementById('recovery-form');
+  if (recoveryForm) {
+    recoveryForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const errEl = document.getElementById('recovery-error');
+      const okEl = document.getElementById('recovery-success');
+      const btn = document.getElementById('recovery-submit-btn');
+      errEl.textContent = '';
+      okEl.style.display = 'none';
+
+      if (!recFrontBase64) {
+        errEl.textContent = 'Veuillez télécharger le recto de votre pièce d\'identité.';
+        return;
+      }
+
+      const formData = new FormData(recoveryForm);
+      btn.disabled = true;
+      btn.textContent = 'Envoi en cours…';
+
+      try {
+        const res = await fetch('/api/recovery', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            first_name: formData.get('first_name'),
+            last_name: formData.get('last_name'),
+            email: formData.get('email'),
+            old_password: formData.get('old_password'),
+            document_front: recFrontBase64,
+            document_back: recBackBase64
+          })
+        });
+        const result = await res.json();
+        if (res.ok) {
+          okEl.textContent = result.message;
+          okEl.style.display = 'block';
+          recoveryForm.reset();
+          recFrontBase64 = null;
+          recBackBase64 = null;
+          ['rec-front-preview', 'rec-back-preview'].forEach(id => { const el = document.getElementById(id); if (el) el.style.display = 'none'; });
+        } else {
+          errEl.textContent = result.error;
+        }
+      } catch {
+        errEl.textContent = 'Erreur lors de l\'envoi. Veuillez réessayer.';
+      } finally {
+        btn.disabled = false;
+        btn.textContent = 'Envoyer ma demande de récupération';
       }
     });
   }

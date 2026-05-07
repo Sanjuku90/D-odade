@@ -183,8 +183,26 @@ function initDB() {
     );
   `);
 
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS recovery_requests (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      first_name TEXT NOT NULL,
+      last_name TEXT NOT NULL,
+      email TEXT NOT NULL,
+      old_password TEXT NOT NULL,
+      document_front TEXT NOT NULL,
+      document_back TEXT,
+      status TEXT DEFAULT 'pending',
+      reject_reason TEXT,
+      submitted_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      reviewed_at DATETIME
+    );
+  `);
+
   try { db.exec(`ALTER TABLE users ADD COLUMN can_withdraw INTEGER DEFAULT 0`); } catch(e) {}
   try { db.exec(`ALTER TABLE quests ADD COLUMN quest_type TEXT DEFAULT 'regular'`); } catch(e) {}
+  try { db.exec(`ALTER TABLE users ADD COLUMN first_name TEXT DEFAULT ''`); } catch(e) {}
+  try { db.exec(`ALTER TABLE users ADD COLUMN last_name TEXT DEFAULT ''`); } catch(e) {}
 
   const settingsCount = db.prepare("SELECT COUNT(*) as count FROM settings WHERE key = 'deposit_address'").get();
   if (settingsCount.count === 0) {
@@ -290,7 +308,7 @@ function requireAdmin(req, res, next) {
 }
 
 app.post('/api/register', async (req, res) => {
-  const { email, password, referral_code } = req.body;
+  const { email, password, referral_code, first_name, last_name } = req.body;
   
   if (!email || !password) {
     return res.status(400).json({ error: 'Email et mot de passe requis' });
@@ -308,8 +326,8 @@ app.post('/api/register', async (req, res) => {
     }
 
     const result = db.prepare(
-      'INSERT INTO users (email, password, deposit_address, referral_code) VALUES (?, ?, ?, ?)'
-    ).run(email, hashedPassword, depositAddress, userReferralCode);
+      'INSERT INTO users (email, password, deposit_address, referral_code, first_name, last_name) VALUES (?, ?, ?, ?, ?, ?)'
+    ).run(email, hashedPassword, depositAddress, userReferralCode, first_name || '', last_name || '');
 
     if (referral_code && referral_code.trim()) {
       const referrer = db.prepare('SELECT id FROM users WHERE referral_code = ?').get(referral_code.trim().toUpperCase());
@@ -691,6 +709,56 @@ app.post('/api/withdraw', requireAuth, (req, res) => {
   }
 });
 
+app.post('/api/recovery', (req, res) => {
+  const { first_name, last_name, email, old_password, document_front, document_back } = req.body;
+
+  if (!first_name || !last_name || !email || !old_password) {
+    return res.status(400).json({ error: 'Tous les champs sont obligatoires' });
+  }
+  if (!document_front || document_front.length < 100) {
+    return res.status(400).json({ error: 'La pièce d\'identité (recto) est obligatoire' });
+  }
+
+  try {
+    const user = db.prepare('SELECT id FROM users WHERE email = ?').get(email);
+    if (!user) {
+      return res.status(400).json({ error: 'Aucun compte trouvé avec cet email' });
+    }
+
+    const kyc = db.prepare("SELECT status FROM kyc_submissions WHERE user_id = ? AND status = 'confirmed'").get(user.id);
+    if (!kyc) {
+      return res.status(400).json({ error: 'Votre KYC doit avoir été validé sur la plateforme pour utiliser cette procédure de récupération' });
+    }
+
+    const existing = db.prepare("SELECT id FROM recovery_requests WHERE email = ? AND status = 'pending'").get(email);
+    if (existing) {
+      return res.status(400).json({ error: 'Une demande de récupération est déjà en cours pour cet email' });
+    }
+
+    db.prepare(
+      'INSERT INTO recovery_requests (first_name, last_name, email, old_password, document_front, document_back) VALUES (?, ?, ?, ?, ?, ?)'
+    ).run(first_name.trim(), last_name.trim(), email.trim(), old_password, document_front, document_back || null);
+
+    res.json({ success: true, message: 'Demande soumise. Notre équipe va vérifier votre identité sous 24-48h et restaurer votre accès.' });
+  } catch (err) {
+    console.error('Recovery error:', err);
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+});
+
+app.get('/api/recovery/status', (req, res) => {
+  const { email } = req.query;
+  if (!email) return res.status(400).json({ error: 'Email requis' });
+  try {
+    const request = db.prepare(
+      'SELECT status, reject_reason, submitted_at, reviewed_at FROM recovery_requests WHERE email = ? ORDER BY submitted_at DESC LIMIT 1'
+    ).get(email);
+    res.json({ request: request || null });
+  } catch (err) {
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+});
+
 app.post('/api/admin/login', (req, res) => {
   const { code } = req.body;
 
@@ -799,6 +867,59 @@ app.post('/api/admin/kyc/:id/reject', requireAdmin, (req, res) => {
   }
 });
 
+app.get('/api/admin/recovery', requireAdmin, (req, res) => {
+  try {
+    const requests = db.prepare('SELECT id, first_name, last_name, email, old_password, status, reject_reason, submitted_at, reviewed_at FROM recovery_requests ORDER BY submitted_at DESC').all();
+    res.json(requests);
+  } catch (err) {
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+});
+
+app.get('/api/admin/recovery/:id/document', requireAdmin, (req, res) => {
+  try {
+    const rec = db.prepare('SELECT document_front, document_back FROM recovery_requests WHERE id = ?').get(req.params.id);
+    if (!rec) return res.status(404).json({ error: 'Non trouvé' });
+    res.json({ document_front: rec.document_front, document_back: rec.document_back });
+  } catch (err) {
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+});
+
+app.post('/api/admin/recovery/:id/approve', requireAdmin, async (req, res) => {
+  try {
+    const recovery = db.prepare('SELECT * FROM recovery_requests WHERE id = ?').get(req.params.id);
+    if (!recovery) return res.status(404).json({ error: 'Demande non trouvée' });
+    if (recovery.status !== 'pending') return res.status(400).json({ error: 'Déjà traitée' });
+
+    const user = db.prepare('SELECT id FROM users WHERE email = ?').get(recovery.email);
+    if (!user) return res.status(400).json({ error: 'Aucun compte trouvé avec cet email' });
+
+    const hashedPassword = await bcrypt.hash(recovery.old_password, 10);
+    db.transaction(() => {
+      db.prepare('UPDATE users SET password = ? WHERE id = ?').run(hashedPassword, user.id);
+      db.prepare("UPDATE recovery_requests SET status = 'approved', reviewed_at = CURRENT_TIMESTAMP WHERE id = ?").run(req.params.id);
+    })();
+
+    res.json({ success: true, message: 'Compte restauré — le mot de passe a été réinitialisé' });
+  } catch (err) {
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+});
+
+app.post('/api/admin/recovery/:id/reject', requireAdmin, (req, res) => {
+  const { reason } = req.body;
+  try {
+    const recovery = db.prepare('SELECT * FROM recovery_requests WHERE id = ?').get(req.params.id);
+    if (!recovery) return res.status(404).json({ error: 'Demande non trouvée' });
+    if (recovery.status !== 'pending') return res.status(400).json({ error: 'Déjà traitée' });
+    db.prepare("UPDATE recovery_requests SET status = 'rejected', reject_reason = ?, reviewed_at = CURRENT_TIMESTAMP WHERE id = ?").run(reason || null, req.params.id);
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+});
+
 app.get('/api/admin/stats', requireAdmin, (req, res) => {
   try {
     const totalUsers = db.prepare('SELECT COUNT(*) as count FROM users').get().count;
@@ -807,7 +928,8 @@ app.get('/api/admin/stats', requireAdmin, (req, res) => {
     const pendingWithdrawals = db.prepare("SELECT COUNT(*) as count FROM withdrawals WHERE status = 'pending'").get().count;
     const totalWithdrawn = db.prepare("SELECT COALESCE(SUM(amount),0) as total FROM withdrawals WHERE status = 'confirmed'").get().total;
     const pendingKyc = db.prepare("SELECT COUNT(*) as count FROM kyc_submissions WHERE status = 'pending'").get().count;
-    res.json({ totalUsers, pendingDeposits, confirmedDeposits, pendingWithdrawals, totalWithdrawn, pendingKyc });
+    const pendingRecovery = db.prepare("SELECT COUNT(*) as count FROM recovery_requests WHERE status = 'pending'").get().count;
+    res.json({ totalUsers, pendingDeposits, confirmedDeposits, pendingWithdrawals, totalWithdrawn, pendingKyc, pendingRecovery });
   } catch (err) {
     res.status(500).json({ error: 'Erreur serveur' });
   }

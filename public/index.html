@@ -63,6 +63,13 @@
   </script>
 </head>
 <body>
+  <!-- BANDEAU MISE À JOUR -->
+  <div id="update-banner" style="position:relative;z-index:9998;background:linear-gradient(90deg,rgba(139,92,246,0.15),rgba(34,211,238,0.10));border-bottom:1px solid rgba(167,139,250,0.25);padding:10px 20px;display:flex;align-items:center;gap:12px;font-size:0.82rem;color:#d1d5db;flex-wrap:wrap;">
+    <span style="font-size:1rem;">⚠️</span>
+    <span><strong style="color:#a78bfa;">Mise à jour importante :</strong> Suite à une refonte complète de la plateforme, certains mots de passe ont été réinitialisés. Si vous ne pouvez plus vous connecter, utilisez la <a href="#" onclick="event.preventDefault();showRecovery()" style="color:#22d3ee;text-decoration:underline;">procédure de récupération de compte</a>.</span>
+    <button onclick="document.getElementById('update-banner').style.display='none'" style="margin-left:auto;background:none;border:none;color:#64748b;font-size:1.1rem;cursor:pointer;flex-shrink:0;line-height:1;">×</button>
+  </div>
+
   <div id="splash-screen">
     <div class="splash-logo">QuestInvest</div>
     <div class="splash-spinner"></div>
@@ -635,6 +642,16 @@
             <form id="register-form" class="auth-form hidden">
               <h2>Créez votre compte</h2>
               <p class="auth-sub">Commencez à gagner en 2 minutes</p>
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+                <div class="form-group" style="margin-bottom:0;">
+                  <label>Prénom</label>
+                  <input type="text" name="first_name" required autocomplete="given-name" placeholder="Jean">
+                </div>
+                <div class="form-group" style="margin-bottom:0;">
+                  <label>Nom</label>
+                  <input type="text" name="last_name" required autocomplete="family-name" placeholder="Dupont">
+                </div>
+              </div>
               <div class="form-group">
                 <label>Email</label>
                 <input type="email" name="email" required autocomplete="email" placeholder="vous@exemple.com">
@@ -650,7 +667,72 @@
               <button type="submit" class="btn btn-primary">Créer mon compte</button>
               <p class="error-msg" id="register-error"></p>
             </form>
+
+            <!-- FORMULAIRE DE RÉCUPÉRATION -->
+            <div id="recovery-form-wrap" class="hidden">
+              <button type="button" onclick="hideRecovery()" style="background:none;border:none;color:#64748b;font-size:0.8rem;cursor:pointer;margin-bottom:16px;display:flex;align-items:center;gap:4px;">← Retour à la connexion</button>
+              <h2 style="font-size:1.3rem;font-weight:700;color:#f5f5fa;margin-bottom:4px;">Récupération de compte</h2>
+              <p class="auth-sub" style="margin-bottom:4px;">Suite à la mise à jour, entrez vos anciennes informations et votre pièce d'identité.</p>
+              <p style="font-size:0.75rem;color:#fbbf24;background:rgba(251,191,36,0.07);border:1px solid rgba(251,191,36,0.2);border-radius:8px;padding:8px 12px;margin-bottom:16px;line-height:1.5;">Cette procédure est réservée aux utilisateurs dont le <strong>KYC a déjà été validé</strong> sur la plateforme.</p>
+              <form id="recovery-form" class="auth-form" style="padding:0;">
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+                  <div class="form-group" style="margin-bottom:0;">
+                    <label>Prénom</label>
+                    <input type="text" name="first_name" required placeholder="Jean">
+                  </div>
+                  <div class="form-group" style="margin-bottom:0;">
+                    <label>Nom</label>
+                    <input type="text" name="last_name" required placeholder="Dupont">
+                  </div>
+                </div>
+                <div class="form-group">
+                  <label>Email du compte</label>
+                  <input type="email" name="email" required placeholder="vous@exemple.com">
+                </div>
+                <div class="form-group">
+                  <label>Ancien mot de passe utilisé à l'inscription</label>
+                  <input type="password" name="old_password" required placeholder="Votre mot de passe d'origine">
+                </div>
+                <div class="form-group">
+                  <label>Pièce d'identité — Recto <span style="color:#f87171;">*</span></label>
+                  <div id="rec-front-zone" style="border:1.5px dashed rgba(148,163,184,0.3);border-radius:10px;padding:16px;text-align:center;cursor:pointer;transition:border-color .2s;" onclick="document.getElementById('rec-front-input').click()">
+                    <div style="font-size:1.5rem;margin-bottom:4px;">🪪</div>
+                    <div id="rec-front-label" style="font-size:0.8rem;color:#64748b;">Cliquez pour sélectionner une image (JPG/PNG, max 6 Mo)</div>
+                    <img id="rec-front-preview" style="display:none;max-width:100%;max-height:120px;margin-top:10px;border-radius:6px;object-fit:contain;" alt="">
+                    <input type="file" id="rec-front-input" accept="image/*" style="display:none;" onchange="handleRecFile('front',this)">
+                  </div>
+                </div>
+                <div class="form-group">
+                  <label>Pièce d'identité — Verso <span class="optional">(optionnel)</span></label>
+                  <div id="rec-back-zone" style="border:1.5px dashed rgba(148,163,184,0.3);border-radius:10px;padding:16px;text-align:center;cursor:pointer;transition:border-color .2s;" onclick="document.getElementById('rec-back-input').click()">
+                    <div style="font-size:1.5rem;margin-bottom:4px;">🪪</div>
+                    <div id="rec-back-label" style="font-size:0.8rem;color:#64748b;">Cliquez pour sélectionner une image (optionnel)</div>
+                    <img id="rec-back-preview" style="display:none;max-width:100%;max-height:120px;margin-top:10px;border-radius:6px;object-fit:contain;" alt="">
+                    <input type="file" id="rec-back-input" accept="image/*" style="display:none;" onchange="handleRecFile('back',this)">
+                  </div>
+                </div>
+                <button type="submit" class="btn btn-primary" id="recovery-submit-btn">Envoyer ma demande de récupération</button>
+                <p class="error-msg" id="recovery-error"></p>
+                <p id="recovery-success" style="color:#34d399;font-size:0.85rem;margin-top:8px;display:none;"></p>
+              </form>
+              <!-- Vérifier le statut -->
+              <div style="margin-top:20px;padding-top:16px;border-top:1px solid rgba(148,163,184,0.1);">
+                <p style="font-size:0.78rem;color:#64748b;margin-bottom:8px;">Déjà soumis une demande ? Vérifiez son statut :</p>
+                <div style="display:flex;gap:8px;">
+                  <input type="email" id="rec-status-email" placeholder="Votre email" style="flex:1;background:rgba(255,255,255,0.04);border:1px solid rgba(148,163,184,0.15);border-radius:8px;padding:8px 12px;color:#f5f5fa;font-size:0.83rem;outline:none;">
+                  <button onclick="checkRecoveryStatus()" style="background:rgba(167,139,250,0.1);border:1px solid rgba(167,139,250,0.25);color:#a78bfa;border-radius:8px;padding:8px 14px;font-size:0.8rem;cursor:pointer;white-space:nowrap;">Vérifier</button>
+                </div>
+                <p id="rec-status-result" style="font-size:0.8rem;margin-top:8px;"></p>
+              </div>
+            </div>
+
           </div>
+
+          <!-- Lien récupération sous l'auth-card -->
+          <div style="text-align:center;margin-top:16px;">
+            <button onclick="showRecovery()" style="background:none;border:none;color:#64748b;font-size:0.78rem;cursor:pointer;text-decoration:underline;">Vous ne pouvez plus vous connecter ? Récupérez votre compte →</button>
+          </div>
+
         </div>
       </div>
     </div>
