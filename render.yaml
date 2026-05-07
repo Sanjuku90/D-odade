@@ -5,15 +5,9 @@ services:
     buildCommand: npm install
     startCommand: node server.js
     healthCheckPath: /health
-    disk:
-      name: data
-      mountPath: /var/lib/questinvest
-      sizeGB: 1
     envVars:
       - key: NODE_ENV
         value: production
-      - key: DATABASE_PATH
-        value: /var/lib/questinvest/questinvest.db
       - key: SESSION_SECRET
         generateValue: true
       - key: ADMIN_EMAIL
