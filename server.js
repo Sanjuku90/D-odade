@@ -44,6 +44,7 @@ function emailBase(title, bodyHtml) {
 }
 
 async function sendEmail(to, subject, bodyHtml, title) {
+  let status = 'sent', errorMsg = null;
   try {
     await transporter.sendMail({
       from: `"QuestInvest" <${MAIL_USER}>`,
@@ -53,8 +54,15 @@ async function sendEmail(to, subject, bodyHtml, title) {
     });
     console.log(`[mail] Sent "${subject}" → ${to}`);
   } catch (err) {
+    status = 'failed';
+    errorMsg = err.message;
     console.error(`[mail] Failed to send "${subject}" → ${to}:`, err.message);
   }
+  try {
+    db.prepare(
+      'INSERT INTO email_logs (recipient, subject, status, error_message) VALUES (?, ?, ?, ?)'
+    ).run(to, subject, status, errorMsg);
+  } catch (_) {}
 }
 
 const app = express();
@@ -245,6 +253,17 @@ function initDB() {
       reject_reason TEXT,
       submitted_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       reviewed_at DATETIME
+    );
+  `);
+
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS email_logs (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      recipient TEXT NOT NULL,
+      subject TEXT NOT NULL,
+      status TEXT DEFAULT 'sent',
+      error_message TEXT,
+      sent_at DATETIME DEFAULT CURRENT_TIMESTAMP
     );
   `);
 
@@ -1238,6 +1257,17 @@ app.post('/api/admin/users/:id/adjust-balance', requireAdmin, (req, res) => {
     db.prepare('UPDATE users SET balance = balance + ? WHERE id = ?').run(parseFloat(amount), userId);
     const updated = db.prepare('SELECT balance FROM users WHERE id = ?').get(userId);
     res.json({ success: true, newBalance: updated.balance });
+  } catch (err) {
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+});
+
+app.get('/api/admin/email-logs', requireAdmin, (req, res) => {
+  try {
+    const logs = db.prepare(
+      'SELECT * FROM email_logs ORDER BY sent_at DESC LIMIT 500'
+    ).all();
+    res.json(logs);
   } catch (err) {
     res.status(500).json({ error: 'Erreur serveur' });
   }

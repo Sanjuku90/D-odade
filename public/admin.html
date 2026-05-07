@@ -462,6 +462,9 @@
             <span class="item-icon">🔑</span> Récupération
             <span class="nav-badge" id="nb-rec"></span>
           </button>
+          <button class="nav-item" data-page="emails">
+            <span class="item-icon">📧</span> Emails envoyés
+          </button>
           <button class="nav-item" data-page="settings">
             <span class="item-icon">⚙️</span> Paramètres
           </button>
@@ -666,6 +669,32 @@
       </div>
     </div>
 
+    <!-- EMAILS -->
+    <div class="page" id="page-emails">
+      <div class="card">
+        <div class="card-header">
+          <div>
+            <div class="card-title">Historique des emails envoyés</div>
+            <div class="card-sub">Les 500 derniers emails — envoyés par le système automatiquement</div>
+          </div>
+          <div class="filter-row">
+            <input class="search-box" type="text" placeholder="🔍 Email ou sujet..." id="email-search" oninput="renderEmailLogs()">
+            <button class="chip active" onclick="setEmailF(this,'all')">Tous</button>
+            <button class="chip" onclick="setEmailF(this,'sent')">Envoyés</button>
+            <button class="chip" onclick="setEmailF(this,'failed')">Échoués</button>
+          </div>
+        </div>
+        <div class="tbl-wrap">
+          <table>
+            <thead><tr>
+              <th>ID</th><th>Destinataire</th><th>Sujet</th><th>Statut</th><th>Date</th><th>Erreur</th>
+            </tr></thead>
+            <tbody id="email-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
     <!-- SETTINGS -->
     <div class="page" id="page-settings">
       <div class="settings-wrap">
@@ -806,7 +835,7 @@
     });
 
     async function refreshAll() {
-      await Promise.all([loadStats(), loadDeposits(), loadWithdrawals(), loadUsers(), loadKycList(), loadRecoveryList()]);
+      await Promise.all([loadStats(), loadDeposits(), loadWithdrawals(), loadUsers(), loadKycList(), loadRecoveryList(), loadEmailLogs()]);
       document.getElementById('meta-time').textContent =
         'Actualisé à ' + new Date().toLocaleTimeString('fr-FR');
     }
@@ -1199,8 +1228,45 @@
     }
     document.getElementById('rec-modal').addEventListener('click', e => { if (e.target === e.currentTarget) closeRecModal(); });
 
+    // ── EMAILS ──
+    let allEmailLogs = [], emailFilter = 'all';
+
+    async function loadEmailLogs() {
+      try {
+        const r = await fetch('/api/admin/email-logs');
+        if (r.ok) { allEmailLogs = await r.json(); renderEmailLogs(); }
+      } catch {}
+    }
+    function setEmailF(el, f) {
+      emailFilter = f;
+      document.querySelectorAll('#page-emails .chip').forEach(b => b.classList.remove('active'));
+      el.classList.add('active');
+      renderEmailLogs();
+    }
+    function renderEmailLogs() {
+      const q = (document.getElementById('email-search')?.value || '').toLowerCase();
+      let list = emailFilter === 'all' ? allEmailLogs : allEmailLogs.filter(e => e.status === emailFilter);
+      if (q) list = list.filter(e => e.recipient.toLowerCase().includes(q) || e.subject.toLowerCase().includes(q));
+      const tb = document.getElementById('email-tbody');
+      if (!list.length) { tb.innerHTML = '<tr class="empty-row"><td colspan="6">Aucun email enregistré</td></tr>'; return; }
+      tb.innerHTML = list.map(e => `<tr>
+        <td class="td-id">#${e.id}</td>
+        <td class="td-email">${e.recipient}</td>
+        <td style="color:var(--text);font-size:.8rem;max-width:260px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${e.subject}">${e.subject}</td>
+        <td>${e.status === 'sent'
+          ? '<span class="badge b-confirmed">✓ Envoyé</span>'
+          : '<span class="badge b-rejected">✕ Échoué</span>'}</td>
+        <td class="td-date">${fmtDatetime(e.sent_at)}</td>
+        <td style="font-size:.72rem;color:var(--red);max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${e.error_message||''}">${e.error_message || '—'}</td>
+      </tr>`).join('');
+    }
+
     // ── HELPERS ──
     function fmt(d) { return new Date(d).toLocaleDateString('fr-FR'); }
+    function fmtDatetime(d) {
+      const dt = new Date(d);
+      return dt.toLocaleDateString('fr-FR') + ' ' + dt.toLocaleTimeString('fr-FR', {hour:'2-digit',minute:'2-digit'});
+    }
     function fmtNum(n) { return parseFloat(n).toLocaleString('fr-FR',{minimumFractionDigits:0}); }
     function slabel(s) { return {pending:'En attente',confirmed:'Confirmé',rejected:'Rejeté'}[s]||s; }
     function sbadge(s) {
