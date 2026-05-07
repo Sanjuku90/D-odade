@@ -7,8 +7,8 @@ const path = require('path');
 const fs = require('fs');
 const nodemailer = require('nodemailer');
 
-const MAIL_USER = 'smartgainbot@gmail.com';
-const MAIL_PASS = 'ivew sicp yaox xgyk';
+const MAIL_USER = process.env.MAIL_USER || '';
+const MAIL_PASS = process.env.MAIL_PASS || '';
 
 const transporter = nodemailer.createTransport({
   host: 'smtp.gmail.com',
