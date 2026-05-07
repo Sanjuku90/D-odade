@@ -304,6 +304,9 @@ function requireAuth(req, res, next) {
 }
 
 function requireAdmin(req, res, next) {
+  if (!req.session.adminId) {
+    return res.status(401).json({ error: 'Accès non autorisé' });
+  }
   next();
 }
 
@@ -761,7 +764,7 @@ app.post('/api/admin/logout', (req, res) => {
 });
 
 app.get('/api/admin/check', (req, res) => {
-  res.json({ isAdmin: true });
+  res.json({ isAdmin: !!req.session.adminId });
 });
 
 app.get('/api/kyc', requireAuth, (req, res) => {
