@@ -6,3 +6,9 @@ id = "yY_qS4nDKsSSqCJPfBq-w"
 uri = "file://public/icons/icon-512.png"
 type = "image"
 title = "Icône QuestInvest (512×512)"
+
+[[outputs]]
+id = "G-q8OEnUm9NIq9Oqo2v4w"
+uri = "file://public/splash/splash-1170x2532.png"
+type = "image"
+title = "Splash Screen — iPhone 12/13/14"
