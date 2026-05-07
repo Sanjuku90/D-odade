@@ -163,6 +163,18 @@ function setSetting(key, value) {
   db.prepare('INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value').run(key, value);
 }
 
+function isEmailEnabled(type) {
+  return getSetting(`email_toggle_${type}`) !== '0';
+}
+
+async function sendEmailIfEnabled(type, to, subject, bodyHtml, title) {
+  if (!isEmailEnabled(type)) {
+    console.log(`[mail] Type "${type}" désactivé — email ignoré`);
+    return { success: true, skipped: true };
+  }
+  return sendEmail(to, subject, bodyHtml, title);
+}
+
 function getDepositAddress() {
   return getSetting('deposit_address') || DEFAULT_DEPOSIT_ADDRESS;
 }
@@ -387,6 +399,24 @@ function initDB() {
     db.prepare('INSERT INTO admins (email, password) VALUES (?, ?)').run(ADMIN_EMAIL, hashedAdminPassword);
   }
 
+  // Paramètres email par défaut
+  const emailDefaults = {
+    'email_reminder_hour': '9',
+    'email_twofa_expiry': '10',
+    'email_toggle_welcome': '1',
+    'email_toggle_2fa': '1',
+    'email_toggle_deposit_received': '1',
+    'email_toggle_deposit_confirmed': '1',
+    'email_toggle_deposit_rejected': '1',
+    'email_toggle_quest_completed': '1',
+    'email_toggle_withdrawal_received': '1',
+    'email_toggle_withdrawal_confirmed': '1',
+    'email_toggle_withdrawal_rejected': '1',
+    'email_toggle_daily_reminder': '1',
+  };
+  const insertDefault = db.prepare('INSERT OR IGNORE INTO settings (key, value) VALUES (?, ?)');
+  for (const [key, val] of Object.entries(emailDefaults)) insertDefault.run(key, val);
+
   console.log('Database initialized successfully');
 }
 
@@ -499,6 +529,21 @@ app.post('/api/register', async (req, res) => {
         console.error('Session save error:', err);
         return res.status(500).json({ error: 'Erreur lors de la création de la session' });
       }
+      const depositAddr = getDepositAddress();
+      sendEmailIfEnabled('welcome', email, '🎉 Bienvenue sur QuestInvest !',
+        `<p>Bonjour et bienvenue sur <strong>QuestInvest</strong> !</p>
+         <p>Votre compte a été créé avec succès. Voici comment démarrer :</p>
+         <p><span class="badge">1️⃣ Déposez un minimum de $${MIN_DEPOSIT} USDT</span></p>
+         <p>Envoyez vos USDT (TRC20) à l'adresse suivante :</p>
+         <div class="code-box" style="letter-spacing:2px;font-size:1rem;word-break:break-all;">${depositAddr}</div>
+         <p><span class="badge">2️⃣ Soumettez votre hash de transaction</span></p>
+         <p>Une fois le virement effectué, entrez le hash de la transaction dans votre tableau de bord pour validation.</p>
+         <p><span class="badge">3️⃣ Complétez vos quêtes</span></p>
+         <p>Dès que votre dépôt est confirmé, <strong>3 quêtes</strong> deviennent disponibles. Chacune vous rapporte <strong>40%</strong> de votre dépôt — soit jusqu'à <strong>120% tous les 14 jours</strong>.</p>
+         <hr class="divider">
+         <p style="font-size:.8rem;color:#5a5a7a;">Si vous avez des questions, contactez notre support. Nous sommes là pour vous aider.</p>`,
+        '🎉 Bienvenue sur QuestInvest !'
+      );
       res.json({ success: true, user: { email } });
     });
   } catch (err) {
@@ -528,7 +573,8 @@ app.post('/api/login', async (req, res) => {
     }
 
     const code = String(Math.floor(100000 + Math.random() * 900000));
-    const expires = Date.now() + 10 * 60 * 1000;
+    const expiryMinutes = parseInt(getSetting('email_twofa_expiry') || '10', 10);
+    const expires = Date.now() + expiryMinutes * 60 * 1000;
 
     req.session.pending2fa = { userId: user.id, code, expires };
 
@@ -540,9 +586,9 @@ app.post('/api/login', async (req, res) => {
         return res.status(500).json({ error: 'Erreur lors de la création de la session' });
       }
 
-      sendEmail(user.email, '🔐 Votre code de vérification QuestInvest',
+      sendEmailIfEnabled('2fa', user.email, '🔐 Votre code de vérification QuestInvest',
         `<p>Bonjour,</p>
-         <p>Voici votre code de connexion à 6 chiffres. Il est valable <strong>10 minutes</strong>.</p>
+         <p>Voici votre code de connexion à 6 chiffres. Il est valable <strong>${expiryMinutes} minute${expiryMinutes > 1 ? 's' : ''}</strong>.</p>
          <div class="code-box">${code}</div>
          <p>Si vous n'avez pas tenté de vous connecter, ignorez cet email et changez votre mot de passe immédiatement.</p>`,
         '🔐 Code de vérification'
@@ -686,7 +732,7 @@ app.post('/api/deposit', requireAuth, (req, res) => {
     db.prepare('INSERT INTO deposits (user_id, amount, tx_hash, status) VALUES (?, ?, ?, ?)').run(req.session.userId, amount, tx_hash.trim(), 'pending');
 
     const depUser = db.prepare('SELECT email FROM users WHERE id = ?').get(req.session.userId);
-    sendEmail(depUser.email, '📥 Dépôt reçu — En attente de validation',
+    sendEmailIfEnabled('deposit_received', depUser.email, '📥 Dépôt reçu — En attente de validation',
       `<p>Bonjour,</p>
        <p>Nous avons bien reçu votre demande de dépôt. Notre équipe va la vérifier sous 24h.</p>
        <div class="amount">$${parseFloat(amount).toFixed(2)}</div>
@@ -815,7 +861,7 @@ app.post('/api/quests/:id/complete', requireAuth, (req, res) => {
 
     const updatedUser = db.prepare('SELECT email, balance FROM users WHERE id = ?').get(req.session.userId);
 
-    sendEmail(updatedUser.email, '🎯 Quête complétée — Récompense créditée !',
+    sendEmailIfEnabled('quest_completed', updatedUser.email, '🎯 Quête complétée — Récompense créditée !',
       `<p>Bravo ! Vous venez de compléter une quête et votre récompense a été créditée instantanément.</p>
        <div class="amount">+$${reward.toFixed(2)}</div>
        <p><span class="badge">✓ ${quest.title}</span></p>
@@ -927,7 +973,7 @@ app.post('/api/withdraw', requireAuth, (req, res) => {
     transaction();
 
     const wUser = db.prepare('SELECT email FROM users WHERE id = ?').get(req.session.userId);
-    sendEmail(wUser.email, '💸 Demande de retrait reçue — En cours de traitement',
+    sendEmailIfEnabled('withdrawal_received', wUser.email, '💸 Demande de retrait reçue — En cours de traitement',
       `<p>Bonjour,</p>
        <p>Nous avons bien reçu votre demande de retrait. Elle sera traitée par notre équipe sous 24h ouvrées.</p>
        <div class="amount">$${parseFloat(amount).toFixed(2)}</div>
@@ -1176,7 +1222,7 @@ app.post('/api/admin/withdrawals/:id/approve', requireAdmin, (req, res) => {
     if (w.status !== 'pending') return res.status(400).json({ error: 'Déjà traité' });
     db.prepare('UPDATE withdrawals SET status = ? WHERE id = ?').run('confirmed', id);
     const wApprUser = db.prepare('SELECT email FROM users WHERE id = ?').get(w.user_id);
-    sendEmail(wApprUser.email, '💰 Retrait confirmé — Virement effectué !',
+    sendEmailIfEnabled('withdrawal_confirmed', wApprUser.email, '💰 Retrait confirmé — Virement effectué !',
       `<p>Bonjour,</p>
        <p>Votre retrait a été validé et le virement est en cours vers votre adresse.</p>
        <div class="amount" style="color:#22d3a8;">$${parseFloat(w.amount).toFixed(2)}</div>
@@ -1203,7 +1249,7 @@ app.post('/api/admin/withdrawals/:id/reject', requireAdmin, (req, res) => {
       db.prepare('UPDATE users SET balance = balance + ? WHERE id = ?').run(w.amount, w.user_id);
     })();
     const wRejUser = db.prepare('SELECT email FROM users WHERE id = ?').get(w.user_id);
-    sendEmail(wRejUser.email, '❌ Retrait rejeté — Solde recrédité',
+    sendEmailIfEnabled('withdrawal_rejected', wRejUser.email, '❌ Retrait rejeté — Solde recrédité',
       `<p>Bonjour,</p>
        <p>Votre demande de retrait de <strong>$${parseFloat(w.amount).toFixed(2)}</strong> n'a pas pu être traitée.</p>
        <p><span class="badge" style="color:#f87171;border-color:rgba(248,113,113,0.3);background:rgba(248,113,113,0.08);">❌ Rejeté</span></p>
@@ -1254,7 +1300,7 @@ app.post('/api/admin/deposits/:id/approve', requireAdmin, (req, res) => {
     transaction();
 
     const approvedUser = db.prepare('SELECT email FROM users WHERE id = ?').get(deposit.user_id);
-    sendEmail(approvedUser.email, '✅ Dépôt confirmé — Votre capital est actif !',
+    sendEmailIfEnabled('deposit_confirmed', approvedUser.email, '✅ Dépôt confirmé — Votre capital est actif !',
       `<p>Bonjour,</p>
        <p>Excellente nouvelle ! Votre dépôt a été vérifié et confirmé par notre équipe. Votre capital est désormais actif.</p>
        <div class="amount" style="color:#22d3a8;">$${parseFloat(deposit.amount).toFixed(2)}</div>
@@ -1287,7 +1333,7 @@ app.post('/api/admin/deposits/:id/reject', requireAdmin, (req, res) => {
     db.prepare('UPDATE deposits SET status = ? WHERE id = ?').run('rejected', depositId);
 
     const rejectedUser = db.prepare('SELECT email FROM users WHERE id = ?').get(deposit.user_id);
-    sendEmail(rejectedUser.email, '❌ Dépôt rejeté — Action requise',
+    sendEmailIfEnabled('deposit_rejected', rejectedUser.email, '❌ Dépôt rejeté — Action requise',
       `<p>Bonjour,</p>
        <p>Votre dépôt de <strong>$${parseFloat(deposit.amount).toFixed(2)}</strong> n'a pas pu être confirmé.</p>
        <p><span class="badge" style="color:#f87171;border-color:rgba(248,113,113,0.3);background:rgba(248,113,113,0.08);">❌ Rejeté</span></p>
@@ -1382,6 +1428,56 @@ app.post('/api/admin/test-email', requireAdmin, async (req, res) => {
   res.json({ success: true });
 });
 
+app.get('/api/admin/email-settings', requireAdmin, (req, res) => {
+  try {
+    res.json({
+      reminder_hour: parseInt(getSetting('email_reminder_hour') || '9', 10),
+      twofa_expiry: parseInt(getSetting('email_twofa_expiry') || '10', 10),
+      toggles: {
+        welcome:              getSetting('email_toggle_welcome')              !== '0',
+        '2fa':                getSetting('email_toggle_2fa')                 !== '0',
+        deposit_received:     getSetting('email_toggle_deposit_received')    !== '0',
+        deposit_confirmed:    getSetting('email_toggle_deposit_confirmed')   !== '0',
+        deposit_rejected:     getSetting('email_toggle_deposit_rejected')    !== '0',
+        quest_completed:      getSetting('email_toggle_quest_completed')     !== '0',
+        withdrawal_received:  getSetting('email_toggle_withdrawal_received') !== '0',
+        withdrawal_confirmed: getSetting('email_toggle_withdrawal_confirmed')!== '0',
+        withdrawal_rejected:  getSetting('email_toggle_withdrawal_rejected') !== '0',
+        daily_reminder:       getSetting('email_toggle_daily_reminder')      !== '0',
+      }
+    });
+  } catch (err) {
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+});
+
+app.post('/api/admin/email-settings', requireAdmin, (req, res) => {
+  try {
+    const { reminder_hour, twofa_expiry, toggles } = req.body;
+    if (reminder_hour !== undefined) {
+      const h = parseInt(reminder_hour, 10);
+      if (!isNaN(h) && h >= 0 && h <= 23) {
+        setSetting('email_reminder_hour', String(h));
+        scheduleDailyReminder();
+      }
+    }
+    if (twofa_expiry !== undefined) {
+      const t = parseInt(twofa_expiry, 10);
+      if (!isNaN(t) && t >= 1 && t <= 60) setSetting('email_twofa_expiry', String(t));
+    }
+    if (toggles && typeof toggles === 'object') {
+      const allowed = ['welcome','2fa','deposit_received','deposit_confirmed','deposit_rejected',
+                       'quest_completed','withdrawal_received','withdrawal_confirmed','withdrawal_rejected','daily_reminder'];
+      for (const key of allowed) {
+        if (key in toggles) setSetting(`email_toggle_${key}`, toggles[key] ? '1' : '0');
+      }
+    }
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+});
+
 app.get('/api/admin/settings', requireAdmin, (req, res) => {
   try {
     const depositAddress = getDepositAddress();
@@ -1437,7 +1533,7 @@ function sendQuestReminders() {
       const remaining = u.total_regular - u.completed_regular;
       if (remaining > 0) {
         const reward = (parseFloat(u.deposit_amount) * 40 / 100) * remaining;
-        sendEmail(u.email, '⚡ Rappel — Vos quêtes vous attendent !',
+        sendEmailIfEnabled('daily_reminder', u.email, '⚡ Rappel — Vos quêtes vous attendent !',
           `<p>Bonjour,</p>
            <p>Vous avez encore <strong>${remaining} quête${remaining > 1 ? 's' : ''}</strong> disponible${remaining > 1 ? 's' : ''} ce cycle. Ne laissez pas vos récompenses expirer !</p>
            <div class="amount">+$${reward.toFixed(2)} à gagner</div>
@@ -1454,18 +1550,20 @@ function sendQuestReminders() {
   }
 }
 
-const MS_IN_DAY = 24 * 60 * 60 * 1000;
+let _reminderTimeout = null;
 function scheduleDailyReminder() {
+  if (_reminderTimeout) clearTimeout(_reminderTimeout);
+  const hour = Math.max(0, Math.min(23, parseInt(getSetting('email_reminder_hour') || '9', 10)));
   const now = new Date();
   const nextRun = new Date(now);
-  nextRun.setUTCHours(9, 0, 0, 0);
+  nextRun.setUTCHours(hour, 0, 0, 0);
   if (nextRun <= now) nextRun.setUTCDate(nextRun.getUTCDate() + 1);
   const delay = nextRun - now;
-  setTimeout(() => {
+  _reminderTimeout = setTimeout(() => {
     sendQuestReminders();
-    setInterval(sendQuestReminders, MS_IN_DAY);
+    scheduleDailyReminder();
   }, delay);
-  console.log(`[reminder] Daily quest reminders scheduled at 09:00 UTC (next in ${Math.round(delay / 60000)} min)`);
+  console.log(`[reminder] Rappels quêtes programmés à ${String(hour).padStart(2,'0')}:00 UTC (dans ${Math.round(delay / 60000)} min)`);
 }
 
 initDB();

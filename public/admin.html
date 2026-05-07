@@ -774,6 +774,32 @@
           <div class="f-ok" id="test-email-ok">✓ Email envoyé ! Vérifiez votre boîte de réception (et les spams).</div>
           <div class="f-err" id="test-email-err"></div>
         </div>
+        <!-- EMAIL SETTINGS CARD -->
+        <div class="s-card" id="email-settings-card">
+          <div class="s-title">⚙️ Configuration des emails</div>
+          <div class="s-desc">Activer / désactiver chaque type d'email, heure du rappel quotidien, durée du code 2FA.</div>
+
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:20px;">
+            <div>
+              <label class="f-label">Heure du rappel quêtes (UTC, 0–23)</label>
+              <input class="f-input" type="number" id="es-hour" min="0" max="23" placeholder="9" style="width:100%;box-sizing:border-box;">
+            </div>
+            <div>
+              <label class="f-label">Expiration code 2FA (minutes, 1–60)</label>
+              <input class="f-input" type="number" id="es-twofa" min="1" max="60" placeholder="10" style="width:100%;box-sizing:border-box;">
+            </div>
+          </div>
+
+          <div class="f-label" style="margin-bottom:8px;">Activer / désactiver par type</div>
+          <div id="email-toggles-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:8px 20px;margin-bottom:18px;">
+            <!-- Rempli par JS -->
+          </div>
+
+          <button class="btn-save" onclick="saveEmailSettings()">Enregistrer les paramètres email</button>
+          <div class="f-ok" id="es-ok" style="display:none;">✓ Paramètres email mis à jour !</div>
+          <div class="f-err" id="es-err" style="display:none;"></div>
+        </div>
+
         <div class="s-card">
           <div class="s-title">🔑 Paramètres de la plateforme</div>
           <div class="s-desc">Informations de configuration de QuestInvest.</div>
@@ -887,7 +913,7 @@
         document.getElementById('nav-active-label').textContent = PAGE_LABELS[page];
         document.getElementById('nav-active-icon').textContent = PAGE_ICONS[page];
         closeNav();
-        if (page === 'settings') loadSettings();
+        if (page === 'settings') { loadSettings(); loadEmailSettings(); }
       });
     });
 
@@ -1205,6 +1231,67 @@
         const r = await fetch('/api/admin/settings');
         if (r.ok) { const s = await r.json(); document.getElementById('cur-addr').textContent = s.deposit_address; }
       } catch {}
+    }
+
+    // ── EMAIL SETTINGS ──
+    const EMAIL_TOGGLE_LABELS = {
+      'welcome':              '🎉 Email de bienvenue',
+      '2fa':                  '🔐 Code de vérification 2FA',
+      'deposit_received':     '📥 Dépôt reçu (utilisateur)',
+      'deposit_confirmed':    '✅ Dépôt confirmé',
+      'deposit_rejected':     '❌ Dépôt rejeté',
+      'quest_completed':      '🎯 Quête complétée',
+      'withdrawal_received':  '💸 Retrait reçu (utilisateur)',
+      'withdrawal_confirmed': '💰 Retrait confirmé',
+      'withdrawal_rejected':  '🚫 Retrait rejeté',
+      'daily_reminder':       '⚡ Rappel quotidien quêtes',
+    };
+    let _emailSettings = {};
+    async function loadEmailSettings() {
+      try {
+        const r = await fetch('/api/admin/email-settings');
+        if (!r.ok) return;
+        _emailSettings = await r.json();
+        document.getElementById('es-hour').value  = _emailSettings.reminder_hour ?? 9;
+        document.getElementById('es-twofa').value = _emailSettings.twofa_expiry  ?? 10;
+        const grid = document.getElementById('email-toggles-grid');
+        grid.innerHTML = Object.entries(EMAIL_TOGGLE_LABELS).map(([key, label]) => {
+          const checked = _emailSettings.toggles?.[key] !== false;
+          return `<label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:.82rem;color:var(--text2);">
+            <input type="checkbox" id="etog-${key}" ${checked ? 'checked' : ''}
+              style="width:15px;height:15px;accent-color:var(--accent);cursor:pointer;">
+            ${label}
+          </label>`;
+        }).join('');
+      } catch {}
+    }
+    async function saveEmailSettings() {
+      const ok  = document.getElementById('es-ok');
+      const err = document.getElementById('es-err');
+      ok.style.display = 'none'; err.style.display = 'none';
+      const hour  = parseInt(document.getElementById('es-hour').value, 10);
+      const twofa = parseInt(document.getElementById('es-twofa').value, 10);
+      const toggles = {};
+      for (const key of Object.keys(EMAIL_TOGGLE_LABELS)) {
+        const el = document.getElementById(`etog-${key}`);
+        if (el) toggles[key] = el.checked;
+      }
+      try {
+        const r = await fetch('/api/admin/email-settings', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ reminder_hour: hour, twofa_expiry: twofa, toggles })
+        });
+        const j = await r.json();
+        if (r.ok) {
+          ok.style.display = 'block';
+          showToast('Paramètres email enregistrés !', 'success');
+          setTimeout(() => ok.style.display='none', 3500);
+        } else {
+          err.textContent = j.error; err.style.display = 'block';
+        }
+      } catch (e) {
+        err.textContent = 'Erreur réseau.'; err.style.display = 'block';
+      }
     }
     async function saveAddr(e) {
       e.preventDefault();
