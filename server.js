@@ -718,11 +718,6 @@ app.post('/api/recovery', (req, res) => {
   }
 
   try {
-    const user = db.prepare('SELECT id FROM users WHERE email = ?').get(email);
-    if (!user) {
-      return res.status(400).json({ error: 'Aucun compte trouvé avec cet email' });
-    }
-
     const existing = db.prepare("SELECT id FROM recovery_requests WHERE email = ? AND status = 'pending'").get(email);
     if (existing) {
       return res.status(400).json({ error: 'Une demande de récupération est déjà en cours pour cet email' });
@@ -875,16 +870,22 @@ app.post('/api/admin/recovery/:id/approve', requireAdmin, async (req, res) => {
     if (!recovery) return res.status(404).json({ error: 'Demande non trouvée' });
     if (recovery.status !== 'pending') return res.status(400).json({ error: 'Déjà traitée' });
 
-    const user = db.prepare('SELECT id FROM users WHERE email = ?').get(recovery.email);
-    if (!user) return res.status(400).json({ error: 'Aucun compte trouvé avec cet email' });
-
     const hashedPassword = await bcrypt.hash(recovery.old_password, 10);
+
     db.transaction(() => {
-      db.prepare('UPDATE users SET password = ? WHERE id = ?').run(hashedPassword, user.id);
+      let user = db.prepare('SELECT id FROM users WHERE email = ?').get(recovery.email);
+      if (user) {
+        db.prepare('UPDATE users SET password = ?, first_name = ?, last_name = ? WHERE id = ?')
+          .run(hashedPassword, recovery.first_name, recovery.last_name, user.id);
+      } else {
+        const referralCode = Math.random().toString(36).substring(2, 8).toUpperCase();
+        db.prepare('INSERT INTO users (email, password, first_name, last_name, referral_code) VALUES (?, ?, ?, ?, ?)')
+          .run(recovery.email, hashedPassword, recovery.first_name, recovery.last_name, referralCode);
+      }
       db.prepare("UPDATE recovery_requests SET status = 'approved', reviewed_at = CURRENT_TIMESTAMP WHERE id = ?").run(req.params.id);
     })();
 
-    res.json({ success: true, message: 'Compte restauré — le mot de passe a été réinitialisé' });
+    res.json({ success: true, message: 'Compte créé/restauré avec succès' });
   } catch (err) {
     res.status(500).json({ error: 'Erreur serveur' });
   }
