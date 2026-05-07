@@ -4,7 +4,7 @@
   "description": "Investment platform with daily quests",
   "main": "server.js",
   "engines": {
-    "node": ">=18.0.0"
+    "node": "22.x"
   },
   "scripts": {
     "start": "NODE_ENV=production node server.js",

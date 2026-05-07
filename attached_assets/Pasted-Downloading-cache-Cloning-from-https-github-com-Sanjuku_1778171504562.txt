@@ -1,0 +1,126 @@
+Downloading cache...
+==> Cloning from https://github.com/Sanjuku90/D-odade
+==> Checking out commit a05bdc77cc93a2e0f537b7bb7fa836ae6c1788d5 in branch main
+==> Downloaded 87MB in 3s. Extraction took 2s.
+==> Using Python version 3.14.3 (default)
+==> Docs on specifying a Python version: https://render.com/docs/python-version
+==> Installing Python version 3.14.3...
+==> Using Poetry version 2.1.3 (default)
+==> Docs on specifying a Poetry version: https://render.com/docs/poetry-version
+==> Running build command 'npm install'...
+==> Requesting Node.js version >=18.0.0
+==> Using Node.js version 26.1.0 via /opt/render/project/src/package.json
+==> Docs on specifying a Node.js version: https://render.com/docs/node-version
+npm error code 1
+npm error path /opt/render/project/src/node_modules/better-sqlite3
+npm error command failed
+npm error command sh -c prebuild-install || node-gyp rebuild --release
+npm error make: Entering directory '/opt/render/project/src/node_modules/better-sqlite3/build'
+npm error   TOUCH 4292fa9a667d77b27488aa109b010a85bce8e4e7a1c7aa0370cea902395c3866.intermediate
+npm error   ACTION deps_sqlite3_gyp_locate_sqlite3_target_copy_builtin_sqlite3 4292fa9a667d77b27488aa109b010a85bce8e4e7a1c7aa0370cea902395c3866.intermediate
+npm error   TOUCH Release/obj.target/deps/locate_sqlite3.stamp
+npm error   CC(target) Release/obj.target/sqlite3/gen/sqlite3/sqlite3.o
+npm error rm -f Release/obj.target/deps/sqlite3.a Release/obj.target/deps/sqlite3.a.ar-file-list; mkdir -p `dirname Release/obj.target/deps/sqlite3.a`
+npm error ar crs Release/obj.target/deps/sqlite3.a @Release/obj.target/deps/sqlite3.a.ar-file-list
+npm error   COPY Release/sqlite3.a
+npm error   CXX(target) Release/obj.target/better_sqlite3/src/better_sqlite3.o
+npm error rm 4292fa9a667d77b27488aa109b010a85bce8e4e7a1c7aa0370cea902395c3866.intermediate
+npm error make: Leaving directory '/opt/render/project/src/node_modules/better-sqlite3/build'
+npm error prebuild-install warn install No prebuilt binaries found (target=26.1.0 runtime=node arch=x64 libc= platform=linux)
+npm error ./src/util/binder.lzz: In function ‘bool IsPlainObject(v8::Isolate*, v8::Local<v8::Object>)’:
+npm error ./src/util/binder.lzz:40:37: error: ‘class v8::Object’ has no member named ‘GetPrototype’; did you mean ‘GetPrototypeV2’?
+npm error ./src/util/binder.lzz:49:62: error: ‘class v8::Object’ has no member named ‘GetPrototype’; did you mean ‘GetPrototypeV2’?
+npm error In file included from ./src/better_sqlite3.lzz:11,
+npm error                  from ../src/better_sqlite3.cpp:4:
+npm error ./src/better_sqlite3.lzz: At global scope:
+npm error /opt/render/.cache/26.1.0/include/node/node.h:1322:7: warning: cast between incompatible function types from ‘void (*)(v8::Local<v8::Object>, v8::Local<v8::Value>, v8::Local<v8::Context>)’ to ‘node::addon_context_register_func’ {aka ‘void (*)(v8::Local<v8::Object>, v8::Local<v8::Value>, v8::Local<v8::Context>, void*)’} [-Wcast-function-type]
+npm error  1322 |       (node::addon_context_register_func) (regfunc),                  \
+npm error       |       ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+npm error /opt/render/.cache/26.1.0/include/node/node.h:1340:3: note: in expansion of macro ‘NODE_MODULE_CONTEXT_AWARE_X’
+npm error  1340 |   NODE_MODULE_CONTEXT_AWARE_X(modname, regfunc, NULL, 0)
+npm error       |   ^~~~~~~~~~~~~~~~~~~~~~~~~~~
+npm error /opt/render/.cache/26.1.0/include/node/node.h:1371:3: note: in expansion of macro ‘NODE_MODULE_CONTEXT_AWARE’
+npm error  1371 |   NODE_MODULE_CONTEXT_AWARE(NODE_GYP_MODULE_NAME,                     \
+npm error       |   ^~~~~~~~~~~~~~~~~~~~~~~~~
+npm error ./src/better_sqlite3.lzz:67:1: note: in expansion of macro ‘NODE_MODULE_INIT’
+npm error ./src/better_sqlite3.lzz: In function ‘void node_register_module_v147(v8::Local<v8::Object>, v8::Local<v8::Value>, v8::Local<v8::Context>)’:
+npm error ./src/better_sqlite3.lzz:68:34: error: ‘class v8::Context’ has no member named ‘GetIsolate’
+npm error ./src/better_sqlite3.lzz:73:50: warning: ‘static v8::Local<v8::External> v8::External::New(v8::Isolate*, void*)’ is deprecated: Use the version with the type tag. [-Wdeprecated-declarations]
+npm error In file included from /opt/render/.cache/26.1.0/include/node/v8.h:32,
+npm error                  from /opt/render/.cache/26.1.0/include/node/node.h:74:
+npm error /opt/render/.cache/26.1.0/include/node/v8-external.h:32:26: note: declared here
+npm error    32 |   static Local<External> New(Isolate* isolate, void* value) {
+npm error       |                          ^~~
+npm error ./src/objects/database.lzz: In static member function ‘static void Database::JS_new(const v8::FunctionCallbackInfo<v8::Value>&)’:
+npm error ./src/objects/database.lzz:160:112: warning: ‘void* v8::External::Value() const’ is deprecated: Use the version with the type tag. [-Wdeprecated-declarations]
+npm error /opt/render/.cache/26.1.0/include/node/v8-external.h:55:9: note: declared here
+npm error    55 |   void* Value() const { return Value(kExternalPointerTypeTagDefault); }
+npm error       |         ^~~~~
+npm error ./src/objects/database.lzz: In static member function ‘static void Database::JS_prepare(const v8::FunctionCallbackInfo<v8::Value>&)’:
+npm error ./src/objects/database.lzz:208:112: warning: ‘void* v8::External::Value() const’ is deprecated: Use the version with the type tag. [-Wdeprecated-declarations]
+npm error /opt/render/.cache/26.1.0/include/node/v8-external.h:55:9: note: declared here
+npm error    55 |   void* Value() const { return Value(kExternalPointerTypeTagDefault); }
+npm error       |         ^~~~~
+npm error ./src/objects/database.lzz: In static member function ‘static void Database::JS_backup(const v8::FunctionCallbackInfo<v8::Value>&)’:
+npm error ./src/objects/database.lzz:266:112: warning: ‘void* v8::External::Value() const’ is deprecated: Use the version with the type tag. [-Wdeprecated-declarations]
+npm error /opt/render/.cache/26.1.0/include/node/v8-external.h:55:9: note: declared here
+npm error    55 |   void* Value() const { return Value(kExternalPointerTypeTagDefault); }
+npm error       |         ^~~~~
+npm error ./src/objects/database.lzz: In static member function ‘static void Database::JS_open(v8::Local<v8::Name>, const v8::PropertyCallbackInfo<v8::Value>&)’:
+npm error ./src/objects/database.lzz:416:89: error: ‘const class v8::PropertyCallbackInfo<v8::Value>’ has no member named ‘This’
+npm error ./src/objects/database.lzz: In static member function ‘static void Database::JS_inTransaction(v8::Local<v8::Name>, const v8::PropertyCallbackInfo<v8::Value>&)’:
+npm error ./src/objects/database.lzz:420:77: error: ‘const class v8::PropertyCallbackInfo<v8::Value>’ has no member named ‘This’
+npm error ./src/objects/statement.lzz: In static member function ‘static void Statement::JS_new(const v8::FunctionCallbackInfo<v8::Value>&)’:
+npm error ./src/objects/statement.lzz:86:112: warning: ‘void* v8::External::Value() const’ is deprecated: Use the version with the type tag. [-Wdeprecated-declarations]
+npm error /opt/render/.cache/26.1.0/include/node/v8-external.h:55:9: note: declared here
+npm error    55 |   void* Value() const { return Value(kExternalPointerTypeTagDefault); }
+npm error       |         ^~~~~
+npm error ./src/objects/statement.lzz: In static member function ‘static void Statement::JS_iterate(const v8::FunctionCallbackInfo<v8::Value>&)’:
+npm error ./src/objects/statement.lzz:216:112: warning: ‘void* v8::External::Value() const’ is deprecated: Use the version with the type tag. [-Wdeprecated-declarations]
+npm error /opt/render/.cache/26.1.0/include/node/v8-external.h:55:9: note: declared here
+npm error    55 |   void* Value() const { return Value(kExternalPointerTypeTagDefault); }
+npm error       |         ^~~~~
+npm error ./src/objects/statement.lzz: In static member function ‘static void Statement::JS_busy(v8::Local<v8::Name>, const v8::PropertyCallbackInfo<v8::Value>&)’:
+npm error ./src/objects/statement.lzz:322:81: error: ‘const class v8::PropertyCallbackInfo<v8::Value>’ has no member named ‘This’
+npm error ./src/objects/statement-iterator.lzz: In static member function ‘static void StatementIterator::JS_new(const v8::FunctionCallbackInfo<v8::Value>&)’:
+npm error ./src/objects/statement-iterator.lzz:39:112: warning: ‘void* v8::External::Value() const’ is deprecated: Use the version with the type tag. [-Wdeprecated-declarations]
+npm error /opt/render/.cache/26.1.0/include/node/v8-external.h:55:9: note: declared here
+npm error    55 |   void* Value() const { return Value(kExternalPointerTypeTagDefault); }
+npm error       |         ^~~~~
+npm error ./src/objects/backup.lzz: In static member function ‘static void Backup::JS_new(const v8::FunctionCallbackInfo<v8::Value>&)’:
+npm error ./src/objects/backup.lzz:56:112: warning: ‘void* v8::External::Value() const’ is deprecated: Use the version with the type tag. [-Wdeprecated-declarations]
+npm error /opt/render/.cache/26.1.0/include/node/v8-external.h:55:9: note: declared here
+npm error    55 |   void* Value() const { return Value(kExternalPointerTypeTagDefault); }
+npm error       |         ^~~~~
+npm error ./src/util/custom-table.lzz: At global scope:
+npm error ./src/util/custom-table.lzz:45:9: warning: missing initializer for member ‘sqlite3_module::xIntegrity’ [-Wmissing-field-initializers]
+npm error ./src/util/custom-table.lzz:72:9: warning: missing initializer for member ‘sqlite3_module::xIntegrity’ [-Wmissing-field-initializers]
+npm error ./src/better_sqlite3.lzz: In static member function ‘static void Addon::JS_setErrorConstructor(const v8::FunctionCallbackInfo<v8::Value>&)’:
+npm error ./src/better_sqlite3.lzz:37:96: warning: ‘void* v8::External::Value() const’ is deprecated: Use the version with the type tag. [-Wdeprecated-declarations]
+npm error /opt/render/.cache/26.1.0/include/node/v8-external.h:55:9: note: declared here
+npm error    55 |   void* Value() const { return Value(kExternalPointerTypeTagDefault); }
+npm error       |         ^~~~~
+npm error ./src/util/data.lzz: In function ‘v8::Local<v8::Value> Data::GetValueJS(v8::Isolate*, sqlite3_stmt*, int, bool)’:
+npm error ./src/util/data.lzz:73:92: warning: this statement may fall through [-Wimplicit-fallthrough=]
+npm error ./src/util/data.lzz:73:197: note: here
+npm error ./src/util/data.lzz: In function ‘v8::Local<v8::Value> Data::GetValueJS(v8::Isolate*, sqlite3_value*, bool)’:
+npm error ./src/util/data.lzz:77:81: warning: this statement may fall through [-Wimplicit-fallthrough=]
+npm error ./src/util/data.lzz:77:175: note: here
+npm error make: *** [better_sqlite3.target.mk:122: Release/obj.target/better_sqlite3/src/better_sqlite3.o] Error 1
+npm error gyp ERR! build error 
+npm error gyp ERR! stack Error: `make` failed with exit code: 2
+npm error gyp ERR! stack at ChildProcess.<anonymous> (/opt/render/project/nodes/node-26.1.0/lib/node_modules/npm/node_modules/node-gyp/lib/build.js:219:23)
+npm error gyp ERR! System Linux 6.8.0-1050-aws
+npm error gyp ERR! command "/opt/render/project/nodes/node-26.1.0/bin/node" "/opt/render/project/nodes/node-26.1.0/lib/node_modules/npm/node_modules/node-gyp/bin/node-gyp.js" "rebuild" "--release"
+npm error gyp ERR! cwd /opt/render/project/src/node_modules/better-sqlite3
+npm error gyp ERR! node -v v26.1.0
+npm error gyp ERR! node-gyp -v v12.3.0
+npm error gyp ERR! $npm_package_name better-sqlite3
+npm error gyp ERR! $npm_package_version 11.10.0
+npm error gyp ERR! not ok
+npm error A complete log of this run can be found in: /opt/render/.cache/_logs/2026-05-07T16_30_19_393Z-debug-0.log
+==> Build failed 😞
+==> Common ways to troubleshoot your deploy: https://render.com/docs/troubleshooting-deploys
+==> Requesting Node.js version >=18.0.0
+==> Using Node.js version 26.1.0 via /opt/render/project/src/package.json
+==> Docs on specifying a Node.js version: https://render.com/docs/node-version
