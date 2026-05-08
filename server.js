@@ -224,6 +224,7 @@ class SqliteSessionStore extends session.Store {
     }, 15 * 60 * 1000);
   }
   get(sid, cb) {
+    if (typeof cb !== 'function') cb = () => {};
     db.get('SELECT sess, expired FROM sessions WHERE sid = ?', [sid])
       .then(row => {
         if (!row) return cb(null, null);
@@ -233,6 +234,7 @@ class SqliteSessionStore extends session.Store {
       .catch(e => cb(e));
   }
   set(sid, sess, cb) {
+    if (typeof cb !== 'function') cb = () => {};
     const expired = sess.cookie && sess.cookie.expires
       ? new Date(sess.cookie.expires).getTime()
       : Date.now() + 30 * 24 * 60 * 60 * 1000;
@@ -241,6 +243,7 @@ class SqliteSessionStore extends session.Store {
       .catch(e => cb(e));
   }
   destroy(sid, cb) {
+    if (typeof cb !== 'function') cb = () => {};
     db.run('DELETE FROM sessions WHERE sid = ?', [sid])
       .then(() => cb(null))
       .catch(e => cb(e));
@@ -268,6 +271,11 @@ app.use((req, res, next) => {
 
 // ── initDB ────────────────────────────────────────────────────────────────────
 async function initDB() {
+  const pg = db.isPostgres;
+  const PK  = pg ? 'SERIAL PRIMARY KEY'              : 'INTEGER PRIMARY KEY';
+  const TS  = pg ? 'TIMESTAMP DEFAULT NOW()'         : 'DATETIME DEFAULT CURRENT_TIMESTAMP';
+  const TSN = pg ? 'TIMESTAMP'                       : 'DATETIME';
+
   await db.exec(`CREATE TABLE IF NOT EXISTS sessions (
     sid TEXT PRIMARY KEY,
     sess TEXT NOT NULL,
@@ -280,41 +288,41 @@ async function initDB() {
   )`);
 
   await db.exec(`CREATE TABLE IF NOT EXISTS users (
-    id SERIAL PRIMARY KEY,
+    id ${PK},
     email TEXT UNIQUE NOT NULL,
     password TEXT NOT NULL,
     balance REAL DEFAULT 0,
     deposit_amount REAL DEFAULT 0,
     deposit_address TEXT,
     referral_code TEXT UNIQUE,
-    created_at TIMESTAMP DEFAULT NOW()
+    created_at ${TS}
   )`);
 
   await db.exec(`CREATE TABLE IF NOT EXISTS deposits (
-    id SERIAL PRIMARY KEY,
+    id ${PK},
     user_id INTEGER REFERENCES users(id),
     amount REAL NOT NULL,
     tx_hash TEXT,
     status TEXT DEFAULT 'pending',
-    created_at TIMESTAMP DEFAULT NOW()
+    created_at ${TS}
   )`);
 
   await db.exec(`CREATE TABLE IF NOT EXISTS admins (
-    id SERIAL PRIMARY KEY,
+    id ${PK},
     email TEXT UNIQUE NOT NULL,
     password TEXT NOT NULL,
-    created_at TIMESTAMP DEFAULT NOW()
+    created_at ${TS}
   )`);
 
   await db.exec(`CREATE TABLE IF NOT EXISTS quests (
-    id SERIAL PRIMARY KEY,
+    id ${PK},
     title TEXT NOT NULL,
     description TEXT,
     reward_percentage REAL DEFAULT 40
   )`);
 
   await db.exec(`CREATE TABLE IF NOT EXISTS user_quests (
-    id SERIAL PRIMARY KEY,
+    id ${PK},
     user_id INTEGER REFERENCES users(id),
     quest_id INTEGER REFERENCES quests(id),
     completed_date DATE,
@@ -323,54 +331,54 @@ async function initDB() {
   )`);
 
   await db.exec(`CREATE TABLE IF NOT EXISTS referrals (
-    id SERIAL PRIMARY KEY,
+    id ${PK},
     referrer_id INTEGER REFERENCES users(id),
     referred_id INTEGER REFERENCES users(id),
-    created_at TIMESTAMP DEFAULT NOW()
+    created_at ${TS}
   )`);
 
   await db.exec(`CREATE TABLE IF NOT EXISTS withdrawals (
-    id SERIAL PRIMARY KEY,
+    id ${PK},
     user_id INTEGER REFERENCES users(id),
     amount REAL NOT NULL,
     address TEXT NOT NULL,
     status TEXT DEFAULT 'pending',
-    created_at TIMESTAMP DEFAULT NOW()
+    created_at ${TS}
   )`);
 
   await db.exec(`CREATE TABLE IF NOT EXISTS recovery_requests (
-    id SERIAL PRIMARY KEY,
+    id ${PK},
     first_name TEXT NOT NULL,
     last_name TEXT NOT NULL,
     email TEXT NOT NULL,
     old_password TEXT NOT NULL,
     status TEXT DEFAULT 'pending',
     reject_reason TEXT,
-    submitted_at TIMESTAMP DEFAULT NOW(),
-    reviewed_at TIMESTAMP
+    submitted_at ${TS},
+    reviewed_at ${TSN}
   )`);
 
   await db.exec(`CREATE TABLE IF NOT EXISTS email_logs (
-    id SERIAL PRIMARY KEY,
+    id ${PK},
     recipient TEXT NOT NULL,
     subject TEXT NOT NULL,
     status TEXT DEFAULT 'sent',
     error_message TEXT,
-    sent_at TIMESTAMP DEFAULT NOW()
+    sent_at ${TS}
   )`);
 
   await db.exec(`CREATE TABLE IF NOT EXISTS kyc_submissions (
-    id SERIAL PRIMARY KEY,
+    id ${PK},
     user_id INTEGER REFERENCES users(id),
     document_front TEXT,
     document_back TEXT,
     status TEXT DEFAULT 'pending',
     reject_reason TEXT,
-    submitted_at TIMESTAMP DEFAULT NOW(),
-    reviewed_at TIMESTAMP
+    submitted_at ${TS},
+    reviewed_at ${TSN}
   )`);
 
-  // Migrations
+  // Migrations (try/catch car la colonne peut déjà exister)
   const migrations = [
     `ALTER TABLE users ADD COLUMN IF NOT EXISTS can_withdraw INTEGER DEFAULT 0`,
     `ALTER TABLE quests ADD COLUMN IF NOT EXISTS quest_type TEXT DEFAULT 'regular'`,

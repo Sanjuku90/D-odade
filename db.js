@@ -1,22 +1,85 @@
-const { Pool } = require('pg');
+const path = require('path');
+const fs = require('fs');
 
-let _pool = null;
+let _adapter = null;
 
-function getPool() {
-  if (_pool) return _pool;
-  _pool = new Pool({
-    connectionString: process.env.DATABASE_URL,
-    ssl: { rejectUnauthorized: false }
-  });
-  return _pool;
+function initAdapter() {
+  if (_adapter) return _adapter;
+
+  const tursoUrl = process.env.TURSO_DATABASE_URL;
+  const tursoToken = process.env.TURSO_AUTH_TOKEN;
+  const pgUrl = process.env.DATABASE_URL;
+
+  if (tursoUrl) {
+    const { createClient } = require('@libsql/client');
+    console.log('[db] Mode cloud Turso — données persistantes entre chaque redémarrage Render');
+    const client = createClient({ url: tursoUrl, authToken: tursoToken || '' });
+    _adapter = createLibsqlAdapter(client, false);
+  } else if (pgUrl) {
+    const { Pool } = require('pg');
+    console.log('[db] Mode PostgreSQL — données persistantes (Replit)');
+    const pool = new Pool({ connectionString: pgUrl, ssl: { rejectUnauthorized: false } });
+    _adapter = createPgAdapter(pool);
+  } else {
+    const { createClient } = require('@libsql/client');
+    const dbPath = process.env.DATABASE_PATH || 'questinvest.db';
+    const absPath = path.resolve(dbPath);
+    fs.mkdirSync(path.dirname(absPath), { recursive: true });
+    console.log(`[db] Mode fichier local : ${absPath}`);
+    const client = createClient({ url: `file:${absPath}` });
+    _adapter = createLibsqlAdapter(client, true);
+  }
+
+  return _adapter;
 }
 
-function convertPlaceholders(sql) {
-  let i = 0;
-  return sql.replace(/\?/g, () => `$${++i}`);
+function createLibsqlAdapter(client, isLocal) {
+  return {
+    isPostgres: false,
+    async exec(sql) {
+      await client.execute(sql);
+    },
+    async get(sql, args = []) {
+      const result = await client.execute({ sql, args });
+      return result.rows[0] || null;
+    },
+    async all(sql, args = []) {
+      const result = await client.execute({ sql, args });
+      return result.rows;
+    },
+    async run(sql, args = []) {
+      const result = await client.execute({ sql, args });
+      return {
+        lastInsertRowid: result.lastInsertRowid != null ? Number(result.lastInsertRowid) : null,
+        changes: result.rowsAffected || 0,
+      };
+    },
+    async transaction(fn) {
+      const tx = await client.transaction('write');
+      try {
+        const txDb = {
+          async run(sql, args = []) {
+            const result = await tx.execute({ sql, args });
+            return {
+              lastInsertRowid: result.lastInsertRowid != null ? Number(result.lastInsertRowid) : null,
+              changes: result.rowsAffected || 0,
+            };
+          },
+          async get(sql, args = []) {
+            const result = await tx.execute({ sql, args });
+            return result.rows[0] || null;
+          },
+        };
+        await fn(txDb);
+        await tx.commit();
+      } catch (e) {
+        try { await tx.rollback(); } catch (_) {}
+        throw e;
+      }
+    },
+  };
 }
 
-// Tables that don't have a serial 'id' column
 const NO_ID_TABLES = ['sessions', 'settings'];
 
 function shouldReturnId(sql) {
@@ -30,64 +93,72 @@ function shouldReturnId(sql) {
   return true;
 }
 
-const db = {
-  async exec(sql) {
-    const pool = getPool();
-    await pool.query(sql);
-  },
+function convertPlaceholders(sql) {
+  let i = 0;
+  return sql.replace(/\?/g, () => `$${++i}`);
+}
 
-  async get(sql, args = []) {
-    const pool = getPool();
-    const result = await pool.query(convertPlaceholders(sql), args);
-    return result.rows[0] || null;
-  },
-
-  async all(sql, args = []) {
-    const pool = getPool();
-    const result = await pool.query(convertPlaceholders(sql), args);
-    return result.rows;
-  },
-
-  async run(sql, args = []) {
-    const pool = getPool();
-    let finalSql = convertPlaceholders(sql);
-    if (shouldReturnId(sql)) finalSql += ' RETURNING id';
-    const result = await pool.query(finalSql, args);
-    return {
-      lastInsertRowid: result.rows[0]?.id ?? null,
-      changes: result.rowCount || 0,
-    };
-  },
-
-  async transaction(fn) {
-    const pool = getPool();
-    const client = await pool.connect();
-    try {
-      await client.query('BEGIN');
-      const txDb = {
-        async run(sql, args = []) {
-          let finalSql = convertPlaceholders(sql);
-          if (shouldReturnId(sql)) finalSql += ' RETURNING id';
-          const result = await client.query(finalSql, args);
-          return {
-            lastInsertRowid: result.rows[0]?.id ?? null,
-            changes: result.rowCount || 0,
-          };
-        },
-        async get(sql, args = []) {
-          const result = await client.query(convertPlaceholders(sql), args);
-          return result.rows[0] || null;
-        },
+function createPgAdapter(pool) {
+  return {
+    isPostgres: true,
+    async exec(sql) {
+      await pool.query(sql);
+    },
+    async get(sql, args = []) {
+      const result = await pool.query(convertPlaceholders(sql), args);
+      return result.rows[0] || null;
+    },
+    async all(sql, args = []) {
+      const result = await pool.query(convertPlaceholders(sql), args);
+      return result.rows;
+    },
+    async run(sql, args = []) {
+      let finalSql = convertPlaceholders(sql);
+      if (shouldReturnId(sql)) finalSql += ' RETURNING id';
+      const result = await pool.query(finalSql, args);
+      return {
+        lastInsertRowid: result.rows[0]?.id ?? null,
+        changes: result.rowCount || 0,
       };
-      await fn(txDb);
-      await client.query('COMMIT');
-    } catch (e) {
-      try { await client.query('ROLLBACK'); } catch (_) {}
-      throw e;
-    } finally {
-      client.release();
-    }
-  },
-};
+    },
+    async transaction(fn) {
+      const client = await pool.connect();
+      try {
+        await client.query('BEGIN');
+        const txDb = {
+          async run(sql, args = []) {
+            let finalSql = convertPlaceholders(sql);
+            if (shouldReturnId(sql)) finalSql += ' RETURNING id';
+            const result = await client.query(finalSql, args);
+            return {
+              lastInsertRowid: result.rows[0]?.id ?? null,
+              changes: result.rowCount || 0,
+            };
+          },
+          async get(sql, args = []) {
+            const result = await client.query(convertPlaceholders(sql), args);
+            return result.rows[0] || null;
+          },
+        };
+        await fn(txDb);
+        await client.query('COMMIT');
+      } catch (e) {
+        try { await client.query('ROLLBACK'); } catch (_) {}
+        throw e;
+      } finally {
+        client.release();
+      }
+    },
+  };
+}
+
+const db = new Proxy({}, {
+  get(_, prop) {
+    const adapter = initAdapter();
+    return typeof adapter[prop] === 'function'
+      ? adapter[prop].bind(adapter)
+      : adapter[prop];
+  }
+});
 
 module.exports = db;
