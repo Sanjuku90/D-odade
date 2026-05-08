@@ -2,10 +2,11 @@ const express = require('express');
 const session = require('express-session');
 const bcrypt = require('bcryptjs');
 const crypto = require('crypto');
-const Database = require('better-sqlite3');
 const path = require('path');
 const fs = require('fs');
-// Gmail REST API — fonctionne sur tous les hébergeurs (pas de SMTP bloqué)
+const db = require('./db');
+
+// ── Gmail REST API (pas de SMTP bloqué) ──────────────────────────────────────
 async function getGmailAccessToken() {
   const res = await fetch('https://oauth2.googleapis.com/token', {
     method: 'POST',
@@ -23,147 +24,136 @@ async function getGmailAccessToken() {
 }
 
 function buildRawEmail(from, to, subject, htmlBody) {
+  const boundary = `boundary_${Date.now()}`;
   const msg = [
     `From: ${from}`,
     `To: ${to}`,
     `Subject: ${subject}`,
     'MIME-Version: 1.0',
+    `Content-Type: multipart/alternative; boundary="${boundary}"`,
+    '',
+    `--${boundary}`,
+    'Content-Type: text/plain; charset=UTF-8',
+    '',
+    htmlBody.replace(/<[^>]+>/g, ''),
+    '',
+    `--${boundary}`,
     'Content-Type: text/html; charset=UTF-8',
     '',
-    htmlBody
+    `<!DOCTYPE html><html><head><meta charset="UTF-8"><style>
+      body{font-family:Arial,sans-serif;background:#0d0d1a;color:#c8c8e8;margin:0;padding:0}
+      .container{max-width:520px;margin:40px auto;background:#12122a;border-radius:16px;border:1px solid rgba(167,139,250,0.12);padding:32px}
+      .logo{font-size:1.5rem;font-weight:800;color:#a78bfa;margin-bottom:24px}
+      .amount{font-size:2rem;font-weight:800;color:#a78bfa;text-align:center;margin:20px 0;padding:16px;background:rgba(167,139,250,0.08);border-radius:12px}
+      .badge{display:inline-block;padding:6px 14px;border-radius:20px;border:1px solid rgba(167,139,250,0.3);background:rgba(167,139,250,0.08);color:#a78bfa;font-size:.85rem}
+      .code-box{font-size:2.5rem;font-weight:900;letter-spacing:12px;text-align:center;color:#a78bfa;background:rgba(167,139,250,0.08);border-radius:12px;padding:20px;margin:20px 0;border:2px dashed rgba(167,139,250,0.3)}
+      .divider{border:none;border-top:1px solid rgba(255,255,255,0.08);margin:20px 0}
+      .footer{margin-top:24px;font-size:.75rem;color:#5a5a7a;text-align:center}
+    </style></head><body><div class="container">
+      <div class="logo">⚡ QuestInvest</div>
+      ${htmlBody}
+      <div class="footer">QuestInvest — Ne répondez pas à cet email.</div>
+    </div></body></html>`,
+    '',
+    `--${boundary}--`
   ].join('\r\n');
   return Buffer.from(msg).toString('base64url');
 }
 
-async function sendViaGmailApi(to, subject, htmlBody) {
-  const accessToken = await getGmailAccessToken();
-  const raw = buildRawEmail(`"QuestInvest" <${MAIL_USER}>`, to, subject, htmlBody);
-  const res = await fetch('https://gmail.googleapis.com/gmail/v1/users/me/messages/send', {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${accessToken}`,
-      'Content-Type': 'application/json'
-    },
-    body: JSON.stringify({ raw })
-  });
-  const data = await res.json();
-  if (!res.ok) throw new Error(`Gmail API error: ${data.error?.message || JSON.stringify(data)}`);
-  return data;
-}
-
-function emailBase(title, bodyHtml) {
-  return `<!DOCTYPE html><html><head><meta charset="UTF-8"><style>
-    body{margin:0;padding:0;background:#0a0a12;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:#f0f0fa;}
-    .wrap{max-width:560px;margin:40px auto;background:#111120;border-radius:16px;overflow:hidden;border:1px solid rgba(167,139,250,0.2);}
-    .header{background:linear-gradient(135deg,#7c3aed,#a78bfa);padding:32px 36px;text-align:center;}
-    .logo{font-size:1.5rem;font-weight:800;color:#fff;letter-spacing:-0.5px;}
-    .body{padding:32px 36px;}
-    h2{margin:0 0 8px;font-size:1.2rem;color:#f0f0fa;}
-    p{margin:0 0 16px;color:#9898b8;line-height:1.6;font-size:0.92rem;}
-    .amount{font-size:1.8rem;font-weight:700;color:#a78bfa;margin:16px 0;}
-    .badge{display:inline-block;background:rgba(167,139,250,0.12);border:1px solid rgba(167,139,250,0.3);border-radius:8px;padding:6px 14px;font-size:0.85rem;color:#a78bfa;font-weight:600;margin:8px 0;}
-    .code-box{background:#0a0a12;border:2px solid rgba(167,139,250,0.4);border-radius:12px;padding:20px;text-align:center;margin:20px 0;letter-spacing:10px;font-size:2.2rem;font-weight:800;color:#a78bfa;font-family:monospace;}
-    .btn{display:inline-block;background:linear-gradient(135deg,#7c3aed,#a78bfa);color:#fff;text-decoration:none;border-radius:10px;padding:12px 28px;font-weight:600;font-size:0.92rem;margin:8px 0;}
-    .divider{border:none;border-top:1px solid rgba(255,255,255,0.06);margin:24px 0;}
-    .footer{background:#0d0d1a;padding:20px 36px;text-align:center;font-size:0.75rem;color:#5a5a7a;}
-    .green{color:#22d3a8;} .red{color:#f87171;} .yellow{color:#fbbf24;}
-  </style></head><body>
-  <div class="wrap">
-    <div class="header"><div class="logo">⚡ QuestInvest</div></div>
-    <div class="body">
-      <h2>${title}</h2>
-      ${bodyHtml}
-    </div>
-    <div class="footer">© 2026 QuestInvest · Ne pas répondre à cet email · <a href="#" style="color:#5a5a7a;">Se désabonner</a></div>
-  </div>
-</body></html>`;
-}
-
 async function sendEmail(to, subject, bodyHtml, title) {
+  const MAIL_USER_LOCAL = process.env.MAIL_USER || '';
   let status = 'sent', errorMsg = null;
-
-  if (!MAIL_USER || !process.env.GMAIL_CLIENT_ID || !process.env.GMAIL_CLIENT_SECRET || !process.env.GMAIL_REFRESH_TOKEN) {
-    errorMsg = 'Configuration OAuth2 incomplète — vérifiez MAIL_USER, GMAIL_CLIENT_ID, GMAIL_CLIENT_SECRET, GMAIL_REFRESH_TOKEN';
-    console.error(`[mail] ${errorMsg}`);
-    status = 'failed';
-    try { db.prepare('INSERT INTO email_logs (recipient, subject, status, error_message) VALUES (?, ?, ?, ?)').run(to, subject, status, errorMsg); } catch (_) {}
-    return { success: false, error: errorMsg };
-  }
-
   try {
-    await sendViaGmailApi(to, subject, emailBase(title || subject, bodyHtml));
-    console.log(`[mail] Sent "${subject}" → ${to}`);
-  } catch (err) {
+    if (!process.env.GMAIL_CLIENT_ID || !process.env.GMAIL_REFRESH_TOKEN || !MAIL_USER_LOCAL) {
+      throw new Error('Variables OAuth2 manquantes');
+    }
+    const accessToken = await getGmailAccessToken();
+    const raw = buildRawEmail(`QuestInvest <${MAIL_USER_LOCAL}>`, to, subject, bodyHtml);
+    const r = await fetch('https://gmail.googleapis.com/gmail/v1/users/me/messages/send', {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ raw })
+    });
+    if (!r.ok) {
+      const err = await r.json();
+      throw new Error(err.error?.message || 'Gmail API error');
+    }
+    console.log(`[mail] Sent "${title}" → ${to}`);
+  } catch (e) {
     status = 'failed';
-    errorMsg = err.message;
-    console.error(`[mail] Failed to send "${subject}" → ${to}: ${err.message}`);
+    errorMsg = e.message;
+    console.error(`[mail] Failed "${title}" → ${to} : ${e.message}`);
   }
   try {
-    db.prepare(
-      'INSERT INTO email_logs (recipient, subject, status, error_message) VALUES (?, ?, ?, ?)'
-    ).run(to, subject, status, errorMsg);
+    await db.run(
+      'INSERT INTO email_logs (recipient, subject, status, error_message) VALUES (?, ?, ?, ?)',
+      [to, subject, status, errorMsg]
+    );
   } catch (_) {}
   return { success: status === 'sent', error: errorMsg };
 }
 
+// ── App ───────────────────────────────────────────────────────────────────────
 const app = express();
 const PORT = process.env.PORT || 5000;
 const isProduction = process.env.NODE_ENV === 'production';
+const MAIL_USER = process.env.MAIL_USER || '';
+const MIN_DEPOSIT = 55;
 
 app.set('trust proxy', 1);
 
-const dbPath = process.env.DATABASE_PATH || 'questinvest.db';
-fs.mkdirSync(path.dirname(path.resolve(dbPath)), { recursive: true });
-const db = new Database(dbPath);
-console.log(`[db] Base de données : ${path.resolve(dbPath)}`);
-
+// ── Secrets persistants ───────────────────────────────────────────────────────
 function getPersistentConfigPath(name) {
-  const baseDir = process.env.DATABASE_PATH
-    ? path.dirname(path.resolve(process.env.DATABASE_PATH))
+  const baseDir = process.env.TURSO_DATABASE_URL
+    ? '/tmp'
     : path.join(__dirname, '.data');
-
   fs.mkdirSync(baseDir, { recursive: true });
   return path.join(baseDir, `${name}.txt`);
 }
 
 function getOrCreatePersistentSecret(name, generator) {
-  if (process.env[name]) {
-    return process.env[name];
-  }
-
-  if (!isProduction) {
-    return generator();
-  }
-
+  if (process.env[name]) return process.env[name];
   const secretPath = getPersistentConfigPath(name);
-
   if (fs.existsSync(secretPath)) {
     return fs.readFileSync(secretPath, 'utf8').trim();
   }
-
   const value = generator();
-  fs.writeFileSync(secretPath, value, { mode: 0o600 });
-  console.warn(`${name} was not provided; generated a persistent value at ${secretPath}`);
+  try { fs.writeFileSync(secretPath, value, { mode: 0o600 }); } catch (_) {}
+  console.warn(`${name} was not provided; generated a persistent value`);
   return value;
 }
 
-const SESSION_SECRET = getOrCreatePersistentSecret('SESSION_SECRET', () => crypto.randomBytes(32).toString('hex'));
-const MAIL_USER = process.env.MAIL_USER || '';
+const SESSION_SECRET  = getOrCreatePersistentSecret('SESSION_SECRET',  () => crypto.randomBytes(32).toString('hex'));
 const DEFAULT_DEPOSIT_ADDRESS = process.env.DEPOSIT_ADDRESS || 'TYyUwQELkUW957jE7Svt42LSaeQWneWtQG';
-const ADMIN_EMAIL = process.env.ADMIN_EMAIL || 'admin@questinvest.com';
-const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || (isProduction ? getOrCreatePersistentSecret('ADMIN_PASSWORD', () => crypto.randomBytes(24).toString('base64url')) : 'admin123');
+const ADMIN_EMAIL     = process.env.ADMIN_EMAIL    || 'admin@questinvest.com';
+const ADMIN_PASSWORD  = process.env.ADMIN_PASSWORD || (isProduction
+  ? getOrCreatePersistentSecret('ADMIN_PASSWORD', () => crypto.randomBytes(24).toString('base64url'))
+  : 'admin123');
 const ADMIN_ACCESS_CODE = '1289';
-const MIN_DEPOSIT = 55;
+
+// ── Settings cache (lecture sync, écriture async) ────────────────────────────
+const settingsCache = {};
+
+async function loadSettingsCache() {
+  try {
+    const rows = await db.all('SELECT key, value FROM settings');
+    for (const row of rows) settingsCache[row.key] = row.value;
+  } catch (_) {}
+}
 
 function getSetting(key) {
-  const row = db.prepare('SELECT value FROM settings WHERE key = ?').get(key);
-  return row ? row.value : null;
+  return settingsCache[key] ?? null;
 }
 
-function setSetting(key, value) {
-  db.prepare('INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value').run(key, value);
+async function setSetting(key, value) {
+  settingsCache[key] = String(value);
+  await db.run(
+    'INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value',
+    [key, String(value)]
+  );
 }
 
+// ── Email helpers ─────────────────────────────────────────────────────────────
 function isEmailEnabled(type) {
   return getSetting(`email_toggle_${type}`) !== '0';
 }
@@ -176,59 +166,94 @@ async function sendEmailIfEnabled(type, to, subject, bodyHtml, title) {
   return sendEmail(to, subject, bodyHtml, title);
 }
 
+// ── Helpers ───────────────────────────────────────────────────────────────────
 function getDepositAddress() {
   return getSetting('deposit_address') || DEFAULT_DEPOSIT_ADDRESS;
 }
 
+function generateReferralCode() {
+  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+  let code = '';
+  for (let i = 0; i < 8; i++) code += chars[Math.floor(Math.random() * chars.length)];
+  return code;
+}
+
+function getQuestPeriod() {
+  const periodLengthDays = 14;
+  const ms = 24 * 60 * 60 * 1000;
+  const startAnchor = Date.UTC(2024, 0, 1);
+  const now = new Date();
+  const todayUtc = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate());
+  const daysSinceAnchor = Math.floor((todayUtc - startAnchor) / ms);
+  const periodIndex = Math.floor(daysSinceAnchor / periodLengthDays);
+  const startUtc = startAnchor + periodIndex * periodLengthDays * ms;
+  const endUtc = startUtc + (periodLengthDays - 1) * ms;
+  return {
+    startDate: new Date(startUtc).toISOString().split('T')[0],
+    endDate:   new Date(endUtc).toISOString().split('T')[0],
+    lengthDays: periodLengthDays
+  };
+}
+
+const NEW_USER_PERIOD_DAYS = 14;
+
+function getNewUserStatus(user) {
+  if (!user || !user.created_at) return { isNew: false, startDate: null, endDate: null, lengthDays: NEW_USER_PERIOD_DAYS };
+  const ms = 24 * 60 * 60 * 1000;
+  const createdAt = new Date(user.created_at);
+  const createdUtc = Date.UTC(createdAt.getUTCFullYear(), createdAt.getUTCMonth(), createdAt.getUTCDate());
+  const startDate = new Date(createdUtc).toISOString().split('T')[0];
+  const endDate   = new Date(createdUtc + (NEW_USER_PERIOD_DAYS - 1) * ms).toISOString().split('T')[0];
+  const now = new Date();
+  const todayUtc = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate());
+  const ageDays = Math.floor((todayUtc - createdUtc) / ms);
+  return { isNew: ageDays < NEW_USER_PERIOD_DAYS, startDate, endDate, lengthDays: NEW_USER_PERIOD_DAYS };
+}
+
+// ── Middleware ────────────────────────────────────────────────────────────────
 app.use(express.json({ limit: '20mb' }));
 app.use(express.urlencoded({ extended: true, limit: '20mb' }));
 app.use(express.static(path.join(__dirname, 'public')));
 
-// Store de sessions SQLite — survit aux redémarrages/redéploiements
+// ── Session store SQLite (async) ──────────────────────────────────────────────
 class SqliteSessionStore extends session.Store {
-  constructor(database) {
+  constructor() {
     super();
-    this.db = database;
-    this.db.exec(`
-      CREATE TABLE IF NOT EXISTS sessions (
-        sid TEXT PRIMARY KEY,
-        sess TEXT NOT NULL,
-        expired INTEGER NOT NULL
-      )
-    `);
-    setInterval(() => {
-      try { this.db.prepare('DELETE FROM sessions WHERE expired < ?').run(Date.now()); } catch (_) {}
+    setInterval(async () => {
+      try { await db.run('DELETE FROM sessions WHERE expired < ?', [Date.now()]); } catch (_) {}
     }, 15 * 60 * 1000);
   }
   get(sid, cb) {
-    try {
-      const row = this.db.prepare('SELECT sess, expired FROM sessions WHERE sid = ?').get(sid);
-      if (!row) return cb(null, null);
-      if (row.expired < Date.now()) { this.destroy(sid, () => {}); return cb(null, null); }
-      cb(null, JSON.parse(row.sess));
-    } catch (e) { cb(e); }
+    db.get('SELECT sess, expired FROM sessions WHERE sid = ?', [sid])
+      .then(row => {
+        if (!row) return cb(null, null);
+        if (row.expired < Date.now()) { this.destroy(sid, () => {}); return cb(null, null); }
+        cb(null, JSON.parse(row.sess));
+      })
+      .catch(e => cb(e));
   }
   set(sid, sess, cb) {
-    try {
-      const expired = sess.cookie && sess.cookie.expires
-        ? new Date(sess.cookie.expires).getTime()
-        : Date.now() + 30 * 24 * 60 * 60 * 1000;
-      this.db.prepare('INSERT OR REPLACE INTO sessions (sid, sess, expired) VALUES (?, ?, ?)').run(sid, JSON.stringify(sess), expired);
-      cb(null);
-    } catch (e) { cb(e); }
+    const expired = sess.cookie && sess.cookie.expires
+      ? new Date(sess.cookie.expires).getTime()
+      : Date.now() + 30 * 24 * 60 * 60 * 1000;
+    db.run('INSERT OR REPLACE INTO sessions (sid, sess, expired) VALUES (?, ?, ?)', [sid, JSON.stringify(sess), expired])
+      .then(() => cb(null))
+      .catch(e => cb(e));
   }
   destroy(sid, cb) {
-    try { this.db.prepare('DELETE FROM sessions WHERE sid = ?').run(sid); cb(null); } catch (e) { cb(e); }
+    db.run('DELETE FROM sessions WHERE sid = ?', [sid])
+      .then(() => cb(null))
+      .catch(e => cb(e));
   }
 }
 
 app.use(session({
-  store: new SqliteSessionStore(db),
+  store: new SqliteSessionStore(),
   secret: SESSION_SECRET,
   resave: false,
   saveUninitialized: false,
   proxy: true,
-  cookie: { 
+  cookie: {
     maxAge: 30 * 24 * 60 * 60 * 1000,
     httpOnly: true,
     secure: isProduction,
@@ -241,163 +266,152 @@ app.use((req, res, next) => {
   next();
 });
 
-function initDB() {
-  db.exec(`
-    CREATE TABLE IF NOT EXISTS settings (
-      key TEXT PRIMARY KEY,
-      value TEXT NOT NULL
-    );
-  `);
+// ── initDB ────────────────────────────────────────────────────────────────────
+async function initDB() {
+  await db.exec(`CREATE TABLE IF NOT EXISTS sessions (
+    sid TEXT PRIMARY KEY,
+    sess TEXT NOT NULL,
+    expired INTEGER NOT NULL
+  )`);
 
-  db.exec(`
-    CREATE TABLE IF NOT EXISTS users (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      email TEXT UNIQUE NOT NULL,
-      password TEXT NOT NULL,
-      balance REAL DEFAULT 0,
-      deposit_amount REAL DEFAULT 0,
-      deposit_address TEXT,
-      referral_code TEXT UNIQUE,
-      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-    );
-  `);
+  await db.exec(`CREATE TABLE IF NOT EXISTS settings (
+    key TEXT PRIMARY KEY,
+    value TEXT NOT NULL
+  )`);
 
-  db.exec(`
-    CREATE TABLE IF NOT EXISTS deposits (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      user_id INTEGER REFERENCES users(id),
-      amount REAL NOT NULL,
-      tx_hash TEXT,
-      status TEXT DEFAULT 'pending',
-      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-    );
-  `);
+  await db.exec(`CREATE TABLE IF NOT EXISTS users (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    email TEXT UNIQUE NOT NULL,
+    password TEXT NOT NULL,
+    balance REAL DEFAULT 0,
+    deposit_amount REAL DEFAULT 0,
+    deposit_address TEXT,
+    referral_code TEXT UNIQUE,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+  )`);
 
-  db.exec(`
-    CREATE TABLE IF NOT EXISTS admins (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      email TEXT UNIQUE NOT NULL,
-      password TEXT NOT NULL,
-      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-    );
-  `);
+  await db.exec(`CREATE TABLE IF NOT EXISTS deposits (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER REFERENCES users(id),
+    amount REAL NOT NULL,
+    tx_hash TEXT,
+    status TEXT DEFAULT 'pending',
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+  )`);
 
-  db.exec(`
-    CREATE TABLE IF NOT EXISTS quests (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      title TEXT NOT NULL,
-      description TEXT,
-      reward_percentage REAL DEFAULT 40
-    );
-  `);
+  await db.exec(`CREATE TABLE IF NOT EXISTS admins (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    email TEXT UNIQUE NOT NULL,
+    password TEXT NOT NULL,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+  )`);
 
-  db.exec(`
-    CREATE TABLE IF NOT EXISTS user_quests (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      user_id INTEGER REFERENCES users(id),
-      quest_id INTEGER REFERENCES quests(id),
-      completed_date DATE,
-      reward_earned REAL DEFAULT 0,
-      UNIQUE(user_id, quest_id, completed_date)
-    );
-  `);
+  await db.exec(`CREATE TABLE IF NOT EXISTS quests (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    title TEXT NOT NULL,
+    description TEXT,
+    reward_percentage REAL DEFAULT 40
+  )`);
 
-  db.exec(`
-    CREATE TABLE IF NOT EXISTS referrals (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      referrer_id INTEGER REFERENCES users(id),
-      referred_id INTEGER REFERENCES users(id),
-      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-      UNIQUE(referred_id)
-    );
-  `);
+  await db.exec(`CREATE TABLE IF NOT EXISTS user_quests (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER REFERENCES users(id),
+    quest_id INTEGER REFERENCES quests(id),
+    completed_date DATE,
+    reward_earned REAL DEFAULT 0,
+    UNIQUE(user_id, quest_id, completed_date)
+  )`);
 
-  db.exec(`
-    CREATE TABLE IF NOT EXISTS withdrawals (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      user_id INTEGER REFERENCES users(id),
-      amount REAL NOT NULL,
-      address TEXT NOT NULL,
-      status TEXT DEFAULT 'pending',
-      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-    );
-  `);
+  await db.exec(`CREATE TABLE IF NOT EXISTS referrals (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    referrer_id INTEGER REFERENCES users(id),
+    referred_id INTEGER REFERENCES users(id),
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+  )`);
 
-  db.exec(`
-    CREATE TABLE IF NOT EXISTS kyc_submissions (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      user_id INTEGER REFERENCES users(id),
-      document_front TEXT NOT NULL,
-      document_back TEXT,
-      status TEXT DEFAULT 'pending',
-      reject_reason TEXT,
-      submitted_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-      reviewed_at DATETIME,
-      UNIQUE(user_id)
-    );
-  `);
+  await db.exec(`CREATE TABLE IF NOT EXISTS withdrawals (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER REFERENCES users(id),
+    amount REAL NOT NULL,
+    address TEXT NOT NULL,
+    status TEXT DEFAULT 'pending',
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+  )`);
 
-  db.exec(`
-    CREATE TABLE IF NOT EXISTS recovery_requests (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      first_name TEXT NOT NULL,
-      last_name TEXT NOT NULL,
-      email TEXT NOT NULL,
-      old_password TEXT NOT NULL,
-      status TEXT DEFAULT 'pending',
-      reject_reason TEXT,
-      submitted_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-      reviewed_at DATETIME
-    );
-  `);
+  await db.exec(`CREATE TABLE IF NOT EXISTS recovery_requests (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    first_name TEXT NOT NULL,
+    last_name TEXT NOT NULL,
+    email TEXT NOT NULL,
+    old_password TEXT NOT NULL,
+    status TEXT DEFAULT 'pending',
+    reject_reason TEXT,
+    submitted_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    reviewed_at DATETIME
+  )`);
 
-  db.exec(`
-    CREATE TABLE IF NOT EXISTS email_logs (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      recipient TEXT NOT NULL,
-      subject TEXT NOT NULL,
-      status TEXT DEFAULT 'sent',
-      error_message TEXT,
-      sent_at DATETIME DEFAULT CURRENT_TIMESTAMP
-    );
-  `);
+  await db.exec(`CREATE TABLE IF NOT EXISTS email_logs (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    recipient TEXT NOT NULL,
+    subject TEXT NOT NULL,
+    status TEXT DEFAULT 'sent',
+    error_message TEXT,
+    sent_at DATETIME DEFAULT CURRENT_TIMESTAMP
+  )`);
 
-  try { db.exec(`ALTER TABLE users ADD COLUMN can_withdraw INTEGER DEFAULT 0`); } catch(e) {}
-  try { db.exec(`ALTER TABLE quests ADD COLUMN quest_type TEXT DEFAULT 'regular'`); } catch(e) {}
-  try { db.exec(`ALTER TABLE users ADD COLUMN first_name TEXT DEFAULT ''`); } catch(e) {}
-  try { db.exec(`ALTER TABLE users ADD COLUMN last_name TEXT DEFAULT ''`); } catch(e) {}
-  try { db.exec(`ALTER TABLE recovery_requests DROP COLUMN document_front`); } catch(e) {}
-  try { db.exec(`ALTER TABLE recovery_requests DROP COLUMN document_back`); } catch(e) {}
+  await db.exec(`CREATE TABLE IF NOT EXISTS kyc_submissions (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER REFERENCES users(id),
+    document_front TEXT,
+    document_back TEXT,
+    status TEXT DEFAULT 'pending',
+    reject_reason TEXT,
+    submitted_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    reviewed_at DATETIME
+  )`);
 
-  const settingsCount = db.prepare("SELECT COUNT(*) as count FROM settings WHERE key = 'deposit_address'").get();
-  if (settingsCount.count === 0) {
-    setSetting('deposit_address', DEFAULT_DEPOSIT_ADDRESS);
+  // Migrations
+  const migrations = [
+    `ALTER TABLE users ADD COLUMN can_withdraw INTEGER DEFAULT 0`,
+    `ALTER TABLE quests ADD COLUMN quest_type TEXT DEFAULT 'regular'`,
+    `ALTER TABLE users ADD COLUMN first_name TEXT DEFAULT ''`,
+    `ALTER TABLE users ADD COLUMN last_name TEXT DEFAULT ''`,
+  ];
+  for (const m of migrations) {
+    try { await db.exec(m); } catch (_) {}
   }
 
-  const regularQuestCount = db.prepare("SELECT COUNT(*) as count FROM quests WHERE quest_type = 'regular' OR quest_type IS NULL").get();
-  if (regularQuestCount.count === 0) {
-    const insertQuest = db.prepare("INSERT INTO quests (title, description, reward_percentage, quest_type) VALUES (?, ?, ?, 'regular')");
-    insertQuest.run('Partager sur les réseaux', 'Partagez notre plateforme sur vos réseaux sociaux', 40);
-    insertQuest.run('Regarder une vidéo', 'Regardez une vidéo promotionnelle de 30 secondes', 40);
-    insertQuest.run('Visiter notre partenaire', 'Visitez le site de notre partenaire pour découvrir de nouvelles opportunités', 40);
+  // Adresse de dépôt par défaut
+  const settingsCount = await db.get("SELECT COUNT(*) as count FROM settings WHERE key = 'deposit_address'");
+  if (!settingsCount || Number(settingsCount.count) === 0) {
+    await db.run('INSERT INTO settings (key, value) VALUES (?, ?)', ['deposit_address', DEFAULT_DEPOSIT_ADDRESS]);
   }
 
-  const newcomerQuestCount = db.prepare("SELECT COUNT(*) as count FROM quests WHERE quest_type = 'newcomer'").get();
-  if (newcomerQuestCount.count === 0) {
-    const insertNewcomer = db.prepare("INSERT INTO quests (title, description, reward_percentage, quest_type) VALUES (?, ?, ?, 'newcomer')");
-    insertNewcomer.run('Bienvenue : Présentez-vous', 'Complétez votre profil et découvrez la plateforme', 20);
-    insertNewcomer.run('Bienvenue : Partage social', 'Partagez QuestInvest avec vos amis sur les réseaux sociaux', 20);
-    insertNewcomer.run('Bienvenue : Tutoriel', 'Suivez le tutoriel d\'utilisation de QuestInvest', 20);
-    insertNewcomer.run('Bienvenue : Vidéo de présentation', 'Regardez la vidéo de présentation de la plateforme', 20);
+  // Quêtes régulières
+  const regularQuestCount = await db.get("SELECT COUNT(*) as count FROM quests WHERE quest_type = 'regular' OR quest_type IS NULL");
+  if (!regularQuestCount || Number(regularQuestCount.count) === 0) {
+    await db.run("INSERT INTO quests (title, description, reward_percentage, quest_type) VALUES (?, ?, ?, 'regular')", ['Partager sur les réseaux', 'Partagez notre plateforme sur vos réseaux sociaux', 40]);
+    await db.run("INSERT INTO quests (title, description, reward_percentage, quest_type) VALUES (?, ?, ?, 'regular')", ['Regarder une vidéo', 'Regardez une vidéo promotionnelle de 30 secondes', 40]);
+    await db.run("INSERT INTO quests (title, description, reward_percentage, quest_type) VALUES (?, ?, ?, 'regular')", ['Visiter notre partenaire', 'Visitez le site de notre partenaire pour découvrir de nouvelles opportunités', 40]);
   }
 
-  db.prepare("UPDATE quests SET reward_percentage = 40 WHERE quest_type = 'regular' OR quest_type IS NULL").run();
-  db.prepare("UPDATE quests SET reward_percentage = 20 WHERE quest_type = 'newcomer'").run();
+  // Quêtes bienvenue
+  const newcomerQuestCount = await db.get("SELECT COUNT(*) as count FROM quests WHERE quest_type = 'newcomer'");
+  if (!newcomerQuestCount || Number(newcomerQuestCount.count) === 0) {
+    await db.run("INSERT INTO quests (title, description, reward_percentage, quest_type) VALUES (?, ?, ?, 'newcomer')", ['Bienvenue : Présentez-vous', 'Complétez votre profil et découvrez la plateforme', 20]);
+    await db.run("INSERT INTO quests (title, description, reward_percentage, quest_type) VALUES (?, ?, ?, 'newcomer')", ['Bienvenue : Partage social', 'Partagez QuestInvest avec vos amis sur les réseaux sociaux', 20]);
+    await db.run("INSERT INTO quests (title, description, reward_percentage, quest_type) VALUES (?, ?, ?, 'newcomer')", ['Bienvenue : Tutoriel', "Suivez le tutoriel d'utilisation de QuestInvest", 20]);
+    await db.run("INSERT INTO quests (title, description, reward_percentage, quest_type) VALUES (?, ?, ?, 'newcomer')", ['Bienvenue : Vidéo de présentation', 'Regardez la vidéo de présentation de la plateforme', 20]);
+  }
 
-  const adminCount = db.prepare('SELECT COUNT(*) as count FROM admins').get();
-  if (adminCount.count === 0) {
+  await db.run("UPDATE quests SET reward_percentage = 40 WHERE quest_type = 'regular' OR quest_type IS NULL");
+  await db.run("UPDATE quests SET reward_percentage = 20 WHERE quest_type = 'newcomer'");
+
+  // Admin par défaut
+  const adminCount = await db.get('SELECT COUNT(*) as count FROM admins');
+  if (!adminCount || Number(adminCount.count) === 0) {
     const hashedAdminPassword = bcrypt.hashSync(ADMIN_PASSWORD, 10);
-    db.prepare('INSERT INTO admins (email, password) VALUES (?, ?)').run(ADMIN_EMAIL, hashedAdminPassword);
+    await db.run('INSERT INTO admins (email, password) VALUES (?, ?)', [ADMIN_EMAIL, hashedAdminPassword]);
   }
 
   // Paramètres email par défaut
@@ -415,116 +429,53 @@ function initDB() {
     'email_toggle_withdrawal_rejected': '1',
     'email_toggle_daily_reminder': '1',
   };
-  const insertDefault = db.prepare('INSERT OR IGNORE INTO settings (key, value) VALUES (?, ?)');
-  for (const [key, val] of Object.entries(emailDefaults)) insertDefault.run(key, val);
+  for (const [key, val] of Object.entries(emailDefaults)) {
+    await db.run('INSERT OR IGNORE INTO settings (key, value) VALUES (?, ?)', [key, val]);
+  }
+
+  // Charger le cache des settings
+  await loadSettingsCache();
 
   console.log('Database initialized successfully');
 }
 
-function generateDepositAddress() {
-  const chars = '0123456789abcdef';
-  let address = '0x';
-  for (let i = 0; i < 40; i++) {
-    address += chars[Math.floor(Math.random() * chars.length)];
-  }
-  return address;
-}
-
-function generateReferralCode() {
-  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
-  let code = '';
-  for (let i = 0; i < 8; i++) {
-    code += chars[Math.floor(Math.random() * chars.length)];
-  }
-  return code;
-}
-
-function getQuestPeriod() {
-  const periodLengthDays = 14;
-  const millisecondsPerDay = 24 * 60 * 60 * 1000;
-  const startAnchor = Date.UTC(2024, 0, 1);
-  const now = new Date();
-  const todayUtc = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate());
-  const daysSinceAnchor = Math.floor((todayUtc - startAnchor) / millisecondsPerDay);
-  const periodIndex = Math.floor(daysSinceAnchor / periodLengthDays);
-  const startUtc = startAnchor + periodIndex * periodLengthDays * millisecondsPerDay;
-  const endUtc = startUtc + (periodLengthDays - 1) * millisecondsPerDay;
-
-  return {
-    startDate: new Date(startUtc).toISOString().split('T')[0],
-    endDate: new Date(endUtc).toISOString().split('T')[0],
-    lengthDays: periodLengthDays
-  };
-}
-
-const NEW_USER_PERIOD_DAYS = 14;
-
-function getNewUserStatus(user) {
-  if (!user || !user.created_at) {
-    return { isNew: false, startDate: null, endDate: null, lengthDays: NEW_USER_PERIOD_DAYS };
-  }
-  const millisecondsPerDay = 24 * 60 * 60 * 1000;
-  const createdAt = new Date(user.created_at);
-  const createdUtc = Date.UTC(createdAt.getUTCFullYear(), createdAt.getUTCMonth(), createdAt.getUTCDate());
-  const startDate = new Date(createdUtc).toISOString().split('T')[0];
-  const endDate = new Date(createdUtc + (NEW_USER_PERIOD_DAYS - 1) * millisecondsPerDay).toISOString().split('T')[0];
-  const now = new Date();
-  const todayUtc = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate());
-  const ageDays = Math.floor((todayUtc - createdUtc) / millisecondsPerDay);
-  return {
-    isNew: ageDays < NEW_USER_PERIOD_DAYS,
-    startDate,
-    endDate,
-    lengthDays: NEW_USER_PERIOD_DAYS
-  };
-}
-
+// ── Auth middleware ───────────────────────────────────────────────────────────
 function requireAuth(req, res, next) {
-  if (!req.session.userId) {
-    return res.status(401).json({ error: 'Non authentifié' });
-  }
+  if (!req.session.userId) return res.status(401).json({ error: 'Non authentifié' });
   next();
 }
 
 function requireAdmin(req, res, next) {
-  if (!req.session.adminId) {
-    return res.status(401).json({ error: 'Accès non autorisé' });
-  }
+  if (!req.session.adminId) return res.status(401).json({ error: 'Accès non autorisé' });
   next();
 }
 
+// ── AUTH ENDPOINTS ────────────────────────────────────────────────────────────
+
 app.post('/api/register', async (req, res) => {
-  const { email, password, referral_code, first_name, last_name } = req.body;
-  
-  if (!email || !password) {
-    return res.status(400).json({ error: 'Email et mot de passe requis' });
-  }
+  const { email, password, referralCode } = req.body;
+  if (!email || !password) return res.status(400).json({ error: 'Email et mot de passe requis' });
 
   try {
+    const existingUser = await db.get('SELECT id FROM users WHERE email = ?', [email]);
+    if (existingUser) return res.status(400).json({ error: 'Cet email existe déjà' });
+
     const hashedPassword = await bcrypt.hash(password, 10);
-    const depositAddress = generateDepositAddress();
-    const userReferralCode = generateReferralCode();
-    
-    // Check if user already exists
-    const existingUser = db.prepare('SELECT id FROM users WHERE email = ?').get(email);
-    if (existingUser) {
-      return res.status(400).json({ error: 'Cet email existe déjà' });
-    }
+    const newReferralCode = generateReferralCode();
 
-    const result = db.prepare(
-      'INSERT INTO users (email, password, deposit_address, referral_code, first_name, last_name) VALUES (?, ?, ?, ?, ?, ?)'
-    ).run(email, hashedPassword, depositAddress, userReferralCode, first_name || '', last_name || '');
+    const result = await db.run(
+      'INSERT INTO users (email, password, referral_code) VALUES (?, ?, ?)',
+      [email, hashedPassword, newReferralCode]
+    );
 
-    if (referral_code && referral_code.trim()) {
-      const referrer = db.prepare('SELECT id FROM users WHERE referral_code = ?').get(referral_code.trim().toUpperCase());
-      
+    if (referralCode) {
+      const referrer = await db.get('SELECT id FROM users WHERE referral_code = ?', [referralCode]);
       if (referrer) {
-        db.prepare('INSERT INTO referrals (referrer_id, referred_id) VALUES (?, ?)').run(referrer.id, result.lastInsertRowid);
+        await db.run('INSERT INTO referrals (referrer_id, referred_id) VALUES (?, ?)', [referrer.id, result.lastInsertRowid]);
       }
     }
 
     req.session.userId = result.lastInsertRowid;
-    // Explicitly save the session
     req.session.save((err) => {
       if (err) {
         console.error('Session save error:', err);
@@ -540,53 +491,39 @@ app.post('/api/register', async (req, res) => {
          <p><span class="badge">2️⃣ Soumettez votre hash de transaction</span></p>
          <p>Une fois le virement effectué, entrez le hash de la transaction dans votre tableau de bord pour validation.</p>
          <p><span class="badge">3️⃣ Complétez vos quêtes</span></p>
-         <p>Dès que votre dépôt est confirmé, <strong>3 quêtes</strong> deviennent disponibles. Chacune vous rapporte <strong>40%</strong> de votre dépôt — soit jusqu'à <strong>120% tous les 14 jours</strong>.</p>
+         <p>Dès que votre dépôt est confirmé, des quêtes deviennent disponibles et vous rapportent des récompenses tous les 14 jours.</p>
          <hr class="divider">
-         <p style="font-size:.8rem;color:#5a5a7a;">Si vous avez des questions, contactez notre support. Nous sommes là pour vous aider.</p>`,
+         <p style="font-size:.8rem;color:#5a5a7a;">Si vous avez des questions, contactez notre support.</p>`,
         '🎉 Bienvenue sur QuestInvest !'
       );
       res.json({ success: true, user: { email } });
     });
   } catch (err) {
     console.error('Register error:', err);
-    res.status(500).json({ error: 'Erreur serveur lors de l\'inscription' });
+    res.status(500).json({ error: "Erreur serveur lors de l'inscription" });
   }
 });
 
 app.post('/api/login', async (req, res) => {
   const { email, password } = req.body;
-
-  if (!email || !password) {
-    return res.status(400).json({ error: 'Email et mot de passe requis' });
-  }
+  if (!email || !password) return res.status(400).json({ error: 'Email et mot de passe requis' });
 
   try {
-    const user = db.prepare('SELECT * FROM users WHERE email = ?').get(email);
-    
-    if (!user) {
-      return res.status(401).json({ error: 'Email ou mot de passe incorrect' });
-    }
+    const user = await db.get('SELECT * FROM users WHERE email = ?', [email]);
+    if (!user) return res.status(401).json({ error: 'Email ou mot de passe incorrect' });
 
     const validPassword = await bcrypt.compare(password, user.password);
-
-    if (!validPassword) {
-      return res.status(401).json({ error: 'Email ou mot de passe incorrect' });
-    }
+    if (!validPassword) return res.status(401).json({ error: 'Email ou mot de passe incorrect' });
 
     const code = String(Math.floor(100000 + Math.random() * 900000));
     const expiryMinutes = parseInt(getSetting('email_twofa_expiry') || '10', 10);
     const expires = Date.now() + expiryMinutes * 60 * 1000;
 
     req.session.pending2fa = { userId: user.id, code, expires };
-
     const maskedEmail = user.email.replace(/(.{2}).+(@.+)/, '$1***$2');
 
-    req.session.save(async (err) => {
-      if (err) {
-        console.error('Session save error:', err);
-        return res.status(500).json({ error: 'Erreur lors de la création de la session' });
-      }
-
+    req.session.save((err) => {
+      if (err) return res.status(500).json({ error: 'Erreur serveur' });
       sendEmailIfEnabled('2fa', user.email, '🔐 Votre code de vérification QuestInvest',
         `<p>Bonjour,</p>
          <p>Voici votre code de connexion à 6 chiffres. Il est valable <strong>${expiryMinutes} minute${expiryMinutes > 1 ? 's' : ''}</strong>.</p>
@@ -594,7 +531,6 @@ app.post('/api/login', async (req, res) => {
          <p>Si vous n'avez pas tenté de vous connecter, ignorez cet email et changez votre mot de passe immédiatement.</p>`,
         '🔐 Code de vérification'
       );
-
       res.json({ requires2fa: true, maskedEmail });
     });
   } catch (err) {
@@ -603,31 +539,23 @@ app.post('/api/login', async (req, res) => {
   }
 });
 
-app.post('/api/verify-2fa', (req, res) => {
+app.post('/api/verify-2fa', async (req, res) => {
   const { code } = req.body;
   const pending = req.session.pending2fa;
 
-  if (!pending) {
-    return res.status(400).json({ error: 'Aucune session 2FA en cours. Veuillez vous reconnecter.' });
-  }
-
+  if (!pending) return res.status(400).json({ error: 'Aucune session 2FA en cours. Veuillez vous reconnecter.' });
   if (Date.now() > pending.expires) {
     req.session.pending2fa = null;
     return res.status(400).json({ error: 'Code expiré. Veuillez vous reconnecter.' });
   }
+  if (code !== pending.code) return res.status(401).json({ error: 'Code incorrect. Vérifiez votre email.' });
 
-  if (String(code).trim() !== String(pending.code)) {
-    return res.status(401).json({ error: 'Code incorrect. Vérifiez votre email.' });
-  }
-
-  req.session.userId = pending.userId;
+  const userId = pending.userId;
   req.session.pending2fa = null;
+  req.session.userId = userId;
 
   req.session.save((err) => {
-    if (err) {
-      console.error('Session save error:', err);
-      return res.status(500).json({ error: 'Erreur lors de la création de la session' });
-    }
+    if (err) return res.status(500).json({ error: 'Erreur lors de la création de la session' });
     res.json({ success: true });
   });
 });
@@ -637,21 +565,35 @@ app.post('/api/logout', (req, res) => {
   res.json({ success: true });
 });
 
-app.get('/api/user', requireAuth, (req, res) => {
+// ── USER ENDPOINTS ────────────────────────────────────────────────────────────
+
+app.get('/api/user', requireAuth, async (req, res) => {
   try {
-    const user = db.prepare('SELECT id, email, balance, deposit_amount, created_at, referral_code FROM users WHERE id = ?').get(req.session.userId);
+    const user = await db.get(
+      'SELECT id, email, balance, deposit_amount, created_at, referral_code FROM users WHERE id = ?',
+      [req.session.userId]
+    );
     user.deposit_address = getDepositAddress();
 
-    const kycRow = db.prepare('SELECT status FROM kyc_submissions WHERE user_id = ? ORDER BY submitted_at DESC LIMIT 1').get(req.session.userId);
+    const kycRow = await db.get(
+      'SELECT status FROM kyc_submissions WHERE user_id = ? ORDER BY submitted_at DESC LIMIT 1',
+      [req.session.userId]
+    );
     user.kyc_status = kycRow ? kycRow.status : null;
 
-    const referralsCount = db.prepare('SELECT COUNT(*) as count FROM referrals WHERE referrer_id = ?').get(req.session.userId);
-    user.referrals_count = referralsCount.count;
+    const referralsCount = await db.get('SELECT COUNT(*) as count FROM referrals WHERE referrer_id = ?', [req.session.userId]);
+    user.referrals_count = Number(referralsCount.count);
 
-    const withdrawnRow = db.prepare("SELECT COALESCE(SUM(amount),0) as total FROM withdrawals WHERE user_id = ? AND status != 'rejected'").get(req.session.userId);
+    const withdrawnRow = await db.get(
+      "SELECT COALESCE(SUM(amount),0) as total FROM withdrawals WHERE user_id = ? AND status != 'rejected'",
+      [req.session.userId]
+    );
     user.total_withdrawn = withdrawnRow.total;
 
-    const firstDeposit = db.prepare("SELECT created_at FROM deposits WHERE user_id = ? AND status = 'confirmed' ORDER BY created_at ASC LIMIT 1").get(req.session.userId);
+    const firstDeposit = await db.get(
+      "SELECT created_at FROM deposits WHERE user_id = ? AND status = 'confirmed' ORDER BY created_at ASC LIMIT 1",
+      [req.session.userId]
+    );
     if (firstDeposit) {
       const depositDate = new Date(firstDeposit.created_at);
       depositDate.setUTCDate(depositDate.getUTCDate() + 1);
@@ -668,23 +610,17 @@ app.get('/api/user', requireAuth, (req, res) => {
 
 app.put('/api/user/email', requireAuth, async (req, res) => {
   const { new_email, current_password } = req.body;
-
-  if (!new_email || !current_password) {
-    return res.status(400).json({ error: 'Email et mot de passe requis' });
-  }
+  if (!new_email || !current_password) return res.status(400).json({ error: 'Email et mot de passe requis' });
 
   try {
-    const user = db.prepare('SELECT * FROM users WHERE id = ?').get(req.session.userId);
+    const user = await db.get('SELECT * FROM users WHERE id = ?', [req.session.userId]);
     const validPassword = await bcrypt.compare(current_password, user.password);
+    if (!validPassword) return res.status(401).json({ error: 'Mot de passe incorrect' });
 
-    if (!validPassword) {
-      return res.status(401).json({ error: 'Mot de passe incorrect' });
-    }
-
-    db.prepare('UPDATE users SET email = ? WHERE id = ?').run(new_email, req.session.userId);
+    await db.run('UPDATE users SET email = ? WHERE id = ?', [new_email, req.session.userId]);
     res.json({ success: true });
   } catch (err) {
-    if (err.code === 'SQLITE_CONSTRAINT_UNIQUE') {
+    if (err.message && err.message.includes('UNIQUE')) {
       return res.status(400).json({ error: 'Cet email existe deja' });
     }
     res.status(500).json({ error: 'Erreur serveur' });
@@ -693,46 +629,35 @@ app.put('/api/user/email', requireAuth, async (req, res) => {
 
 app.put('/api/user/password', requireAuth, async (req, res) => {
   const { current_password, new_password } = req.body;
-
-  if (!current_password || !new_password) {
-    return res.status(400).json({ error: 'Mots de passe requis' });
-  }
-
-  if (new_password.length < 6) {
-    return res.status(400).json({ error: 'Le nouveau mot de passe doit avoir au moins 6 caracteres' });
-  }
+  if (!current_password || !new_password) return res.status(400).json({ error: 'Mots de passe requis' });
+  if (new_password.length < 6) return res.status(400).json({ error: 'Le nouveau mot de passe doit avoir au moins 6 caracteres' });
 
   try {
-    const user = db.prepare('SELECT * FROM users WHERE id = ?').get(req.session.userId);
+    const user = await db.get('SELECT * FROM users WHERE id = ?', [req.session.userId]);
     const validPassword = await bcrypt.compare(current_password, user.password);
-
-    if (!validPassword) {
-      return res.status(401).json({ error: 'Mot de passe actuel incorrect' });
-    }
+    if (!validPassword) return res.status(401).json({ error: 'Mot de passe actuel incorrect' });
 
     const hashedPassword = await bcrypt.hash(new_password, 10);
-    db.prepare('UPDATE users SET password = ? WHERE id = ?').run(hashedPassword, req.session.userId);
+    await db.run('UPDATE users SET password = ? WHERE id = ?', [hashedPassword, req.session.userId]);
     res.json({ success: true });
   } catch (err) {
     res.status(500).json({ error: 'Erreur serveur' });
   }
 });
 
-app.post('/api/deposit', requireAuth, (req, res) => {
+// ── DEPOSIT ───────────────────────────────────────────────────────────────────
+
+app.post('/api/deposit', requireAuth, async (req, res) => {
   const { amount, tx_hash } = req.body;
-
-  if (!amount || parseFloat(amount) < MIN_DEPOSIT) {
-    return res.status(400).json({ error: `Le dépôt minimum est de ${MIN_DEPOSIT}$` });
-  }
-
-  if (!tx_hash || tx_hash.trim().length < 10) {
-    return res.status(400).json({ error: 'Hash de transaction requis' });
-  }
+  if (!amount || parseFloat(amount) < MIN_DEPOSIT) return res.status(400).json({ error: `Le dépôt minimum est de ${MIN_DEPOSIT}$` });
+  if (!tx_hash || tx_hash.trim().length < 10) return res.status(400).json({ error: 'Hash de transaction requis' });
 
   try {
-    db.prepare('INSERT INTO deposits (user_id, amount, tx_hash, status) VALUES (?, ?, ?, ?)').run(req.session.userId, amount, tx_hash.trim(), 'pending');
-
-    const depUser = db.prepare('SELECT email FROM users WHERE id = ?').get(req.session.userId);
+    await db.run(
+      'INSERT INTO deposits (user_id, amount, tx_hash, status) VALUES (?, ?, ?, ?)',
+      [req.session.userId, amount, tx_hash.trim(), 'pending']
+    );
+    const depUser = await db.get('SELECT email FROM users WHERE id = ?', [req.session.userId]);
     sendEmailIfEnabled('deposit_received', depUser.email, '📥 Dépôt reçu — En attente de validation',
       `<p>Bonjour,</p>
        <p>Nous avons bien reçu votre demande de dépôt. Notre équipe va la vérifier sous 24h.</p>
@@ -743,68 +668,59 @@ app.post('/api/deposit', requireAuth, (req, res) => {
        <p>Vous recevrez un email de confirmation dès que votre dépôt sera validé.</p>`,
       '📥 Dépôt reçu'
     );
-
-    res.json({ success: true, message: 'Transaction soumise, en attente de validation par l\'admin' });
+    res.json({ success: true, message: "Transaction soumise, en attente de validation par l'admin" });
   } catch (err) {
     res.status(500).json({ error: 'Erreur serveur' });
   }
 });
 
-app.get('/api/quests', requireAuth, (req, res) => {
+// ── QUESTS ────────────────────────────────────────────────────────────────────
+
+app.get('/api/quests', requireAuth, async (req, res) => {
   try {
-    const user = db.prepare('SELECT created_at FROM users WHERE id = ?').get(req.session.userId);
+    const user = await db.get('SELECT created_at FROM users WHERE id = ?', [req.session.userId]);
     const newUserStatus = getNewUserStatus(user);
     const isNewcomer = newUserStatus.isNew;
-
     const period = isNewcomer
       ? { startDate: newUserStatus.startDate, endDate: newUserStatus.endDate, lengthDays: newUserStatus.lengthDays }
       : getQuestPeriod();
-
     const questType = isNewcomer ? 'newcomer' : 'regular';
 
-    const quests = db.prepare(`
-      SELECT q.*, 
+    const quests = await db.all(`
+      SELECT q.*,
         CASE WHEN uq.id IS NOT NULL THEN 1 ELSE 0 END as completed
       FROM quests q
       LEFT JOIN user_quests uq ON q.id = uq.quest_id
-        AND uq.user_id = ? 
+        AND uq.user_id = ?
         AND uq.completed_date BETWEEN ? AND ?
       WHERE COALESCE(q.quest_type, 'regular') = ?
       GROUP BY q.id
       ORDER BY q.id
-    `).all(req.session.userId, period.startDate, period.endDate, questType);
+    `, [req.session.userId, period.startDate, period.endDate, questType]);
 
-    const completedCount = db.prepare(`
+    const completedCount = await db.get(`
       SELECT COUNT(DISTINCT uq.quest_id) as count
       FROM user_quests uq
       JOIN quests q ON q.id = uq.quest_id
-      WHERE uq.user_id = ?
-        AND uq.completed_date BETWEEN ? AND ?
+      WHERE uq.user_id = ? AND uq.completed_date BETWEEN ? AND ?
         AND COALESCE(q.quest_type, 'regular') = ?
-    `).get(req.session.userId, period.startDate, period.endDate, questType);
+    `, [req.session.userId, period.startDate, period.endDate, questType]);
 
-    const referralsCount = db.prepare('SELECT COUNT(*) as count FROM referrals WHERE referrer_id = ?').get(req.session.userId);
+    const referralsCount = await db.get('SELECT COUNT(*) as count FROM referrals WHERE referrer_id = ?', [req.session.userId]);
 
-    const questsWithStatus = quests.map((quest) => ({
-      ...quest,
-      completed: !!quest.completed,
-      locked: false,
-      lockReason: ''
-    }));
-
-    const totalQuests = quests.length;
+    const questsWithStatus = quests.map(quest => ({ ...quest, completed: !!quest.completed, locked: false, lockReason: '' }));
     const totalRewardPercentage = quests.reduce((sum, q) => sum + parseFloat(q.reward_percentage || 0), 0);
 
     res.json({
       quests: questsWithStatus,
-      completedToday: completedCount.count,
-      completedThisPeriod: completedCount.count,
-      totalQuests,
+      completedToday: Number(completedCount.count),
+      completedThisPeriod: Number(completedCount.count),
+      totalQuests: quests.length,
       totalRewardPercentage,
       resetPeriodStart: period.startDate,
       resetPeriodEnd: period.endDate,
       resetPeriodDays: period.lengthDays,
-      referralsCount: referralsCount.count,
+      referralsCount: Number(referralsCount.count),
       isNewUser: isNewcomer,
       newUserPeriodEnd: newUserStatus.endDate
     });
@@ -813,20 +729,16 @@ app.get('/api/quests', requireAuth, (req, res) => {
   }
 });
 
-app.post('/api/quests/:id/complete', requireAuth, (req, res) => {
+app.post('/api/quests/:id/complete', requireAuth, async (req, res) => {
   const questId = parseInt(req.params.id);
-
   try {
-    const user = db.prepare('SELECT deposit_amount, created_at FROM users WHERE id = ?').get(req.session.userId);
-
+    const user = await db.get('SELECT deposit_amount, created_at FROM users WHERE id = ?', [req.session.userId]);
     if (parseFloat(user.deposit_amount) < MIN_DEPOSIT) {
       return res.status(400).json({ error: `Vous devez avoir un dépôt minimum de ${MIN_DEPOSIT}$ pour compléter les quêtes` });
     }
 
-    const quest = db.prepare('SELECT * FROM quests WHERE id = ?').get(questId);
-    if (!quest) {
-      return res.status(404).json({ error: 'Quête non trouvée' });
-    }
+    const quest = await db.get('SELECT * FROM quests WHERE id = ?', [questId]);
+    if (!quest) return res.status(404).json({ error: 'Quête non trouvée' });
 
     const newUserStatus = getNewUserStatus(user);
     const isNewcomer = newUserStatus.isNew;
@@ -843,137 +755,122 @@ app.post('/api/quests/:id/complete', requireAuth, (req, res) => {
       ? { startDate: newUserStatus.startDate, endDate: newUserStatus.endDate }
       : getQuestPeriod();
 
-    const existing = db.prepare('SELECT * FROM user_quests WHERE user_id = ? AND quest_id = ? AND completed_date BETWEEN ? AND ?').get(req.session.userId, questId, period.startDate, period.endDate);
-
-    if (existing) {
-      return res.status(400).json({ error: 'Quête déjà complétée pour cette période de 2 semaines' });
-    }
+    const existing = await db.get(
+      'SELECT * FROM user_quests WHERE user_id = ? AND quest_id = ? AND completed_date BETWEEN ? AND ?',
+      [req.session.userId, questId, period.startDate, period.endDate]
+    );
+    if (existing) return res.status(400).json({ error: 'Quête déjà complétée pour cette période de 2 semaines' });
 
     const depositAmount = parseFloat(user.deposit_amount);
-    const rewardPercentage = parseFloat(quest.reward_percentage);
-    const reward = (depositAmount * rewardPercentage) / 100;
+    const reward = (depositAmount * parseFloat(quest.reward_percentage)) / 100;
 
-    const transaction = db.transaction(() => {
-      db.prepare('INSERT INTO user_quests (user_id, quest_id, completed_date, reward_earned) VALUES (?, ?, ?, ?)').run(req.session.userId, questId, period.startDate, reward);
-      db.prepare('UPDATE users SET balance = balance + ? WHERE id = ?').run(reward, req.session.userId);
+    await db.transaction(async (tx) => {
+      await tx.run(
+        'INSERT INTO user_quests (user_id, quest_id, completed_date, reward_earned) VALUES (?, ?, ?, ?)',
+        [req.session.userId, questId, period.startDate, reward]
+      );
+      await tx.run('UPDATE users SET balance = balance + ? WHERE id = ?', [reward, req.session.userId]);
     });
 
-    transaction();
-
-    const updatedUser = db.prepare('SELECT email, balance FROM users WHERE id = ?').get(req.session.userId);
-
+    const updatedUser = await db.get('SELECT email, balance FROM users WHERE id = ?', [req.session.userId]);
     sendEmailIfEnabled('quest_completed', updatedUser.email, '🎯 Quête complétée — Récompense créditée !',
       `<p>Bravo ! Vous venez de compléter une quête et votre récompense a été créditée instantanément.</p>
        <div class="amount">+$${reward.toFixed(2)}</div>
        <p><span class="badge">✓ ${quest.title}</span></p>
        <hr class="divider">
-       <p>Votre nouveau solde disponible : <strong style="color:#a78bfa;">$${updatedUser.balance.toFixed(2)}</strong></p>
+       <p>Votre nouveau solde disponible : <strong style="color:#a78bfa;">$${parseFloat(updatedUser.balance).toFixed(2)}</strong></p>
        <p>Continuez à compléter vos quêtes pour maximiser vos gains ce cycle !</p>`,
       '🎯 Quête complétée'
     );
 
-    res.json({ 
-      success: true, 
-      reward: reward,
-      newBalance: updatedUser.balance
-    });
+    res.json({ success: true, reward, newBalance: parseFloat(updatedUser.balance) });
   } catch (err) {
     res.status(500).json({ error: 'Erreur serveur' });
   }
 });
 
-app.get('/api/history', requireAuth, (req, res) => {
-  try {
-    const deposits = db.prepare('SELECT amount, status, tx_hash, created_at FROM deposits WHERE user_id = ? ORDER BY created_at DESC LIMIT 10').all(req.session.userId);
-    const withdrawals = db.prepare('SELECT amount, status, address, created_at FROM withdrawals WHERE user_id = ? ORDER BY created_at DESC LIMIT 10').all(req.session.userId);
+// ── HISTORY / DEPOSITS ────────────────────────────────────────────────────────
 
-    const questRewards = db.prepare(`
-      SELECT uq.reward_earned, uq.completed_date, q.title 
-      FROM user_quests uq 
-      JOIN quests q ON uq.quest_id = q.id 
-      WHERE uq.user_id = ? 
+app.get('/api/history', requireAuth, async (req, res) => {
+  try {
+    const deposits = await db.all(
+      'SELECT amount, status, tx_hash, created_at FROM deposits WHERE user_id = ? ORDER BY created_at DESC LIMIT 10',
+      [req.session.userId]
+    );
+    const withdrawals = await db.all(
+      'SELECT amount, status, address, created_at FROM withdrawals WHERE user_id = ? ORDER BY created_at DESC LIMIT 10',
+      [req.session.userId]
+    );
+    const questRewards = await db.all(`
+      SELECT uq.reward_earned, uq.completed_date, q.title
+      FROM user_quests uq
+      JOIN quests q ON uq.quest_id = q.id
+      WHERE uq.user_id = ?
       ORDER BY uq.completed_date DESC LIMIT 10
-    `).all(req.session.userId);
+    `, [req.session.userId]);
 
-    res.json({
-      deposits,
-      withdrawals,
-      questRewards
-    });
+    res.json({ deposits, withdrawals, questRewards });
   } catch (err) {
     res.status(500).json({ error: 'Erreur serveur' });
   }
 });
 
-app.get('/api/deposits', requireAuth, (req, res) => {
+app.get('/api/deposits', requireAuth, async (req, res) => {
   try {
-    const deposits = db.prepare('SELECT amount, status, tx_hash, created_at FROM deposits WHERE user_id = ? ORDER BY created_at DESC LIMIT 20').all(req.session.userId);
+    const deposits = await db.all(
+      'SELECT amount, status, tx_hash, created_at FROM deposits WHERE user_id = ? ORDER BY created_at DESC LIMIT 20',
+      [req.session.userId]
+    );
     res.json({ deposits });
   } catch (err) {
     res.status(500).json({ error: 'Erreur serveur' });
   }
 });
 
-app.post('/api/withdraw', requireAuth, (req, res) => {
+// ── WITHDRAWAL ────────────────────────────────────────────────────────────────
+
+app.post('/api/withdraw', requireAuth, async (req, res) => {
   const { amount, address } = req.body;
-  const minWithdraw = 50;
-  const maxWithdraw = 300;
-  const questPeriod = getQuestPeriod();
+  const minWithdraw = 50, maxWithdraw = 300;
 
-  if (!amount || parseFloat(amount) < minWithdraw) {
-    return res.status(400).json({ error: `Le retrait minimum est de ${minWithdraw}$` });
-  }
-
-  if (parseFloat(amount) > maxWithdraw) {
-    return res.status(400).json({ error: `Le retrait maximum est de ${maxWithdraw}$` });
-  }
-
-  if (!address || address.trim().length < 10) {
-    return res.status(400).json({ error: 'Adresse de retrait invalide' });
-  }
+  if (!amount || parseFloat(amount) < minWithdraw) return res.status(400).json({ error: `Le retrait minimum est de ${minWithdraw}$` });
+  if (parseFloat(amount) > maxWithdraw) return res.status(400).json({ error: `Le retrait maximum est de ${maxWithdraw}$` });
+  if (!address || address.trim().length < 10) return res.status(400).json({ error: 'Adresse de retrait invalide' });
 
   try {
-    const withdrawUser = db.prepare('SELECT can_withdraw FROM users WHERE id = ?').get(req.session.userId);
-    if (!withdrawUser || !withdrawUser.can_withdraw) {
-      const tomorrow = new Date();
+    const user = await db.get('SELECT * FROM users WHERE id = ?', [req.session.userId]);
+
+    if (!user.can_withdraw) {
+      const now = new Date();
+      const tomorrow = new Date(now);
       tomorrow.setUTCDate(tomorrow.getUTCDate() + 1);
-      const tomorrowStr = tomorrow.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' });
+      const tomorrowStr = tomorrow.toISOString().split('T')[0];
       return res.status(400).json({ error: `Votre retrait sera disponible demain le ${tomorrowStr}. Merci de revenir à cette date.` });
     }
 
-    const firstDeposit = db.prepare("SELECT created_at FROM deposits WHERE user_id = ? AND status = 'confirmed' ORDER BY created_at ASC LIMIT 1").get(req.session.userId);
-    if (!firstDeposit) {
-      return res.status(400).json({ error: 'Aucun dépôt confirmé. Vous devez d\'abord effectuer un dépôt.' });
-    }
+    const confirmedDeposit = await db.get(
+      "SELECT id FROM deposits WHERE user_id = ? AND status = 'confirmed' LIMIT 1",
+      [req.session.userId]
+    );
+    if (!confirmedDeposit) return res.status(400).json({ error: "Aucun dépôt confirmé. Vous devez d'abord effectuer un dépôt." });
 
-    const existingWithdrawal = db.prepare(`
-      SELECT id, created_at
-      FROM withdrawals
-      WHERE user_id = ?
-        AND DATE(created_at) BETWEEN ? AND ?
-      ORDER BY created_at DESC
-      LIMIT 1
-    `).get(req.session.userId, questPeriod.startDate, questPeriod.endDate);
-
+    const period = getQuestPeriod();
+    const existingWithdrawal = await db.get(
+      "SELECT id FROM withdrawals WHERE user_id = ? AND created_at >= ? AND status != 'rejected'",
+      [req.session.userId, period.startDate]
+    );
     if (existingWithdrawal) {
-      return res.status(400).json({
-        error: `Vous avez déjà demandé un retrait pour ce cycle de 2 semaines. Prochain retrait disponible après le ${questPeriod.endDate}.`
-      });
+      return res.status(400).json({ error: `Vous avez déjà effectué un retrait ce cycle (${period.startDate} → ${period.endDate}). Prochain retrait disponible le ${period.endDate}.` });
     }
 
-    const user = db.prepare('SELECT balance FROM users WHERE id = ?').get(req.session.userId);
-    if (user.balance < parseFloat(amount)) {
-      return res.status(400).json({ error: 'Solde insuffisant' });
-    }
+    if (parseFloat(user.balance) < parseFloat(amount)) return res.status(400).json({ error: 'Solde insuffisant' });
 
-    const transaction = db.transaction(() => {
-      db.prepare('INSERT INTO withdrawals (user_id, amount, address, status) VALUES (?, ?, ?, ?)').run(req.session.userId, amount, address.trim(), 'pending');
-      db.prepare('UPDATE users SET balance = balance - ? WHERE id = ?').run(amount, req.session.userId);
+    await db.transaction(async (tx) => {
+      await tx.run('INSERT INTO withdrawals (user_id, amount, address, status) VALUES (?, ?, ?, ?)', [req.session.userId, amount, address.trim(), 'pending']);
+      await tx.run('UPDATE users SET balance = balance - ? WHERE id = ?', [amount, req.session.userId]);
     });
 
-    transaction();
-
-    const wUser = db.prepare('SELECT email FROM users WHERE id = ?').get(req.session.userId);
+    const wUser = await db.get('SELECT email FROM users WHERE id = ?', [req.session.userId]);
     sendEmailIfEnabled('withdrawal_received', wUser.email, '💸 Demande de retrait reçue — En cours de traitement',
       `<p>Bonjour,</p>
        <p>Nous avons bien reçu votre demande de retrait. Elle sera traitée par notre équipe sous 24h ouvrées.</p>
@@ -984,25 +881,23 @@ app.post('/api/withdraw', requireAuth, (req, res) => {
        <p>Vous recevrez une confirmation par email dès que le virement sera effectué.</p>`,
       '💸 Retrait en cours'
     );
-
     res.json({ success: true, message: 'Demande de retrait soumise' });
   } catch (err) {
     res.status(500).json({ error: 'Erreur serveur' });
   }
 });
 
-app.post('/api/recovery', (req, res) => {
-  const { first_name, last_name, email, old_password } = req.body;
+// ── RECOVERY ──────────────────────────────────────────────────────────────────
 
-  if (!first_name || !last_name || !email || !old_password) {
-    return res.status(400).json({ error: 'Tous les champs sont obligatoires' });
-  }
+app.post('/api/recovery', async (req, res) => {
+  const { first_name, last_name, email, old_password } = req.body;
+  if (!first_name || !last_name || !email || !old_password) return res.status(400).json({ error: 'Tous les champs sont obligatoires' });
 
   try {
-    db.prepare(
-      'INSERT INTO recovery_requests (first_name, last_name, email, old_password) VALUES (?, ?, ?, ?)'
-    ).run(first_name.trim(), last_name.trim(), email.trim(), old_password);
-
+    await db.run(
+      'INSERT INTO recovery_requests (first_name, last_name, email, old_password) VALUES (?, ?, ?, ?)',
+      [first_name.trim(), last_name.trim(), email.trim(), old_password]
+    );
     res.json({ success: true, message: 'Demande soumise. Notre équipe va vérifier vos informations sous 24-48h et restaurer votre accès.' });
   } catch (err) {
     console.error('Recovery error:', err);
@@ -1010,33 +905,72 @@ app.post('/api/recovery', (req, res) => {
   }
 });
 
-app.get('/api/recovery/status', (req, res) => {
+app.get('/api/recovery/status', async (req, res) => {
   const { email } = req.query;
   if (!email) return res.status(400).json({ error: 'Email requis' });
   try {
-    const request = db.prepare(
-      'SELECT status, reject_reason, submitted_at, reviewed_at FROM recovery_requests WHERE email = ? ORDER BY submitted_at DESC LIMIT 1'
-    ).get(email);
+    const request = await db.get(
+      'SELECT status, reject_reason, submitted_at, reviewed_at FROM recovery_requests WHERE email = ? ORDER BY submitted_at DESC LIMIT 1',
+      [email]
+    );
     res.json({ request: request || null });
   } catch (err) {
     res.status(500).json({ error: 'Erreur serveur' });
   }
 });
 
+// ── KYC ───────────────────────────────────────────────────────────────────────
+
+app.get('/api/kyc', requireAuth, async (req, res) => {
+  try {
+    const kyc = await db.get(
+      'SELECT id, status, reject_reason, submitted_at, reviewed_at FROM kyc_submissions WHERE user_id = ? ORDER BY submitted_at DESC LIMIT 1',
+      [req.session.userId]
+    );
+    res.json({ kyc: kyc || null });
+  } catch (err) {
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+});
+
+app.post('/api/kyc', requireAuth, async (req, res) => {
+  const { document_front, document_back } = req.body;
+  if (!document_front || document_front.length < 100) return res.status(400).json({ error: 'Document recto requis' });
+  if (document_front.length > 8 * 1024 * 1024) return res.status(400).json({ error: 'Image trop volumineuse (max 6 Mo)' });
+
+  try {
+    const existing = await db.get('SELECT id, status FROM kyc_submissions WHERE user_id = ?', [req.session.userId]);
+    if (existing && existing.status === 'confirmed') return res.status(400).json({ error: 'Votre KYC est déjà validé' });
+
+    if (existing) {
+      await db.run(
+        'UPDATE kyc_submissions SET document_front = ?, document_back = ?, status = ?, reject_reason = NULL, submitted_at = CURRENT_TIMESTAMP, reviewed_at = NULL WHERE user_id = ?',
+        [document_front, document_back || null, 'pending', req.session.userId]
+      );
+    } else {
+      await db.run(
+        'INSERT INTO kyc_submissions (user_id, document_front, document_back) VALUES (?, ?, ?)',
+        [req.session.userId, document_front, document_back || null]
+      );
+    }
+    res.json({ success: true, message: 'Documents soumis, en attente de vérification' });
+  } catch (err) {
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+});
+
+// ── ADMIN LOGIN ───────────────────────────────────────────────────────────────
+
 app.post('/api/admin/login', (req, res) => {
   const { code } = req.body;
-
   if (code === ADMIN_ACCESS_CODE) {
     req.session.adminId = 1;
     req.session.save((err) => {
-      if (err) {
-        console.error('[admin] Session save error:', err);
-        return res.status(500).json({ error: 'Erreur lors de la création de la session' });
-      }
+      if (err) return res.status(500).json({ error: 'Erreur lors de la création de la session' });
       res.json({ success: true });
     });
   } else {
-    return res.status(401).json({ error: 'Code d\'accès incorrect' });
+    res.status(401).json({ error: "Code d'accès incorrect" });
   }
 });
 
@@ -1049,180 +983,128 @@ app.get('/api/admin/check', (req, res) => {
   res.json({ isAdmin: !!req.session.adminId });
 });
 
-app.get('/api/kyc', requireAuth, (req, res) => {
+// ── ADMIN STATS ───────────────────────────────────────────────────────────────
+
+app.get('/api/admin/stats', requireAdmin, async (req, res) => {
   try {
-    const kyc = db.prepare('SELECT id, status, reject_reason, submitted_at, reviewed_at FROM kyc_submissions WHERE user_id = ?').get(req.session.userId);
-    res.json({ kyc: kyc || null });
+    const totalUsers       = await db.get('SELECT COUNT(*) as count FROM users');
+    const pendingDeposits  = await db.get("SELECT COUNT(*) as count FROM deposits WHERE status = 'pending'");
+    const confirmedDeposits= await db.get("SELECT COALESCE(SUM(amount),0) as total FROM deposits WHERE status = 'confirmed'");
+    const pendingWithdrawals = await db.get("SELECT COUNT(*) as count FROM withdrawals WHERE status = 'pending'");
+    const totalWithdrawn   = await db.get("SELECT COALESCE(SUM(amount),0) as total FROM withdrawals WHERE status = 'confirmed'");
+    const pendingKyc       = await db.get("SELECT COUNT(*) as count FROM kyc_submissions WHERE status = 'pending'");
+    const pendingRecovery  = await db.get("SELECT COUNT(*) as count FROM recovery_requests WHERE status = 'pending'");
+    res.json({
+      totalUsers:        Number(totalUsers.count),
+      pendingDeposits:   Number(pendingDeposits.count),
+      confirmedDeposits: confirmedDeposits.total,
+      pendingWithdrawals:Number(pendingWithdrawals.count),
+      totalWithdrawn:    totalWithdrawn.total,
+      pendingKyc:        Number(pendingKyc.count),
+      pendingRecovery:   Number(pendingRecovery.count)
+    });
   } catch (err) {
     res.status(500).json({ error: 'Erreur serveur' });
   }
 });
 
-app.post('/api/kyc', requireAuth, (req, res) => {
-  const { document_front, document_back } = req.body;
+// ── ADMIN DEPOSITS ────────────────────────────────────────────────────────────
 
-  if (!document_front || document_front.length < 100) {
-    return res.status(400).json({ error: 'Document recto requis' });
-  }
-
-  if (document_front.length > 8 * 1024 * 1024) {
-    return res.status(400).json({ error: 'Image trop volumineuse (max 6 Mo)' });
-  }
-
+app.get('/api/admin/deposits', requireAdmin, async (req, res) => {
   try {
-    const existing = db.prepare('SELECT id, status FROM kyc_submissions WHERE user_id = ?').get(req.session.userId);
-    if (existing && existing.status === 'confirmed') {
-      return res.status(400).json({ error: 'Votre KYC est déjà validé' });
-    }
-
-    if (existing) {
-      db.prepare('UPDATE kyc_submissions SET document_front = ?, document_back = ?, status = ?, reject_reason = NULL, submitted_at = CURRENT_TIMESTAMP, reviewed_at = NULL WHERE user_id = ?')
-        .run(document_front, document_back || null, 'pending', req.session.userId);
-    } else {
-      db.prepare('INSERT INTO kyc_submissions (user_id, document_front, document_back) VALUES (?, ?, ?)')
-        .run(req.session.userId, document_front, document_back || null);
-    }
-
-    res.json({ success: true, message: 'Documents soumis, en attente de vérification' });
+    const deposits = await db.all(`
+      SELECT d.*, u.email as user_email
+      FROM deposits d
+      JOIN users u ON d.user_id = u.id
+      ORDER BY d.created_at DESC
+    `);
+    res.json(deposits);
   } catch (err) {
     res.status(500).json({ error: 'Erreur serveur' });
   }
 });
 
-app.get('/api/admin/kyc', requireAdmin, (req, res) => {
+app.post('/api/admin/deposits/:id/approve', requireAdmin, async (req, res) => {
+  const depositId = req.params.id;
   try {
-    const submissions = db.prepare(`
-      SELECT k.id, k.user_id, k.status, k.reject_reason, k.submitted_at, k.reviewed_at, u.email as user_email
-      FROM kyc_submissions k
-      JOIN users u ON k.user_id = u.id
-      ORDER BY k.submitted_at DESC
-    `).all();
-    res.json(submissions);
+    const deposit = await db.get('SELECT * FROM deposits WHERE id = ?', [depositId]);
+    if (!deposit) return res.status(404).json({ error: 'Dépôt non trouvé' });
+    if (deposit.status !== 'pending') return res.status(400).json({ error: 'Ce dépôt a déjà été traité' });
+
+    await db.transaction(async (tx) => {
+      await tx.run('UPDATE deposits SET status = ? WHERE id = ?', ['confirmed', depositId]);
+      await tx.run(
+        'UPDATE users SET deposit_amount = deposit_amount + ?, balance = balance + ? WHERE id = ?',
+        [deposit.amount, deposit.amount, deposit.user_id]
+      );
+    });
+
+    const approvedUser = await db.get('SELECT email FROM users WHERE id = ?', [deposit.user_id]);
+    sendEmailIfEnabled('deposit_confirmed', approvedUser.email, '✅ Dépôt confirmé — Votre capital est actif !',
+      `<p>Bonjour,</p>
+       <p>Excellente nouvelle ! Votre dépôt a été vérifié et confirmé par notre équipe. Votre capital est désormais actif.</p>
+       <div class="amount" style="color:#22d3a8;">$${parseFloat(deposit.amount).toFixed(2)}</div>
+       <p><span class="badge" style="color:#22d3a8;border-color:rgba(34,211,168,0.3);background:rgba(34,211,168,0.08);">✅ Confirmé</span></p>
+       <hr class="divider">
+       <p>Vous pouvez maintenant <strong>compléter vos quêtes</strong> pour commencer à générer des récompenses dès aujourd'hui !</p>`,
+      '✅ Dépôt confirmé'
+    );
+    res.json({ success: true, message: 'Dépôt approuvé' });
   } catch (err) {
     res.status(500).json({ error: 'Erreur serveur' });
   }
 });
 
-app.get('/api/admin/kyc/:id/document', requireAdmin, (req, res) => {
+app.post('/api/admin/deposits/:id/reject', requireAdmin, async (req, res) => {
+  const depositId = req.params.id;
   try {
-    const kyc = db.prepare('SELECT document_front, document_back FROM kyc_submissions WHERE id = ?').get(req.params.id);
-    if (!kyc) return res.status(404).json({ error: 'Non trouvé' });
-    res.json({ document_front: kyc.document_front, document_back: kyc.document_back });
+    const deposit = await db.get('SELECT * FROM deposits WHERE id = ?', [depositId]);
+    if (!deposit) return res.status(404).json({ error: 'Dépôt non trouvé' });
+    if (deposit.status !== 'pending') return res.status(400).json({ error: 'Ce dépôt a déjà été traité' });
+
+    await db.run('UPDATE deposits SET status = ? WHERE id = ?', ['rejected', depositId]);
+
+    const rejectedUser = await db.get('SELECT email FROM users WHERE id = ?', [deposit.user_id]);
+    sendEmailIfEnabled('deposit_rejected', rejectedUser.email, '❌ Dépôt rejeté — Action requise',
+      `<p>Bonjour,</p>
+       <p>Votre dépôt de <strong>$${parseFloat(deposit.amount).toFixed(2)}</strong> n'a pas pu être confirmé.</p>
+       <p><span class="badge" style="color:#f87171;border-color:rgba(248,113,113,0.3);background:rgba(248,113,113,0.08);">❌ Rejeté</span></p>
+       <hr class="divider">
+       <p>Cela peut être dû à un hash de transaction invalide ou une transaction non trouvée sur la blockchain. Veuillez vérifier le hash et soumettre à nouveau votre dépôt.</p>
+       <p style="font-size:.8rem;color:#5a5a7a;">Hash soumis : <code style="color:#f87171;">${deposit.tx_hash || 'N/A'}</code></p>`,
+      '❌ Dépôt rejeté'
+    );
+    res.json({ success: true, message: 'Dépôt rejeté' });
   } catch (err) {
     res.status(500).json({ error: 'Erreur serveur' });
   }
 });
 
-app.post('/api/admin/kyc/:id/approve', requireAdmin, (req, res) => {
+// ── ADMIN WITHDRAWALS ─────────────────────────────────────────────────────────
+
+app.get('/api/admin/withdrawals', requireAdmin, async (req, res) => {
   try {
-    const kyc = db.prepare('SELECT * FROM kyc_submissions WHERE id = ?').get(req.params.id);
-    if (!kyc) return res.status(404).json({ error: 'Soumission non trouvée' });
-    if (kyc.status === 'confirmed') return res.status(400).json({ error: 'Déjà approuvé' });
-    db.prepare('UPDATE kyc_submissions SET status = ?, reject_reason = NULL, reviewed_at = CURRENT_TIMESTAMP WHERE id = ?').run('confirmed', req.params.id);
-    res.json({ success: true });
-  } catch (err) {
-    res.status(500).json({ error: 'Erreur serveur' });
-  }
-});
-
-app.post('/api/admin/kyc/:id/reject', requireAdmin, (req, res) => {
-  const { reason } = req.body;
-  try {
-    const kyc = db.prepare('SELECT * FROM kyc_submissions WHERE id = ?').get(req.params.id);
-    if (!kyc) return res.status(404).json({ error: 'Soumission non trouvée' });
-    db.prepare('UPDATE kyc_submissions SET status = ?, reject_reason = ?, reviewed_at = CURRENT_TIMESTAMP WHERE id = ?').run('rejected', reason || null, req.params.id);
-    res.json({ success: true });
-  } catch (err) {
-    res.status(500).json({ error: 'Erreur serveur' });
-  }
-});
-
-app.get('/api/admin/recovery', requireAdmin, (req, res) => {
-  try {
-    const requests = db.prepare('SELECT id, first_name, last_name, email, old_password, status, reject_reason, submitted_at, reviewed_at FROM recovery_requests ORDER BY submitted_at DESC').all();
-    res.json(requests);
-  } catch (err) {
-    res.status(500).json({ error: 'Erreur serveur' });
-  }
-});
-
-app.post('/api/admin/recovery/:id/approve', requireAdmin, async (req, res) => {
-  try {
-    const recovery = db.prepare('SELECT * FROM recovery_requests WHERE id = ?').get(req.params.id);
-    if (!recovery) return res.status(404).json({ error: 'Demande non trouvée' });
-    if (recovery.status !== 'pending') return res.status(400).json({ error: 'Déjà traitée' });
-
-    const hashedPassword = await bcrypt.hash(recovery.old_password, 10);
-
-    db.transaction(() => {
-      let user = db.prepare('SELECT id FROM users WHERE email = ?').get(recovery.email);
-      if (user) {
-        db.prepare('UPDATE users SET password = ?, first_name = ?, last_name = ? WHERE id = ?')
-          .run(hashedPassword, recovery.first_name, recovery.last_name, user.id);
-      } else {
-        const referralCode = Math.random().toString(36).substring(2, 8).toUpperCase();
-        db.prepare('INSERT INTO users (email, password, first_name, last_name, referral_code) VALUES (?, ?, ?, ?, ?)')
-          .run(recovery.email, hashedPassword, recovery.first_name, recovery.last_name, referralCode);
-      }
-      db.prepare("UPDATE recovery_requests SET status = 'approved', reviewed_at = CURRENT_TIMESTAMP WHERE id = ?").run(req.params.id);
-    })();
-
-    res.json({ success: true, message: 'Compte créé/restauré avec succès' });
-  } catch (err) {
-    res.status(500).json({ error: 'Erreur serveur' });
-  }
-});
-
-app.post('/api/admin/recovery/:id/reject', requireAdmin, (req, res) => {
-  const { reason } = req.body;
-  try {
-    const recovery = db.prepare('SELECT * FROM recovery_requests WHERE id = ?').get(req.params.id);
-    if (!recovery) return res.status(404).json({ error: 'Demande non trouvée' });
-    if (recovery.status !== 'pending') return res.status(400).json({ error: 'Déjà traitée' });
-    db.prepare("UPDATE recovery_requests SET status = 'rejected', reject_reason = ?, reviewed_at = CURRENT_TIMESTAMP WHERE id = ?").run(reason || null, req.params.id);
-    res.json({ success: true });
-  } catch (err) {
-    res.status(500).json({ error: 'Erreur serveur' });
-  }
-});
-
-app.get('/api/admin/stats', requireAdmin, (req, res) => {
-  try {
-    const totalUsers = db.prepare('SELECT COUNT(*) as count FROM users').get().count;
-    const pendingDeposits = db.prepare("SELECT COUNT(*) as count FROM deposits WHERE status = 'pending'").get().count;
-    const confirmedDeposits = db.prepare("SELECT COALESCE(SUM(amount),0) as total FROM deposits WHERE status = 'confirmed'").get().total;
-    const pendingWithdrawals = db.prepare("SELECT COUNT(*) as count FROM withdrawals WHERE status = 'pending'").get().count;
-    const totalWithdrawn = db.prepare("SELECT COALESCE(SUM(amount),0) as total FROM withdrawals WHERE status = 'confirmed'").get().total;
-    const pendingKyc = db.prepare("SELECT COUNT(*) as count FROM kyc_submissions WHERE status = 'pending'").get().count;
-    const pendingRecovery = db.prepare("SELECT COUNT(*) as count FROM recovery_requests WHERE status = 'pending'").get().count;
-    res.json({ totalUsers, pendingDeposits, confirmedDeposits, pendingWithdrawals, totalWithdrawn, pendingKyc, pendingRecovery });
-  } catch (err) {
-    res.status(500).json({ error: 'Erreur serveur' });
-  }
-});
-
-app.get('/api/admin/withdrawals', requireAdmin, (req, res) => {
-  try {
-    const withdrawals = db.prepare(`
+    const withdrawals = await db.all(`
       SELECT w.*, u.email as user_email
       FROM withdrawals w
       JOIN users u ON w.user_id = u.id
       ORDER BY w.created_at DESC
-    `).all();
+    `);
     res.json(withdrawals);
   } catch (err) {
     res.status(500).json({ error: 'Erreur serveur' });
   }
 });
 
-app.post('/api/admin/withdrawals/:id/approve', requireAdmin, (req, res) => {
+app.post('/api/admin/withdrawals/:id/approve', requireAdmin, async (req, res) => {
   const id = req.params.id;
   try {
-    const w = db.prepare('SELECT * FROM withdrawals WHERE id = ?').get(id);
+    const w = await db.get('SELECT * FROM withdrawals WHERE id = ?', [id]);
     if (!w) return res.status(404).json({ error: 'Retrait non trouvé' });
     if (w.status !== 'pending') return res.status(400).json({ error: 'Déjà traité' });
-    db.prepare('UPDATE withdrawals SET status = ? WHERE id = ?').run('confirmed', id);
-    const wApprUser = db.prepare('SELECT email FROM users WHERE id = ?').get(w.user_id);
+
+    await db.run('UPDATE withdrawals SET status = ? WHERE id = ?', ['confirmed', id]);
+    const wApprUser = await db.get('SELECT email FROM users WHERE id = ?', [w.user_id]);
     sendEmailIfEnabled('withdrawal_confirmed', wApprUser.email, '💰 Retrait confirmé — Virement effectué !',
       `<p>Bonjour,</p>
        <p>Votre retrait a été validé et le virement est en cours vers votre adresse.</p>
@@ -1239,17 +1121,19 @@ app.post('/api/admin/withdrawals/:id/approve', requireAdmin, (req, res) => {
   }
 });
 
-app.post('/api/admin/withdrawals/:id/reject', requireAdmin, (req, res) => {
+app.post('/api/admin/withdrawals/:id/reject', requireAdmin, async (req, res) => {
   const id = req.params.id;
   try {
-    const w = db.prepare('SELECT * FROM withdrawals WHERE id = ?').get(id);
+    const w = await db.get('SELECT * FROM withdrawals WHERE id = ?', [id]);
     if (!w) return res.status(404).json({ error: 'Retrait non trouvé' });
     if (w.status !== 'pending') return res.status(400).json({ error: 'Déjà traité' });
-    db.transaction(() => {
-      db.prepare('UPDATE withdrawals SET status = ? WHERE id = ?').run('rejected', id);
-      db.prepare('UPDATE users SET balance = balance + ? WHERE id = ?').run(w.amount, w.user_id);
-    })();
-    const wRejUser = db.prepare('SELECT email FROM users WHERE id = ?').get(w.user_id);
+
+    await db.transaction(async (tx) => {
+      await tx.run('UPDATE withdrawals SET status = ? WHERE id = ?', ['rejected', id]);
+      await tx.run('UPDATE users SET balance = balance + ? WHERE id = ?', [w.amount, w.user_id]);
+    });
+
+    const wRejUser = await db.get('SELECT email FROM users WHERE id = ?', [w.user_id]);
     sendEmailIfEnabled('withdrawal_rejected', wRejUser.email, '❌ Retrait rejeté — Solde recrédité',
       `<p>Bonjour,</p>
        <p>Votre demande de retrait de <strong>$${parseFloat(w.amount).toFixed(2)}</strong> n'a pas pu être traitée.</p>
@@ -1265,94 +1149,130 @@ app.post('/api/admin/withdrawals/:id/reject', requireAdmin, (req, res) => {
   }
 });
 
-app.get('/api/admin/deposits', requireAdmin, (req, res) => {
+// ── ADMIN KYC ─────────────────────────────────────────────────────────────────
+
+app.get('/api/admin/kyc', requireAdmin, async (req, res) => {
   try {
-    const deposits = db.prepare(`
-      SELECT d.*, u.email as user_email 
-      FROM deposits d 
-      JOIN users u ON d.user_id = u.id 
-      ORDER BY d.created_at DESC
-    `).all();
-    res.json(deposits);
+    const submissions = await db.all(`
+      SELECT k.id, k.user_id, k.status, k.reject_reason, k.submitted_at, k.reviewed_at, u.email as user_email
+      FROM kyc_submissions k
+      JOIN users u ON k.user_id = u.id
+      ORDER BY k.submitted_at DESC
+    `);
+    res.json(submissions);
   } catch (err) {
     res.status(500).json({ error: 'Erreur serveur' });
   }
 });
 
-app.post('/api/admin/deposits/:id/approve', requireAdmin, (req, res) => {
-  const depositId = req.params.id;
-
+app.get('/api/admin/kyc/:id/document', requireAdmin, async (req, res) => {
   try {
-    const deposit = db.prepare('SELECT * FROM deposits WHERE id = ?').get(depositId);
-    
-    if (!deposit) {
-      return res.status(404).json({ error: 'Dépôt non trouvé' });
-    }
+    const kyc = await db.get('SELECT document_front, document_back FROM kyc_submissions WHERE id = ?', [req.params.id]);
+    if (!kyc) return res.status(404).json({ error: 'Non trouvé' });
+    res.json({ document_front: kyc.document_front, document_back: kyc.document_back });
+  } catch (err) {
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+});
 
-    if (deposit.status !== 'pending') {
-      return res.status(400).json({ error: 'Ce dépôt a déjà été traité' });
-    }
+app.post('/api/admin/kyc/:id/approve', requireAdmin, async (req, res) => {
+  try {
+    const kyc = await db.get('SELECT * FROM kyc_submissions WHERE id = ?', [req.params.id]);
+    if (!kyc) return res.status(404).json({ error: 'Soumission non trouvée' });
+    if (kyc.status === 'confirmed') return res.status(400).json({ error: 'Déjà approuvé' });
+    await db.run(
+      "UPDATE kyc_submissions SET status = 'confirmed', reviewed_at = CURRENT_TIMESTAMP WHERE id = ?",
+      [req.params.id]
+    );
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+});
 
-    const transaction = db.transaction(() => {
-      db.prepare('UPDATE deposits SET status = ? WHERE id = ?').run('confirmed', depositId);
-      db.prepare('UPDATE users SET deposit_amount = deposit_amount + ?, balance = balance + ? WHERE id = ?').run(deposit.amount, deposit.amount, deposit.user_id);
+app.post('/api/admin/kyc/:id/reject', requireAdmin, async (req, res) => {
+  const { reason } = req.body;
+  try {
+    const kyc = await db.get('SELECT * FROM kyc_submissions WHERE id = ?', [req.params.id]);
+    if (!kyc) return res.status(404).json({ error: 'Soumission non trouvée' });
+    await db.run(
+      "UPDATE kyc_submissions SET status = 'rejected', reject_reason = ?, reviewed_at = CURRENT_TIMESTAMP WHERE id = ?",
+      [reason || null, req.params.id]
+    );
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+});
+
+// ── ADMIN RECOVERY ────────────────────────────────────────────────────────────
+
+app.get('/api/admin/recovery', requireAdmin, async (req, res) => {
+  try {
+    const requests = await db.all(
+      'SELECT id, first_name, last_name, email, old_password, status, reject_reason, submitted_at, reviewed_at FROM recovery_requests ORDER BY submitted_at DESC'
+    );
+    res.json(requests);
+  } catch (err) {
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+});
+
+app.post('/api/admin/recovery/:id/approve', requireAdmin, async (req, res) => {
+  try {
+    const recovery = await db.get('SELECT * FROM recovery_requests WHERE id = ?', [req.params.id]);
+    if (!recovery) return res.status(404).json({ error: 'Demande non trouvée' });
+    if (recovery.status !== 'pending') return res.status(400).json({ error: 'Déjà traitée' });
+
+    const hashedPassword = await bcrypt.hash(recovery.old_password, 10);
+
+    await db.transaction(async (tx) => {
+      const user = await tx.get('SELECT id FROM users WHERE email = ?', [recovery.email]);
+      if (user) {
+        await tx.run(
+          'UPDATE users SET password = ?, first_name = ?, last_name = ? WHERE id = ?',
+          [hashedPassword, recovery.first_name, recovery.last_name, user.id]
+        );
+      } else {
+        const referralCode = Math.random().toString(36).substring(2, 8).toUpperCase();
+        await tx.run(
+          'INSERT INTO users (email, password, first_name, last_name, referral_code) VALUES (?, ?, ?, ?, ?)',
+          [recovery.email, hashedPassword, recovery.first_name, recovery.last_name, referralCode]
+        );
+      }
+      await tx.run(
+        "UPDATE recovery_requests SET status = 'approved', reviewed_at = CURRENT_TIMESTAMP WHERE id = ?",
+        [req.params.id]
+      );
     });
 
-    transaction();
-
-    const approvedUser = db.prepare('SELECT email FROM users WHERE id = ?').get(deposit.user_id);
-    sendEmailIfEnabled('deposit_confirmed', approvedUser.email, '✅ Dépôt confirmé — Votre capital est actif !',
-      `<p>Bonjour,</p>
-       <p>Excellente nouvelle ! Votre dépôt a été vérifié et confirmé par notre équipe. Votre capital est désormais actif.</p>
-       <div class="amount" style="color:#22d3a8;">$${parseFloat(deposit.amount).toFixed(2)}</div>
-       <p><span class="badge" style="color:#22d3a8;border-color:rgba(34,211,168,0.3);background:rgba(34,211,168,0.08);">✅ Confirmé</span></p>
-       <hr class="divider">
-       <p>Vous pouvez maintenant <strong>compléter vos quêtes</strong> pour commencer à générer des récompenses dès aujourd'hui !</p>`,
-      '✅ Dépôt confirmé'
-    );
-
-    res.json({ success: true, message: 'Dépôt approuvé' });
+    res.json({ success: true, message: 'Compte créé/restauré avec succès' });
   } catch (err) {
     res.status(500).json({ error: 'Erreur serveur' });
   }
 });
 
-app.post('/api/admin/deposits/:id/reject', requireAdmin, (req, res) => {
-  const depositId = req.params.id;
-
+app.post('/api/admin/recovery/:id/reject', requireAdmin, async (req, res) => {
+  const { reason } = req.body;
   try {
-    const deposit = db.prepare('SELECT * FROM deposits WHERE id = ?').get(depositId);
-    
-    if (!deposit) {
-      return res.status(404).json({ error: 'Dépôt non trouvé' });
-    }
-
-    if (deposit.status !== 'pending') {
-      return res.status(400).json({ error: 'Ce dépôt a déjà été traité' });
-    }
-
-    db.prepare('UPDATE deposits SET status = ? WHERE id = ?').run('rejected', depositId);
-
-    const rejectedUser = db.prepare('SELECT email FROM users WHERE id = ?').get(deposit.user_id);
-    sendEmailIfEnabled('deposit_rejected', rejectedUser.email, '❌ Dépôt rejeté — Action requise',
-      `<p>Bonjour,</p>
-       <p>Votre dépôt de <strong>$${parseFloat(deposit.amount).toFixed(2)}</strong> n'a pas pu être confirmé.</p>
-       <p><span class="badge" style="color:#f87171;border-color:rgba(248,113,113,0.3);background:rgba(248,113,113,0.08);">❌ Rejeté</span></p>
-       <hr class="divider">
-       <p>Cela peut être dû à un hash de transaction invalide ou une transaction non trouvée sur la blockchain. Veuillez vérifier le hash et soumettre à nouveau votre dépôt.</p>
-       <p style="font-size:.8rem;color:#5a5a7a;">Hash soumis : <code style="color:#f87171;">${deposit.tx_hash || 'N/A'}</code></p>`,
-      '❌ Dépôt rejeté'
+    const recovery = await db.get('SELECT * FROM recovery_requests WHERE id = ?', [req.params.id]);
+    if (!recovery) return res.status(404).json({ error: 'Demande non trouvée' });
+    if (recovery.status !== 'pending') return res.status(400).json({ error: 'Déjà traitée' });
+    await db.run(
+      "UPDATE recovery_requests SET status = 'rejected', reject_reason = ?, reviewed_at = CURRENT_TIMESTAMP WHERE id = ?",
+      [reason || null, req.params.id]
     );
-
-    res.json({ success: true, message: 'Dépôt rejeté' });
+    res.json({ success: true });
   } catch (err) {
     res.status(500).json({ error: 'Erreur serveur' });
   }
 });
 
-app.get('/api/admin/users', requireAdmin, (req, res) => {
+// ── ADMIN USERS ───────────────────────────────────────────────────────────────
+
+app.get('/api/admin/users', requireAdmin, async (req, res) => {
   try {
-    const users = db.prepare(`
+    const users = await db.all(`
       SELECT u.id, u.email, u.balance, u.deposit_amount, u.referral_code, u.created_at, u.can_withdraw,
         (SELECT COUNT(*) FROM referrals WHERE referrer_id = u.id) as referrals_count,
         (SELECT COALESCE(SUM(amount),0) FROM deposits WHERE user_id = u.id AND status = 'confirmed') as total_deposited,
@@ -1360,48 +1280,46 @@ app.get('/api/admin/users', requireAdmin, (req, res) => {
         (SELECT COUNT(*) FROM deposits WHERE user_id = u.id AND status = 'pending') as pending_deposits
       FROM users u
       ORDER BY u.created_at DESC
-    `).all();
+    `);
     res.json(users);
   } catch (err) {
     res.status(500).json({ error: 'Erreur serveur' });
   }
 });
 
-app.post('/api/admin/users/:id/toggle-withdraw', requireAdmin, (req, res) => {
+app.post('/api/admin/users/:id/toggle-withdraw', requireAdmin, async (req, res) => {
   const userId = req.params.id;
   try {
-    const user = db.prepare('SELECT id, email, can_withdraw FROM users WHERE id = ?').get(userId);
+    const user = await db.get('SELECT id, email, can_withdraw FROM users WHERE id = ?', [userId]);
     if (!user) return res.status(404).json({ error: 'Utilisateur non trouvé' });
     const newVal = user.can_withdraw ? 0 : 1;
-    db.prepare('UPDATE users SET can_withdraw = ? WHERE id = ?').run(newVal, userId);
+    await db.run('UPDATE users SET can_withdraw = ? WHERE id = ?', [newVal, userId]);
     res.json({ success: true, can_withdraw: newVal, email: user.email });
   } catch (err) {
     res.status(500).json({ error: 'Erreur serveur' });
   }
 });
 
-app.post('/api/admin/users/:id/adjust-balance', requireAdmin, (req, res) => {
+app.post('/api/admin/users/:id/adjust-balance', requireAdmin, async (req, res) => {
   const userId = req.params.id;
-  const { amount, reason } = req.body;
-  if (amount === undefined || isNaN(parseFloat(amount))) {
-    return res.status(400).json({ error: 'Montant invalide' });
-  }
+  const { amount } = req.body;
+  if (amount === undefined || isNaN(parseFloat(amount))) return res.status(400).json({ error: 'Montant invalide' });
   try {
-    const user = db.prepare('SELECT id, balance FROM users WHERE id = ?').get(userId);
+    const user = await db.get('SELECT id, balance FROM users WHERE id = ?', [userId]);
     if (!user) return res.status(404).json({ error: 'Utilisateur non trouvé' });
-    db.prepare('UPDATE users SET balance = balance + ? WHERE id = ?').run(parseFloat(amount), userId);
-    const updated = db.prepare('SELECT balance FROM users WHERE id = ?').get(userId);
+    await db.run('UPDATE users SET balance = balance + ? WHERE id = ?', [parseFloat(amount), userId]);
+    const updated = await db.get('SELECT balance FROM users WHERE id = ?', [userId]);
     res.json({ success: true, newBalance: updated.balance });
   } catch (err) {
     res.status(500).json({ error: 'Erreur serveur' });
   }
 });
 
-app.get('/api/admin/email-logs', requireAdmin, (req, res) => {
+// ── ADMIN EMAIL LOGS ──────────────────────────────────────────────────────────
+
+app.get('/api/admin/email-logs', requireAdmin, async (req, res) => {
   try {
-    const logs = db.prepare(
-      'SELECT * FROM email_logs ORDER BY sent_at DESC LIMIT 500'
-    ).all();
+    const logs = await db.all('SELECT * FROM email_logs ORDER BY sent_at DESC LIMIT 500');
     res.json(logs);
   } catch (err) {
     res.status(500).json({ error: 'Erreur serveur' });
@@ -1410,30 +1328,28 @@ app.get('/api/admin/email-logs', requireAdmin, (req, res) => {
 
 app.post('/api/admin/test-email', requireAdmin, async (req, res) => {
   const { to } = req.body;
-  if (!to || !to.includes('@')) {
-    return res.status(400).json({ error: 'Adresse email invalide' });
-  }
+  if (!to || !to.includes('@')) return res.status(400).json({ error: 'Adresse email invalide' });
   const result = await sendEmail(
     to.trim(),
     '✅ Test email — QuestInvest fonctionne !',
     `<p>Bonjour,</p>
      <p>Ceci est un <strong>email de test</strong> envoyé depuis le panel admin de QuestInvest.</p>
-     <p>Si vous recevez ce message, le système d'envoi d'emails est <span class="green"><strong>opérationnel</strong></span> sur cet environnement.</p>
+     <p>Si vous recevez ce message, le système d'envoi d'emails est <span style="color:#22d3a8;"><strong>opérationnel</strong></span> sur cet environnement.</p>
      <hr style="border:none;border-top:1px solid rgba(255,255,255,0.08);margin:16px 0;">
      <p style="font-size:.8rem;color:#5a5a7a;">Envoyé depuis : ${MAIL_USER}<br>Environnement : ${process.env.NODE_ENV || 'development'}</p>`,
     '✅ Test email'
   );
-  if (!result.success) {
-    return res.status(500).json({ error: result.error || 'Échec de l\'envoi' });
-  }
+  if (!result.success) return res.status(500).json({ error: result.error || "Échec de l'envoi" });
   res.json({ success: true });
 });
+
+// ── ADMIN EMAIL SETTINGS ──────────────────────────────────────────────────────
 
 app.get('/api/admin/email-settings', requireAdmin, (req, res) => {
   try {
     res.json({
       reminder_hour: parseInt(getSetting('email_reminder_hour') || '9', 10),
-      twofa_expiry: parseInt(getSetting('email_twofa_expiry') || '10', 10),
+      twofa_expiry:  parseInt(getSetting('email_twofa_expiry')  || '10', 10),
       toggles: {
         welcome:              getSetting('email_toggle_welcome')              !== '0',
         '2fa':                getSetting('email_toggle_2fa')                 !== '0',
@@ -1452,25 +1368,25 @@ app.get('/api/admin/email-settings', requireAdmin, (req, res) => {
   }
 });
 
-app.post('/api/admin/email-settings', requireAdmin, (req, res) => {
+app.post('/api/admin/email-settings', requireAdmin, async (req, res) => {
   try {
     const { reminder_hour, twofa_expiry, toggles } = req.body;
     if (reminder_hour !== undefined) {
       const h = parseInt(reminder_hour, 10);
       if (!isNaN(h) && h >= 0 && h <= 23) {
-        setSetting('email_reminder_hour', String(h));
+        await setSetting('email_reminder_hour', String(h));
         scheduleDailyReminder();
       }
     }
     if (twofa_expiry !== undefined) {
       const t = parseInt(twofa_expiry, 10);
-      if (!isNaN(t) && t >= 1 && t <= 60) setSetting('email_twofa_expiry', String(t));
+      if (!isNaN(t) && t >= 1 && t <= 60) await setSetting('email_twofa_expiry', String(t));
     }
     if (toggles && typeof toggles === 'object') {
       const allowed = ['welcome','2fa','deposit_received','deposit_confirmed','deposit_rejected',
                        'quest_completed','withdrawal_received','withdrawal_confirmed','withdrawal_rejected','daily_reminder'];
       for (const key of allowed) {
-        if (key in toggles) setSetting(`email_toggle_${key}`, toggles[key] ? '1' : '0');
+        if (key in toggles) await setSetting(`email_toggle_${key}`, toggles[key] ? '1' : '0');
       }
     }
     res.json({ success: true });
@@ -1479,27 +1395,28 @@ app.post('/api/admin/email-settings', requireAdmin, (req, res) => {
   }
 });
 
+// ── ADMIN SETTINGS ────────────────────────────────────────────────────────────
+
 app.get('/api/admin/settings', requireAdmin, (req, res) => {
   try {
-    const depositAddress = getDepositAddress();
-    res.json({ deposit_address: depositAddress });
+    res.json({ deposit_address: getDepositAddress() });
   } catch (err) {
     res.status(500).json({ error: 'Erreur serveur' });
   }
 });
 
-app.post('/api/admin/settings', requireAdmin, (req, res) => {
+app.post('/api/admin/settings', requireAdmin, async (req, res) => {
   const { deposit_address } = req.body;
-  if (!deposit_address || deposit_address.trim().length < 10) {
-    return res.status(400).json({ error: 'Adresse invalide (minimum 10 caractères)' });
-  }
+  if (!deposit_address || deposit_address.trim().length < 10) return res.status(400).json({ error: 'Adresse invalide (minimum 10 caractères)' });
   try {
-    setSetting('deposit_address', deposit_address.trim());
+    await setSetting('deposit_address', deposit_address.trim());
     res.json({ success: true, deposit_address: deposit_address.trim() });
   } catch (err) {
     res.status(500).json({ error: 'Erreur serveur' });
   }
 });
+
+// ── STATIC ROUTES ─────────────────────────────────────────────────────────────
 
 app.get('/admin', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'admin.html'));
@@ -1513,22 +1430,22 @@ app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
-function sendQuestReminders() {
+// ── QUEST REMINDERS ───────────────────────────────────────────────────────────
+
+async function sendQuestReminders() {
   try {
     const period = getQuestPeriod();
-    const users = db.prepare(`
+    const users = await db.all(`
       SELECT u.id, u.email, u.deposit_amount,
+        (SELECT COUNT(*) FROM quests WHERE quest_type = 'regular') as total_regular,
         (SELECT COUNT(DISTINCT uq.quest_id)
-         FROM user_quests uq
-         JOIN quests q ON q.id = uq.quest_id
-         WHERE uq.user_id = u.id
-           AND uq.completed_date BETWEEN ? AND ?
-           AND COALESCE(q.quest_type,'regular') = 'regular'
-        ) as completed_regular,
-        (SELECT COUNT(*) FROM quests WHERE COALESCE(quest_type,'regular') = 'regular') as total_regular
+          FROM user_quests uq
+          JOIN quests q ON q.id = uq.quest_id
+          WHERE uq.user_id = u.id AND uq.completed_date BETWEEN ? AND ? AND q.quest_type = 'regular'
+        ) as completed_regular
       FROM users u
       WHERE u.deposit_amount >= ?
-    `).all(period.startDate, period.endDate, MIN_DEPOSIT);
+    `, [period.startDate, period.endDate, MIN_DEPOSIT]);
 
     for (const u of users) {
       const remaining = u.total_regular - u.completed_regular;
@@ -1564,37 +1481,28 @@ function scheduleDailyReminder() {
     sendQuestReminders();
     scheduleDailyReminder();
   }, delay);
-  console.log(`[reminder] Rappels quêtes programmés à ${String(hour).padStart(2,'0')}:00 UTC (dans ${Math.round(delay / 60000)} min)`);
+  console.log(`[reminder] Rappels quêtes programmés à ${String(hour).padStart(2, '0')}:00 UTC (dans ${Math.round(delay / 60000)} min)`);
 }
 
-initDB();
+// ── DÉMARRAGE ─────────────────────────────────────────────────────────────────
 
-// Diagnostic email config au démarrage
-(function logEmailConfig() {
-  const vars = { MAIL_USER, GMAIL_CLIENT_ID: process.env.GMAIL_CLIENT_ID, GMAIL_CLIENT_SECRET: process.env.GMAIL_CLIENT_SECRET, GMAIL_REFRESH_TOKEN: process.env.GMAIL_REFRESH_TOKEN };
-  const missing = Object.entries(vars).filter(([, v]) => !v).map(([k]) => k);
-  if (missing.length === 0) {
-    console.log('[mail] OAuth2 config OK — toutes les variables sont définies');
-  } else {
-    console.warn(`[mail] ATTENTION — variables manquantes : ${missing.join(', ')} → les emails ne seront pas envoyés`);
-  }
-})();
-
-app.listen(PORT, '0.0.0.0', () => {
-  console.log(`Server running on http://0.0.0.0:${PORT}`);
+initDB().then(() => {
+  (function logEmailConfig() {
+    const vars = { MAIL_USER, GMAIL_CLIENT_ID: process.env.GMAIL_CLIENT_ID, GMAIL_CLIENT_SECRET: process.env.GMAIL_CLIENT_SECRET, GMAIL_REFRESH_TOKEN: process.env.GMAIL_REFRESH_TOKEN };
+    const missing = Object.entries(vars).filter(([, v]) => !v).map(([k]) => k);
+    if (missing.length === 0) {
+      console.log('[mail] OAuth2 config OK — toutes les variables sont définies');
+    } else {
+      console.warn(`[mail] ATTENTION — variables manquantes : ${missing.join(', ')}`);
+    }
+  })();
 
   scheduleDailyReminder();
 
-  if (isProduction && process.env.RENDER_EXTERNAL_URL) {
-    const appUrl = process.env.RENDER_EXTERNAL_URL;
-    const PING_INTERVAL = 14 * 60 * 1000;
-
-    setInterval(() => {
-      fetch(`${appUrl}/health`)
-        .then(() => console.log('[keep-alive] ping ok'))
-        .catch((err) => console.warn('[keep-alive] ping failed:', err.message));
-    }, PING_INTERVAL);
-
-    console.log(`[keep-alive] Auto-ping actif toutes les 14 minutes → ${appUrl}/health`);
-  }
+  app.listen(PORT, '0.0.0.0', () => {
+    console.log(`Server running on http://0.0.0.0:${PORT}`);
+  });
+}).catch(err => {
+  console.error('FATAL: initDB failed:', err);
+  process.exit(1);
 });
