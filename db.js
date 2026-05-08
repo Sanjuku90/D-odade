@@ -1,78 +1,91 @@
-const { createClient } = require('@libsql/client');
-const path = require('path');
-const fs = require('fs');
+const { Pool } = require('pg');
 
-let _client = null;
+let _pool = null;
 
-function getClient() {
-  if (_client) return _client;
+function getPool() {
+  if (_pool) return _pool;
+  _pool = new Pool({
+    connectionString: process.env.DATABASE_URL,
+    ssl: { rejectUnauthorized: false }
+  });
+  return _pool;
+}
 
-  const tursoUrl = process.env.TURSO_DATABASE_URL;
-  const tursoToken = process.env.TURSO_AUTH_TOKEN;
+function convertPlaceholders(sql) {
+  let i = 0;
+  return sql.replace(/\?/g, () => `$${++i}`);
+}
 
-  if (tursoUrl) {
-    console.log('[db] Mode cloud Turso — données persistantes entre chaque redémarrage Render');
-    _client = createClient({ url: tursoUrl, authToken: tursoToken || '' });
-  } else {
-    const dbPath = process.env.DATABASE_PATH || 'questinvest.db';
-    const absPath = path.resolve(dbPath);
-    fs.mkdirSync(path.dirname(absPath), { recursive: true });
-    console.log(`[db] Mode fichier local : ${absPath}`);
-    _client = createClient({ url: `file:${absPath}` });
+// Tables that don't have a serial 'id' column
+const NO_ID_TABLES = ['sessions', 'settings'];
+
+function shouldReturnId(sql) {
+  const upper = sql.trim().toUpperCase();
+  if (!upper.startsWith('INSERT')) return false;
+  if (upper.includes('RETURNING')) return false;
+  if (upper.includes('DO NOTHING')) return false;
+  for (const t of NO_ID_TABLES) {
+    if (upper.includes(`INTO ${t.toUpperCase()}`)) return false;
   }
-
-  return _client;
+  return true;
 }
 
 const db = {
   async exec(sql) {
-    const client = getClient();
-    await client.execute(sql);
+    const pool = getPool();
+    await pool.query(sql);
   },
 
   async get(sql, args = []) {
-    const client = getClient();
-    const result = await client.execute({ sql, args });
+    const pool = getPool();
+    const result = await pool.query(convertPlaceholders(sql), args);
     return result.rows[0] || null;
   },
 
   async all(sql, args = []) {
-    const client = getClient();
-    const result = await client.execute({ sql, args });
+    const pool = getPool();
+    const result = await pool.query(convertPlaceholders(sql), args);
     return result.rows;
   },
 
   async run(sql, args = []) {
-    const client = getClient();
-    const result = await client.execute({ sql, args });
+    const pool = getPool();
+    let finalSql = convertPlaceholders(sql);
+    if (shouldReturnId(sql)) finalSql += ' RETURNING id';
+    const result = await pool.query(finalSql, args);
     return {
-      lastInsertRowid: result.lastInsertRowid != null ? Number(result.lastInsertRowid) : null,
-      changes: result.rowsAffected || 0,
+      lastInsertRowid: result.rows[0]?.id ?? null,
+      changes: result.rowCount || 0,
     };
   },
 
   async transaction(fn) {
-    const client = getClient();
-    const tx = await client.transaction('write');
+    const pool = getPool();
+    const client = await pool.connect();
     try {
+      await client.query('BEGIN');
       const txDb = {
         async run(sql, args = []) {
-          const result = await tx.execute({ sql, args });
+          let finalSql = convertPlaceholders(sql);
+          if (shouldReturnId(sql)) finalSql += ' RETURNING id';
+          const result = await client.query(finalSql, args);
           return {
-            lastInsertRowid: result.lastInsertRowid != null ? Number(result.lastInsertRowid) : null,
-            changes: result.rowsAffected || 0,
+            lastInsertRowid: result.rows[0]?.id ?? null,
+            changes: result.rowCount || 0,
           };
         },
         async get(sql, args = []) {
-          const result = await tx.execute({ sql, args });
+          const result = await client.query(convertPlaceholders(sql), args);
           return result.rows[0] || null;
         },
       };
       await fn(txDb);
-      await tx.commit();
+      await client.query('COMMIT');
     } catch (e) {
-      try { await tx.rollback(); } catch (_) {}
+      try { await client.query('ROLLBACK'); } catch (_) {}
       throw e;
+    } finally {
+      client.release();
     }
   },
 };

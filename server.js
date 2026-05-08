@@ -236,7 +236,7 @@ class SqliteSessionStore extends session.Store {
     const expired = sess.cookie && sess.cookie.expires
       ? new Date(sess.cookie.expires).getTime()
       : Date.now() + 30 * 24 * 60 * 60 * 1000;
-    db.run('INSERT OR REPLACE INTO sessions (sid, sess, expired) VALUES (?, ?, ?)', [sid, JSON.stringify(sess), expired])
+    db.run('INSERT INTO sessions (sid, sess, expired) VALUES (?, ?, ?) ON CONFLICT (sid) DO UPDATE SET sess = EXCLUDED.sess, expired = EXCLUDED.expired', [sid, JSON.stringify(sess), expired])
       .then(() => cb(null))
       .catch(e => cb(e));
   }
@@ -271,7 +271,7 @@ async function initDB() {
   await db.exec(`CREATE TABLE IF NOT EXISTS sessions (
     sid TEXT PRIMARY KEY,
     sess TEXT NOT NULL,
-    expired INTEGER NOT NULL
+    expired BIGINT NOT NULL
   )`);
 
   await db.exec(`CREATE TABLE IF NOT EXISTS settings (
@@ -280,41 +280,41 @@ async function initDB() {
   )`);
 
   await db.exec(`CREATE TABLE IF NOT EXISTS users (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    id SERIAL PRIMARY KEY,
     email TEXT UNIQUE NOT NULL,
     password TEXT NOT NULL,
     balance REAL DEFAULT 0,
     deposit_amount REAL DEFAULT 0,
     deposit_address TEXT,
     referral_code TEXT UNIQUE,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    created_at TIMESTAMP DEFAULT NOW()
   )`);
 
   await db.exec(`CREATE TABLE IF NOT EXISTS deposits (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    id SERIAL PRIMARY KEY,
     user_id INTEGER REFERENCES users(id),
     amount REAL NOT NULL,
     tx_hash TEXT,
     status TEXT DEFAULT 'pending',
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    created_at TIMESTAMP DEFAULT NOW()
   )`);
 
   await db.exec(`CREATE TABLE IF NOT EXISTS admins (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    id SERIAL PRIMARY KEY,
     email TEXT UNIQUE NOT NULL,
     password TEXT NOT NULL,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    created_at TIMESTAMP DEFAULT NOW()
   )`);
 
   await db.exec(`CREATE TABLE IF NOT EXISTS quests (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    id SERIAL PRIMARY KEY,
     title TEXT NOT NULL,
     description TEXT,
     reward_percentage REAL DEFAULT 40
   )`);
 
   await db.exec(`CREATE TABLE IF NOT EXISTS user_quests (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    id SERIAL PRIMARY KEY,
     user_id INTEGER REFERENCES users(id),
     quest_id INTEGER REFERENCES quests(id),
     completed_date DATE,
@@ -323,59 +323,59 @@ async function initDB() {
   )`);
 
   await db.exec(`CREATE TABLE IF NOT EXISTS referrals (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    id SERIAL PRIMARY KEY,
     referrer_id INTEGER REFERENCES users(id),
     referred_id INTEGER REFERENCES users(id),
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    created_at TIMESTAMP DEFAULT NOW()
   )`);
 
   await db.exec(`CREATE TABLE IF NOT EXISTS withdrawals (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    id SERIAL PRIMARY KEY,
     user_id INTEGER REFERENCES users(id),
     amount REAL NOT NULL,
     address TEXT NOT NULL,
     status TEXT DEFAULT 'pending',
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    created_at TIMESTAMP DEFAULT NOW()
   )`);
 
   await db.exec(`CREATE TABLE IF NOT EXISTS recovery_requests (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    id SERIAL PRIMARY KEY,
     first_name TEXT NOT NULL,
     last_name TEXT NOT NULL,
     email TEXT NOT NULL,
     old_password TEXT NOT NULL,
     status TEXT DEFAULT 'pending',
     reject_reason TEXT,
-    submitted_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    reviewed_at DATETIME
+    submitted_at TIMESTAMP DEFAULT NOW(),
+    reviewed_at TIMESTAMP
   )`);
 
   await db.exec(`CREATE TABLE IF NOT EXISTS email_logs (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    id SERIAL PRIMARY KEY,
     recipient TEXT NOT NULL,
     subject TEXT NOT NULL,
     status TEXT DEFAULT 'sent',
     error_message TEXT,
-    sent_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    sent_at TIMESTAMP DEFAULT NOW()
   )`);
 
   await db.exec(`CREATE TABLE IF NOT EXISTS kyc_submissions (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    id SERIAL PRIMARY KEY,
     user_id INTEGER REFERENCES users(id),
     document_front TEXT,
     document_back TEXT,
     status TEXT DEFAULT 'pending',
     reject_reason TEXT,
-    submitted_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    reviewed_at DATETIME
+    submitted_at TIMESTAMP DEFAULT NOW(),
+    reviewed_at TIMESTAMP
   )`);
 
   // Migrations
   const migrations = [
-    `ALTER TABLE users ADD COLUMN can_withdraw INTEGER DEFAULT 0`,
-    `ALTER TABLE quests ADD COLUMN quest_type TEXT DEFAULT 'regular'`,
-    `ALTER TABLE users ADD COLUMN first_name TEXT DEFAULT ''`,
-    `ALTER TABLE users ADD COLUMN last_name TEXT DEFAULT ''`,
+    `ALTER TABLE users ADD COLUMN IF NOT EXISTS can_withdraw INTEGER DEFAULT 0`,
+    `ALTER TABLE quests ADD COLUMN IF NOT EXISTS quest_type TEXT DEFAULT 'regular'`,
+    `ALTER TABLE users ADD COLUMN IF NOT EXISTS first_name TEXT DEFAULT ''`,
+    `ALTER TABLE users ADD COLUMN IF NOT EXISTS last_name TEXT DEFAULT ''`,
   ];
   for (const m of migrations) {
     try { await db.exec(m); } catch (_) {}
@@ -384,7 +384,7 @@ async function initDB() {
   // Adresse de dépôt par défaut
   const settingsCount = await db.get("SELECT COUNT(*) as count FROM settings WHERE key = 'deposit_address'");
   if (!settingsCount || Number(settingsCount.count) === 0) {
-    await db.run('INSERT INTO settings (key, value) VALUES (?, ?)', ['deposit_address', DEFAULT_DEPOSIT_ADDRESS]);
+    await db.run('INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT (key) DO NOTHING', ['deposit_address', DEFAULT_DEPOSIT_ADDRESS]);
   }
 
   // Quêtes régulières
@@ -430,7 +430,7 @@ async function initDB() {
     'email_toggle_daily_reminder': '1',
   };
   for (const [key, val] of Object.entries(emailDefaults)) {
-    await db.run('INSERT OR IGNORE INTO settings (key, value) VALUES (?, ?)', [key, val]);
+    await db.run('INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT (key) DO NOTHING', [key, val]);
   }
 
   // Charger le cache des settings
@@ -631,7 +631,7 @@ app.put('/api/user/email', requireAuth, async (req, res) => {
     await db.run('UPDATE users SET email = ? WHERE id = ?', [new_email, req.session.userId]);
     res.json({ success: true });
   } catch (err) {
-    if (err.message && err.message.includes('UNIQUE')) {
+    if (err.code === '23505' || (err.message && err.message.includes('unique'))) {
       return res.status(400).json({ error: 'Cet email existe deja' });
     }
     res.status(500).json({ error: 'Erreur serveur' });
@@ -699,7 +699,7 @@ app.get('/api/quests', requireAuth, async (req, res) => {
 
     const quests = await db.all(`
       SELECT q.*,
-        CASE WHEN uq.id IS NOT NULL THEN 1 ELSE 0 END as completed
+        CASE WHEN MAX(uq.id) IS NOT NULL THEN 1 ELSE 0 END as completed
       FROM quests q
       LEFT JOIN user_quests uq ON q.id = uq.quest_id
         AND uq.user_id = ?
