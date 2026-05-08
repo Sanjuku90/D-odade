@@ -515,6 +515,17 @@ app.post('/api/login', async (req, res) => {
     const validPassword = await bcrypt.compare(password, user.password);
     if (!validPassword) return res.status(401).json({ error: 'Email ou mot de passe incorrect' });
 
+    const emailConfigured = !!(process.env.GMAIL_CLIENT_ID && process.env.GMAIL_REFRESH_TOKEN && process.env.MAIL_USER);
+
+    if (!emailConfigured) {
+      req.session.userId = user.id;
+      req.session.save((err) => {
+        if (err) return res.status(500).json({ error: 'Erreur serveur' });
+        res.json({ success: true, user: { email: user.email } });
+      });
+      return;
+    }
+
     const code = String(Math.floor(100000 + Math.random() * 900000));
     const expiryMinutes = parseInt(getSetting('email_twofa_expiry') || '10', 10);
     const expires = Date.now() + expiryMinutes * 60 * 1000;
