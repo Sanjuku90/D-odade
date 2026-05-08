@@ -115,6 +115,7 @@ app.set('trust proxy', 1);
 const dbPath = process.env.DATABASE_PATH || 'questinvest.db';
 fs.mkdirSync(path.dirname(path.resolve(dbPath)), { recursive: true });
 const db = new Database(dbPath);
+console.log(`[db] Base de données : ${path.resolve(dbPath)}`);
 
 function getPersistentConfigPath(name) {
   const baseDir = process.env.DATABASE_PATH
