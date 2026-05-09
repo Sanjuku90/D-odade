@@ -106,6 +106,14 @@
     <div class="splash-text">Chargement…</div>
   </div>
 
+  <!-- MAINTENANCE OVERLAY -->
+  <div id="maintenance-overlay" style="display:none;position:fixed;inset:0;z-index:99999;background:#050509;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:32px;">
+    <div style="font-size:3.5rem;margin-bottom:20px;">🔧</div>
+    <h1 style="font-size:1.6rem;font-weight:800;color:#f5f5fa;margin-bottom:12px;">Site en maintenance</h1>
+    <p style="color:#6b7280;font-size:.95rem;max-width:420px;line-height:1.7;margin-bottom:28px;">Nous effectuons une mise à jour. La plateforme sera de nouveau disponible très prochainement. Merci de votre patience.</p>
+    <button onclick="checkMaintenance()" style="background:linear-gradient(135deg,#7c3aed,#a78bfa);color:#fff;border:none;padding:12px 28px;border-radius:10px;font-size:.9rem;font-weight:600;cursor:pointer;">Vérifier à nouveau</button>
+  </div>
+
   <div id="app">
     <!-- ============ LANDING ============ -->
     <div id="landing-section" class="section">
@@ -800,6 +808,10 @@
                 <span class="nav-icon">🪪</span>
                 <span class="nav-label">Vérification KYC</span>
               </button>
+              <button class="dash-tab" data-view="testimonials">
+                <span class="nav-icon">⭐</span>
+                <span class="nav-label">Avis</span>
+              </button>
               <button class="dash-tab" data-view="profile">
                 <span class="nav-icon">◉</span>
                 <span class="nav-label">Profil</span>
@@ -875,6 +887,21 @@
                 </div>
                 <div id="history-list" class="history-list"></div>
               </div>
+            </div>
+
+            <!-- News feed -->
+            <div class="card" id="news-feed-card" style="margin-top:20px;display:none;">
+              <div class="card-head">
+                <h3>📰 Actualités</h3>
+              </div>
+              <div id="news-feed-list" style="display:grid;gap:14px;padding:4px 0;"></div>
+            </div>
+
+            <!-- Statement download -->
+            <div style="margin-top:16px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+              <a href="/api/statement.pdf" target="_blank" style="display:inline-flex;align-items:center;gap:7px;background:rgba(124,58,237,0.12);border:1px solid rgba(124,58,237,0.3);color:#a78bfa;padding:9px 18px;border-radius:9px;font-size:.82rem;font-weight:600;text-decoration:none;transition:all .15s;" onmouseover="this.style.background='rgba(124,58,237,0.22)'" onmouseout="this.style.background='rgba(124,58,237,0.12)'">
+                📄 Télécharger mon relevé PDF
+              </a>
             </div>
           </div>
 
@@ -1054,6 +1081,44 @@
                 <p class="error-msg" id="kyc-error"></p>
                 <p class="success-msg" id="kyc-success"></p>
               </form>
+            </div>
+          </div>
+
+          <!-- ========== TÉMOIGNAGES ========== -->
+          <div id="testimonials-view" class="dashboard-view hidden">
+            <div class="dash-header">
+              <div>
+                <div class="eyebrow">Communauté</div>
+                <h1 class="dash-title">Avis des membres</h1>
+                <p class="dash-subtitle">Partagez votre expérience et lisez ce que disent les autres membres.</p>
+              </div>
+            </div>
+
+            <div class="card" style="max-width:600px;margin-bottom:24px;">
+              <div class="card-head"><h3>⭐ Laisser un avis</h3></div>
+              <div id="testi-form-wrap">
+                <div class="form-group" style="margin-bottom:14px;">
+                  <label style="font-size:.8rem;color:#9898b8;font-weight:600;">Note</label>
+                  <div id="star-rating" style="display:flex;gap:6px;margin-top:8px;font-size:1.6rem;cursor:pointer;">
+                    <span data-v="1">☆</span><span data-v="2">☆</span><span data-v="3">☆</span><span data-v="4">☆</span><span data-v="5">☆</span>
+                  </div>
+                  <input type="hidden" id="testi-rating" value="5">
+                </div>
+                <div class="form-group">
+                  <label style="font-size:.8rem;color:#9898b8;font-weight:600;">Votre avis</label>
+                  <textarea id="testi-content" rows="4" placeholder="Partagez votre expérience avec QuestInvest…" style="width:100%;background:#16162a;border:1px solid rgba(255,255,255,.07);color:#f0f0fa;border-radius:8px;padding:10px 12px;font-family:inherit;font-size:.9rem;resize:vertical;outline:none;margin-top:6px;"></textarea>
+                </div>
+                <button onclick="submitTestimonial()" class="btn btn-primary" id="testi-submit-btn">Soumettre mon avis</button>
+                <p class="error-msg" id="testi-error" style="margin-top:8px;"></p>
+                <p class="success-msg" id="testi-success" style="margin-top:8px;"></p>
+              </div>
+            </div>
+
+            <div class="card">
+              <div class="card-head"><h3>Avis approuvés</h3></div>
+              <div id="public-testi-list" style="display:grid;gap:14px;padding:4px 0;">
+                <p class="empty-state">Chargement…</p>
+              </div>
             </div>
           </div>
 

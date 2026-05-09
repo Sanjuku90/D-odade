@@ -516,6 +516,13 @@
             <span class="item-icon">🔑</span> Récupération
             <span class="nav-badge" id="nb-rec"></span>
           </button>
+          <button class="nav-item" data-page="news">
+            <span class="item-icon">📰</span> Actualités
+          </button>
+          <button class="nav-item" data-page="testimonials">
+            <span class="item-icon">⭐</span> Témoignages
+            <span class="nav-badge" id="nb-testi"></span>
+          </button>
           <button class="nav-item" data-page="messaging">
             <span class="item-icon">✉️</span> Messagerie
           </button>
@@ -726,6 +733,59 @@
       </div>
     </div>
 
+    <!-- NEWS -->
+    <div class="page" id="page-news">
+      <div class="card" style="max-width:820px;margin:0 auto;">
+        <div class="card-header">
+          <div>
+            <div class="card-title">📰 Fil d'actualités</div>
+            <div class="card-sub">Publiez des articles visibles sur le tableau de bord des utilisateurs</div>
+          </div>
+        </div>
+        <div style="display:grid;gap:10px;margin-bottom:24px;">
+          <input class="adj-input" type="text" id="news-title" placeholder="Titre de l'article…" style="width:100%">
+          <textarea class="adj-input" id="news-content" rows="4" placeholder="Contenu de l'article…" style="width:100%;resize:vertical;font-family:inherit;line-height:1.6;"></textarea>
+          <div style="display:flex;align-items:center;gap:12px;">
+            <label style="display:flex;align-items:center;gap:6px;font-size:.82rem;color:var(--text2);cursor:pointer;">
+              <input type="checkbox" id="news-published" checked style="accent-color:var(--accent)"> Publier immédiatement
+            </label>
+            <button class="btn-ok" onclick="createNews()" style="padding:8px 20px;">➕ Ajouter</button>
+            <span id="news-add-feedback" style="font-size:.82rem;display:none;"></span>
+          </div>
+        </div>
+        <div class="tbl-wrap">
+          <table>
+            <thead><tr><th>ID</th><th>Titre</th><th>Date</th><th>Statut</th><th>Actions</th></tr></thead>
+            <tbody id="news-tbody"><tr class="empty-row"><td colspan="5">Chargement…</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- TÉMOIGNAGES -->
+    <div class="page" id="page-testimonials">
+      <div class="card">
+        <div class="card-header">
+          <div>
+            <div class="card-title">⭐ Témoignages utilisateurs</div>
+            <div class="card-sub">Modérez les avis soumis par les membres</div>
+          </div>
+          <div class="filter-row">
+            <button class="chip active" onclick="setTestiF(this,'all')">Tous</button>
+            <button class="chip" onclick="setTestiF(this,'pending')">En attente</button>
+            <button class="chip" onclick="setTestiF(this,'approved')">Approuvés</button>
+            <button class="chip" onclick="setTestiF(this,'rejected')">Refusés</button>
+          </div>
+        </div>
+        <div class="tbl-wrap">
+          <table>
+            <thead><tr><th>ID</th><th>Utilisateur</th><th>Note</th><th>Avis</th><th>Soumis le</th><th>Statut</th><th>Actions</th></tr></thead>
+            <tbody id="testi-tbody"><tr class="empty-row"><td colspan="7">Chargement…</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
     <!-- EMAILS -->
     <!-- MESSAGERIE -->
     <div class="page" id="page-messaging">
@@ -871,6 +931,17 @@
           <div class="f-err" id="es-err" style="display:none;"></div>
         </div>
 
+        <div class="s-card">
+          <div class="s-title">🔧 Mode maintenance</div>
+          <div class="s-desc">Lorsqu'actif, les utilisateurs ne peuvent plus accéder aux API (dépôts, retraits, quêtes). L'administration reste accessible.</div>
+          <div style="display:flex;align-items:center;gap:16px;margin-top:14px;">
+            <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:.9rem;color:var(--text2);">
+              <input type="checkbox" id="maintenance-toggle" style="width:18px;height:18px;accent-color:var(--accent);cursor:pointer;" onchange="toggleMaintenance(this)">
+              Activer le mode maintenance
+            </label>
+            <span id="maintenance-status" style="font-size:.78rem;color:var(--text3);">—</span>
+          </div>
+        </div>
         <div class="s-card">
           <div class="s-title">🔑 Paramètres de la plateforme</div>
           <div class="s-desc">Informations de configuration de QuestInvest.</div>
@@ -1089,7 +1160,7 @@
     });
 
     async function refreshAll() {
-      await Promise.all([loadStats(), loadDeposits(), loadWithdrawals(), loadUsers(), loadKycList(), loadRecoveryList(), loadEmailLogs()]);
+      await Promise.all([loadStats(), loadDeposits(), loadWithdrawals(), loadUsers(), loadKycList(), loadRecoveryList(), loadEmailLogs(), loadNews(), loadTestimonials()]);
       populateMsgUserSelect();
       document.getElementById('meta-time').textContent =
         'Actualisé à ' + new Date().toLocaleTimeString('fr-FR');
@@ -1225,12 +1296,140 @@
         badge('nb-with', s.pendingWithdrawals);
         badge('nb-kyc', s.pendingKyc);
         badge('nb-rec', s.pendingRecovery);
+        badge('nb-testi', s.pendingTestimonials);
+        const mt = document.getElementById('maintenance-toggle');
+        if (mt) {
+          mt.checked = !!s.maintenanceMode;
+          document.getElementById('maintenance-status').textContent =
+            s.maintenanceMode ? '🔴 Mode maintenance ACTIF' : '🟢 Site en ligne';
+        }
       } catch {}
     }
     function badge(id, n) {
       const el = document.getElementById(id);
+      if (!el) return;
       if (n > 0) { el.textContent = n; el.style.display = ''; }
       else el.style.display = 'none';
+    }
+
+    // ── MAINTENANCE ──
+    async function toggleMaintenance(cb) {
+      try {
+        const r = await fetch('/api/admin/maintenance', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ enabled: cb.checked })
+        });
+        const j = await r.json();
+        document.getElementById('maintenance-status').textContent =
+          j.maintenance ? '🔴 Mode maintenance ACTIF' : '🟢 Site en ligne';
+        showToast(j.maintenance ? '🔧 Maintenance activée' : '✅ Site remis en ligne', j.maintenance ? 'error' : 'success');
+      } catch (e) { showToast('Erreur : ' + e.message, 'error'); cb.checked = !cb.checked; }
+    }
+
+    // ── BAN ──
+    async function toggleBan() {
+      const u = allUsers.find(x => x.id === selUserId);
+      if (!u) return;
+      const action = u.is_banned ? 'réactiver' : 'suspendre';
+      if (!confirm(`Voulez-vous ${action} le compte de ${u.email} ?`)) return;
+      const r = await fetch(`/api/admin/users/${selUserId}/ban`, { method: 'POST' });
+      const j = await r.json();
+      if (r.ok) { await loadUsers(); openModal(selUserId); showToast(j.is_banned ? '🚫 Compte suspendu' : '✅ Compte réactivé', j.is_banned ? 'error' : 'success'); }
+      else showToast(j.error || 'Erreur', 'error');
+    }
+
+    // ── NEWS ──
+    let allNews = [];
+    async function loadNews() {
+      try {
+        const r = await fetch('/api/admin/news');
+        if (r.ok) { allNews = await r.json(); renderNews(); }
+      } catch {}
+    }
+    function renderNews() {
+      const tb = document.getElementById('news-tbody');
+      if (!allNews.length) { tb.innerHTML = '<tr class="empty-row"><td colspan="5">Aucun article publié</td></tr>'; return; }
+      tb.innerHTML = allNews.map(p => `<tr>
+        <td class="td-id">#${p.id}</td>
+        <td style="max-width:300px;font-weight:500;color:var(--text)">${p.title}</td>
+        <td class="td-date">${fmt(p.created_at)}</td>
+        <td>${p.is_published
+          ? '<span class="badge b-confirmed">✓ Publié</span>'
+          : '<span class="badge b-pending">● Brouillon</span>'}</td>
+        <td>
+          <button class="btn-info" onclick="toggleNews(${p.id})">${p.is_published ? 'Dépublier' : 'Publier'}</button>
+          <button class="btn-ko" style="font-size:.72rem;padding:3px 8px;margin-left:4px" onclick="deleteNews(${p.id})">✕</button>
+        </td>
+      </tr>`).join('');
+    }
+    async function createNews() {
+      const title = document.getElementById('news-title').value.trim();
+      const content = document.getElementById('news-content').value.trim();
+      const is_published = document.getElementById('news-published').checked;
+      const fb = document.getElementById('news-add-feedback');
+      if (!title || !content) { fb.style.display = ''; fb.style.color = '#f87171'; fb.textContent = 'Titre et contenu requis'; return; }
+      const r = await fetch('/api/admin/news', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ title, content, is_published })
+      });
+      const j = await r.json();
+      if (r.ok) {
+        fb.style.display = ''; fb.style.color = '#4ade80'; fb.textContent = '✓ Article ajouté !';
+        document.getElementById('news-title').value = '';
+        document.getElementById('news-content').value = '';
+        loadNews();
+      } else { fb.style.display = ''; fb.style.color = '#f87171'; fb.textContent = j.error || 'Erreur'; }
+      setTimeout(() => { fb.style.display = 'none'; }, 3000);
+    }
+    async function toggleNews(id) {
+      const r = await fetch(`/api/admin/news/${id}/toggle`, { method: 'PATCH' });
+      if (r.ok) loadNews();
+    }
+    async function deleteNews(id) {
+      if (!confirm('Supprimer cet article ?')) return;
+      const r = await fetch(`/api/admin/news/${id}`, { method: 'DELETE' });
+      if (r.ok) loadNews();
+    }
+
+    // ── TÉMOIGNAGES ──
+    let allTesti = [], testiFilter = 'all';
+    async function loadTestimonials() {
+      try {
+        const r = await fetch('/api/admin/testimonials');
+        if (r.ok) { allTesti = await r.json(); renderTesti(); }
+      } catch {}
+    }
+    function setTestiF(el, f) {
+      testiFilter = f;
+      document.querySelectorAll('#page-testimonials .chip').forEach(b => b.classList.remove('active'));
+      el.classList.add('active');
+      renderTesti();
+    }
+    function renderTesti() {
+      const tb = document.getElementById('testi-tbody');
+      let list = testiFilter === 'all' ? allTesti : allTesti.filter(t => t.status === testiFilter);
+      if (!list.length) { tb.innerHTML = '<tr class="empty-row"><td colspan="7">Aucun témoignage</td></tr>'; return; }
+      const stars = n => '★'.repeat(n) + '☆'.repeat(5 - n);
+      tb.innerHTML = list.map(t => `<tr>
+        <td class="td-id">#${t.id}</td>
+        <td class="td-email">${t.user_email}</td>
+        <td style="color:#fbbf24;letter-spacing:1px">${stars(t.rating)}</td>
+        <td style="max-width:280px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${t.content}">${t.content}</td>
+        <td class="td-date">${fmt(t.submitted_at)}</td>
+        <td>${sbadge(t.status)}</td>
+        <td>${t.status === 'pending' ? `
+          <button class="btn-ok" style="font-size:.72rem;padding:3px 10px" onclick="approveTesti(${t.id})">✓</button>
+          <button class="btn-ko" style="font-size:.72rem;padding:3px 8px;margin-left:4px" onclick="rejectTesti(${t.id})">✕</button>
+        ` : '—'}</td>
+      </tr>`).join('');
+    }
+    async function approveTesti(id) {
+      const r = await fetch(`/api/admin/testimonials/${id}/approve`, { method: 'POST' });
+      if (r.ok) { loadTestimonials(); loadStats(); showToast('✅ Témoignage approuvé', 'success'); }
+    }
+    async function rejectTesti(id) {
+      const r = await fetch(`/api/admin/testimonials/${id}/reject`, { method: 'POST' });
+      if (r.ok) { loadTestimonials(); loadStats(); showToast('Témoignage refusé', 'error'); }
     }
 
     // ── DEPOSITS ──
@@ -1385,7 +1584,13 @@
         <div class="modal-row"><span class="modal-key">Code parrainage</span><span class="modal-val">${u.referral_code||'—'}</span></div>
         <div class="modal-row"><span class="modal-key">Inscription</span><span class="modal-val">${fmt(u.created_at)}</span></div>
         <div class="modal-row"><span class="modal-key">Statut retrait</span><span class="modal-val">${wBadge}</span></div>
-        <div style="margin-top:10px">${wBtn}</div>`;
+        <div class="modal-row"><span class="modal-key">Dernière connexion</span><span class="modal-val">${u.last_login ? fmt(u.last_login) : '—'}</span></div>
+        <div class="modal-row"><span class="modal-key">Compte</span><span class="modal-val">${u.is_banned ? '<span class="badge b-rejected">🚫 Suspendu</span>' : '<span class="badge b-confirmed">✓ Actif</span>'}</span></div>
+        <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap">${wBtn}
+          <button class="${u.is_banned ? 'btn-ok' : 'btn-ko'}" style="font-size:.75rem;padding:4px 10px" onclick="toggleBan()">
+            ${u.is_banned ? '✅ Réactiver le compte' : '🚫 Suspendre le compte'}
+          </button>
+        </div>`;
       document.getElementById('adj-amt').value = '';
       document.getElementById('m-err').style.display = 'none';
       document.getElementById('m-ok').style.display = 'none';

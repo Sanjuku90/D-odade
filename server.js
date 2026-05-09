@@ -269,6 +269,20 @@ app.use((req, res, next) => {
   next();
 });
 
+// ── Maintenance middleware ────────────────────────────────────────────────────
+app.use((req, res, next) => {
+  const skip = req.path.startsWith('/api/admin') || req.path === '/admin' ||
+               req.path === '/admin.html' || req.path === '/health' ||
+               req.path === '/api/maintenance';
+  if (skip) return next();
+  if (getSetting('maintenance_mode') === '1') {
+    if (req.path.startsWith('/api/')) {
+      return res.status(503).json({ error: 'Site en maintenance. Revenez bientôt.', maintenance: true });
+    }
+  }
+  next();
+});
+
 // ── initDB ────────────────────────────────────────────────────────────────────
 async function initDB() {
   const pg = db.isPostgres;
@@ -378,12 +392,32 @@ async function initDB() {
     reviewed_at ${TSN}
   )`);
 
+  await db.exec(`CREATE TABLE IF NOT EXISTS news_posts (
+    id ${PK},
+    title TEXT NOT NULL,
+    content TEXT NOT NULL,
+    is_published INTEGER DEFAULT 1,
+    created_at ${TS}
+  )`);
+
+  await db.exec(`CREATE TABLE IF NOT EXISTS testimonials (
+    id ${PK},
+    user_id INTEGER REFERENCES users(id),
+    content TEXT NOT NULL,
+    rating INTEGER DEFAULT 5,
+    status TEXT DEFAULT 'pending',
+    submitted_at ${TS},
+    reviewed_at ${TSN}
+  )`);
+
   // Migrations (try/catch car la colonne peut déjà exister)
   const migrations = [
     `ALTER TABLE users ADD COLUMN IF NOT EXISTS can_withdraw INTEGER DEFAULT 0`,
     `ALTER TABLE quests ADD COLUMN IF NOT EXISTS quest_type TEXT DEFAULT 'regular'`,
     `ALTER TABLE users ADD COLUMN IF NOT EXISTS first_name TEXT DEFAULT ''`,
     `ALTER TABLE users ADD COLUMN IF NOT EXISTS last_name TEXT DEFAULT ''`,
+    `ALTER TABLE users ADD COLUMN IF NOT EXISTS is_banned INTEGER DEFAULT 0`,
+    `ALTER TABLE users ADD COLUMN IF NOT EXISTS last_login DATETIME`,
   ];
   for (const m of migrations) {
     try { await db.exec(m); } catch (_) {}
@@ -448,9 +482,16 @@ async function initDB() {
 }
 
 // ── Auth middleware ───────────────────────────────────────────────────────────
-function requireAuth(req, res, next) {
+async function requireAuth(req, res, next) {
   if (!req.session.userId) return res.status(401).json({ error: 'Non authentifié' });
-  next();
+  try {
+    const u = await db.get('SELECT is_banned FROM users WHERE id = ?', [req.session.userId]);
+    if (!u || u.is_banned) {
+      req.session.destroy(() => {});
+      return res.status(403).json({ error: 'Compte suspendu. Contactez le support.' });
+    }
+    next();
+  } catch { next(); }
 }
 
 function requireAdmin(req, res, next) {
@@ -519,9 +560,12 @@ app.post('/api/login', async (req, res) => {
   try {
     const user = await db.get('SELECT * FROM users WHERE email = ?', [email]);
     if (!user) return res.status(401).json({ error: 'Email ou mot de passe incorrect' });
+    if (user.is_banned) return res.status(403).json({ error: 'Compte suspendu. Contactez le support.' });
 
     const validPassword = await bcrypt.compare(password, user.password);
     if (!validPassword) return res.status(401).json({ error: 'Email ou mot de passe incorrect' });
+
+    await db.run('UPDATE users SET last_login = CURRENT_TIMESTAMP WHERE id = ?', [user.id]);
 
     const emailConfigured = !!(process.env.GMAIL_CLIENT_ID && process.env.GMAIL_REFRESH_TOKEN && process.env.MAIL_USER);
 
@@ -1006,21 +1050,24 @@ app.get('/api/admin/check', (req, res) => {
 
 app.get('/api/admin/stats', requireAdmin, async (req, res) => {
   try {
-    const totalUsers       = await db.get('SELECT COUNT(*) as count FROM users');
-    const pendingDeposits  = await db.get("SELECT COUNT(*) as count FROM deposits WHERE status = 'pending'");
-    const confirmedDeposits= await db.get("SELECT COALESCE(SUM(amount),0) as total FROM deposits WHERE status = 'confirmed'");
+    const totalUsers         = await db.get('SELECT COUNT(*) as count FROM users');
+    const pendingDeposits    = await db.get("SELECT COUNT(*) as count FROM deposits WHERE status = 'pending'");
+    const confirmedDeposits  = await db.get("SELECT COALESCE(SUM(amount),0) as total FROM deposits WHERE status = 'confirmed'");
     const pendingWithdrawals = await db.get("SELECT COUNT(*) as count FROM withdrawals WHERE status = 'pending'");
-    const totalWithdrawn   = await db.get("SELECT COALESCE(SUM(amount),0) as total FROM withdrawals WHERE status = 'confirmed'");
-    const pendingKyc       = await db.get("SELECT COUNT(*) as count FROM kyc_submissions WHERE status = 'pending'");
-    const pendingRecovery  = await db.get("SELECT COUNT(*) as count FROM recovery_requests WHERE status = 'pending'");
+    const totalWithdrawn     = await db.get("SELECT COALESCE(SUM(amount),0) as total FROM withdrawals WHERE status = 'confirmed'");
+    const pendingKyc         = await db.get("SELECT COUNT(*) as count FROM kyc_submissions WHERE status = 'pending'");
+    const pendingRecovery    = await db.get("SELECT COUNT(*) as count FROM recovery_requests WHERE status = 'pending'");
+    const pendingTestimonials= await db.get("SELECT COUNT(*) as count FROM testimonials WHERE status = 'pending'");
     res.json({
-      totalUsers:        Number(totalUsers.count),
-      pendingDeposits:   Number(pendingDeposits.count),
-      confirmedDeposits: confirmedDeposits.total,
-      pendingWithdrawals:Number(pendingWithdrawals.count),
-      totalWithdrawn:    totalWithdrawn.total,
-      pendingKyc:        Number(pendingKyc.count),
-      pendingRecovery:   Number(pendingRecovery.count)
+      totalUsers:          Number(totalUsers.count),
+      pendingDeposits:     Number(pendingDeposits.count),
+      confirmedDeposits:   confirmedDeposits.total,
+      pendingWithdrawals:  Number(pendingWithdrawals.count),
+      totalWithdrawn:      totalWithdrawn.total,
+      pendingKyc:          Number(pendingKyc.count),
+      pendingRecovery:     Number(pendingRecovery.count),
+      pendingTestimonials: Number(pendingTestimonials.count),
+      maintenanceMode:     getSetting('maintenance_mode') === '1'
     });
   } catch (err) {
     res.status(500).json({ error: 'Erreur serveur' });
@@ -1453,6 +1500,201 @@ app.post('/api/admin/email-settings', requireAdmin, async (req, res) => {
   }
 });
 
+// ── MAINTENANCE ───────────────────────────────────────────────────────────────
+
+app.get('/api/maintenance', (req, res) => {
+  res.json({ maintenance: getSetting('maintenance_mode') === '1' });
+});
+
+app.post('/api/admin/maintenance', requireAdmin, async (req, res) => {
+  const { enabled } = req.body;
+  await setSetting('maintenance_mode', enabled ? '1' : '0');
+  res.json({ success: true, maintenance: !!enabled });
+});
+
+// ── BAN / UNBAN UTILISATEUR ────────────────────────────────────────────────────
+
+app.post('/api/admin/users/:id/ban', requireAdmin, async (req, res) => {
+  try {
+    const u = await db.get('SELECT id, email, is_banned FROM users WHERE id = ?', [req.params.id]);
+    if (!u) return res.status(404).json({ error: 'Utilisateur introuvable' });
+    const newBan = u.is_banned ? 0 : 1;
+    await db.run('UPDATE users SET is_banned = ? WHERE id = ?', [newBan, u.id]);
+    res.json({ success: true, is_banned: newBan });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// ── NEWS ─────────────────────────────────────────────────────────────────────
+
+app.get('/api/news', async (req, res) => {
+  try {
+    const posts = await db.all("SELECT id, title, content, created_at FROM news_posts WHERE is_published = 1 ORDER BY created_at DESC LIMIT 20");
+    res.json(posts);
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+app.get('/api/admin/news', requireAdmin, async (req, res) => {
+  try {
+    const posts = await db.all("SELECT * FROM news_posts ORDER BY created_at DESC");
+    res.json(posts);
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+app.post('/api/admin/news', requireAdmin, async (req, res) => {
+  const { title, content, is_published } = req.body;
+  if (!title || !content) return res.status(400).json({ error: 'Titre et contenu requis' });
+  try {
+    const r = await db.run('INSERT INTO news_posts (title, content, is_published) VALUES (?, ?, ?)',
+      [title.trim(), content.trim(), is_published !== false ? 1 : 0]);
+    res.json({ success: true, id: r.lastInsertRowid });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+app.patch('/api/admin/news/:id/toggle', requireAdmin, async (req, res) => {
+  try {
+    const p = await db.get('SELECT is_published FROM news_posts WHERE id = ?', [req.params.id]);
+    if (!p) return res.status(404).json({ error: 'Publication introuvable' });
+    await db.run('UPDATE news_posts SET is_published = ? WHERE id = ?', [p.is_published ? 0 : 1, req.params.id]);
+    res.json({ success: true, is_published: !p.is_published });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+app.delete('/api/admin/news/:id', requireAdmin, async (req, res) => {
+  try {
+    await db.run('DELETE FROM news_posts WHERE id = ?', [req.params.id]);
+    res.json({ success: true });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// ── TÉMOIGNAGES ───────────────────────────────────────────────────────────────
+
+app.get('/api/testimonials', async (req, res) => {
+  try {
+    const rows = await db.all(`
+      SELECT t.id, t.content, t.rating, t.submitted_at, u.email
+      FROM testimonials t JOIN users u ON u.id = t.user_id
+      WHERE t.status = 'approved' ORDER BY t.submitted_at DESC LIMIT 20`);
+    res.json(rows);
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+app.post('/api/testimonials', requireAuth, async (req, res) => {
+  const { content, rating } = req.body;
+  if (!content || content.trim().length < 10) return res.status(400).json({ error: 'Avis trop court (minimum 10 caractères)' });
+  try {
+    const existing = await db.get("SELECT id FROM testimonials WHERE user_id = ? AND status IN ('pending','approved')", [req.session.userId]);
+    if (existing) return res.status(400).json({ error: 'Vous avez déjà soumis un avis' });
+    await db.run('INSERT INTO testimonials (user_id, content, rating) VALUES (?, ?, ?)',
+      [req.session.userId, content.trim(), Math.min(5, Math.max(1, parseInt(rating) || 5))]);
+    res.json({ success: true });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+app.get('/api/admin/testimonials', requireAdmin, async (req, res) => {
+  try {
+    const rows = await db.all(`
+      SELECT t.*, u.email as user_email FROM testimonials t
+      JOIN users u ON u.id = t.user_id ORDER BY t.submitted_at DESC`);
+    res.json(rows);
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+app.post('/api/admin/testimonials/:id/approve', requireAdmin, async (req, res) => {
+  try {
+    await db.run("UPDATE testimonials SET status = 'approved', reviewed_at = CURRENT_TIMESTAMP WHERE id = ?", [req.params.id]);
+    res.json({ success: true });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+app.post('/api/admin/testimonials/:id/reject', requireAdmin, async (req, res) => {
+  try {
+    await db.run("UPDATE testimonials SET status = 'rejected', reviewed_at = CURRENT_TIMESTAMP WHERE id = ?", [req.params.id]);
+    res.json({ success: true });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// ── RELEVÉ PDF ────────────────────────────────────────────────────────────────
+
+app.get('/api/statement.pdf', requireAuth, async (req, res) => {
+  try {
+    const PDFDocument = require('pdfkit');
+    const user = await db.get('SELECT * FROM users WHERE id = ?', [req.session.userId]);
+    const deposits = await db.all("SELECT * FROM deposits WHERE user_id = ? ORDER BY created_at DESC", [req.session.userId]);
+    const withdrawals = await db.all("SELECT * FROM withdrawals WHERE user_id = ? ORDER BY created_at DESC", [req.session.userId]);
+    const quests = await db.all(`
+      SELECT uq.completed_date, uq.reward_earned, q.title
+      FROM user_quests uq JOIN quests q ON q.id = uq.quest_id
+      WHERE uq.user_id = ? ORDER BY uq.completed_date DESC`, [req.session.userId]);
+
+    const doc = new PDFDocument({ margin: 50, size: 'A4' });
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename="releve-questinvest-${user.email}.pdf"`);
+    doc.pipe(res);
+
+    const purple = '#7c3aed';
+    doc.rect(0, 0, doc.page.width, 80).fill(purple);
+    doc.fillColor('white').fontSize(22).font('Helvetica-Bold').text('QuestInvest', 50, 25);
+    doc.fontSize(10).font('Helvetica').text('Relevé de compte', 50, 52);
+    doc.fillColor('#333').moveDown(3);
+
+    doc.fontSize(12).font('Helvetica-Bold').fillColor(purple).text('Informations du compte', 50, 100);
+    doc.moveTo(50, 116).lineTo(545, 116).strokeColor(purple).stroke();
+    doc.fillColor('#333').font('Helvetica').fontSize(10);
+    doc.text(`Email : ${user.email}`, 50, 125);
+    doc.text(`Solde actuel : $${parseFloat(user.balance).toFixed(2)}`, 50, 142);
+    doc.text(`Total déposé : $${parseFloat(user.deposit_amount).toFixed(2)}`, 50, 159);
+    doc.text(`Relevé généré le : ${new Date().toLocaleDateString('fr-FR')}`, 50, 176);
+
+    const drawTable = (title, headers, rows, yStart) => {
+      doc.fontSize(12).font('Helvetica-Bold').fillColor(purple).text(title, 50, yStart);
+      doc.moveTo(50, yStart + 16).lineTo(545, yStart + 16).strokeColor(purple).stroke();
+      let y = yStart + 22;
+      doc.fontSize(9).font('Helvetica-Bold').fillColor('#555');
+      const colW = Math.floor(495 / headers.length);
+      headers.forEach((h, i) => doc.text(h, 50 + i * colW, y, { width: colW }));
+      y += 14;
+      doc.font('Helvetica').fillColor('#333');
+      if (!rows.length) { doc.text('Aucune transaction', 50, y); return y + 20; }
+      rows.forEach((r, ri) => {
+        if (ri % 2 === 0) doc.rect(50, y - 3, 495, 16).fill('#f5f3ff').fillColor('#333');
+        r.forEach((cell, i) => doc.text(String(cell), 52 + i * colW, y, { width: colW - 4 }));
+        y += 16;
+      });
+      return y + 10;
+    };
+
+    let y = 205;
+    y = drawTable('Dépôts', ['Date', 'Montant', 'Statut', 'Hash TX'],
+      deposits.map(d => [
+        new Date(d.created_at).toLocaleDateString('fr-FR'),
+        `$${parseFloat(d.amount).toFixed(2)}`,
+        d.status,
+        (d.tx_hash || '—').substring(0, 20) + (d.tx_hash && d.tx_hash.length > 20 ? '…' : '')
+      ]), y);
+
+    if (y > 650) { doc.addPage(); y = 50; }
+    y = drawTable('Retraits', ['Date', 'Montant', 'Statut'],
+      withdrawals.map(w => [
+        new Date(w.created_at).toLocaleDateString('fr-FR'),
+        `$${parseFloat(w.amount).toFixed(2)}`,
+        w.status
+      ]), y + 10);
+
+    if (y > 650) { doc.addPage(); y = 50; }
+    drawTable('Récompenses (quêtes)', ['Date', 'Quête', 'Récompense'],
+      quests.map(q => [
+        new Date(q.completed_date).toLocaleDateString('fr-FR'),
+        (q.title || '').substring(0, 30),
+        `$${parseFloat(q.reward_earned).toFixed(2)}`
+      ]), y + 10);
+
+    doc.end();
+  } catch (e) {
+    console.error('PDF error:', e);
+    res.status(500).json({ error: 'Erreur génération PDF' });
+  }
+});
+
 // ── ADMIN SETTINGS ────────────────────────────────────────────────────────────
 
 app.get('/api/admin/settings', requireAdmin, (req, res) => {
@@ -1526,6 +1768,63 @@ async function sendQuestReminders() {
   }
 }
 
+// ── RAPPELS RETRAIT & COMPTES INACTIFS ───────────────────────────────────────
+
+async function sendWithdrawalReminders() {
+  try {
+    const days = parseInt(getSetting('withdrawal_reminder_days') || '7', 10);
+    const cutoff = new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+    const users = await db.all(`
+      SELECT u.id, u.email, u.balance FROM users u
+      WHERE u.balance > 0 AND u.is_banned = 0
+        AND (
+          (SELECT MAX(w.created_at) FROM withdrawals w WHERE w.user_id = u.id AND w.status IN ('pending','confirmed')) IS NULL
+          OR (SELECT MAX(w.created_at) FROM withdrawals w WHERE w.user_id = u.id AND w.status IN ('pending','confirmed')) < ?
+        )
+    `, [cutoff]);
+    for (const u of users) {
+      sendEmailIfEnabled('withdrawal_reminder', u.email, '💰 Votre solde vous attend — Pensez à retirer vos gains !',
+        `<p>Bonjour,</p>
+         <p>Vous avez un solde disponible de <strong style="color:#22d3a8">$${parseFloat(u.balance).toFixed(2)}</strong> sur votre compte QuestInvest que vous n'avez pas encore retiré.</p>
+         <div class="amount">$${parseFloat(u.balance).toFixed(2)} disponibles</div>
+         <p>Connectez-vous pour effectuer votre retrait en quelques clics !</p>`,
+        '💰 Solde disponible'
+      );
+    }
+    if (users.length) console.log(`[reminder] ${users.length} rappels de retrait envoyés`);
+  } catch (e) {
+    console.error('[reminder] Withdrawal reminders error:', e.message);
+  }
+}
+
+async function sendInactiveAccountReminders() {
+  try {
+    const cutoff = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+    const users = await db.all(`
+      SELECT u.id, u.email FROM users u
+      WHERE u.is_banned = 0
+        AND (u.last_login IS NULL OR u.last_login < ?)
+        AND NOT EXISTS (
+          SELECT 1 FROM email_logs el
+          WHERE el.recipient = u.email AND el.subject LIKE '%inactif%'
+          AND el.sent_at > ?
+        )
+    `, [cutoff, cutoff]);
+    for (const u of users) {
+      sendEmailIfEnabled('inactive_reminder', u.email, '👋 Vous nous manquez ! Revenez sur QuestInvest',
+        `<p>Bonjour,</p>
+         <p>Cela fait plus de 30 jours que vous ne vous êtes pas connecté à QuestInvest.</p>
+         <p>Vos quêtes vous attendent et de nouvelles opportunités de gains sont disponibles !</p>
+         <p style="margin-top:20px;"><a href="${process.env.RENDER_EXTERNAL_URL || ''}" style="background:#7c3aed;color:#fff;padding:12px 28px;border-radius:8px;text-decoration:none;font-weight:600;">Revenir sur QuestInvest →</a></p>`,
+        '👋 On vous attend'
+      );
+    }
+    if (users.length) console.log(`[reminder] ${users.length} rappels d'inactivité envoyés`);
+  } catch (e) {
+    console.error('[reminder] Inactive reminders error:', e.message);
+  }
+}
+
 let _reminderTimeout = null;
 function scheduleDailyReminder() {
   if (_reminderTimeout) clearTimeout(_reminderTimeout);
@@ -1537,6 +1836,8 @@ function scheduleDailyReminder() {
   const delay = nextRun - now;
   _reminderTimeout = setTimeout(() => {
     sendQuestReminders();
+    sendWithdrawalReminders();
+    sendInactiveAccountReminders();
     scheduleDailyReminder();
   }, delay);
   console.log(`[reminder] Rappels quêtes programmés à ${String(hour).padStart(2, '0')}:00 UTC (dans ${Math.round(delay / 60000)} min)`);

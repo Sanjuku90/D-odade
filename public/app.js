@@ -386,6 +386,8 @@ function setupEventListeners() {
 }
 
 async function checkAuth() {
+  const inMaintenance = await checkMaintenance();
+  if (inMaintenance) return;
   try {
     const res = await fetch('/api/user');
     if (res.ok) {
@@ -465,6 +467,9 @@ function showDashboard() {
   loadQuests();
   loadHistory();
   loadKyc();
+  loadNewsFeed();
+  loadPublicTestimonials();
+  initStarRating();
   startDepositPolling();
 }
 
@@ -876,6 +881,101 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 });
+
+// ── MAINTENANCE CHECK ────────────────────────────────────────────────────────
+async function checkMaintenance() {
+  try {
+    const r = await fetch('/api/maintenance');
+    const j = await r.json();
+    const overlay = document.getElementById('maintenance-overlay');
+    if (overlay) overlay.style.display = j.maintenance ? 'flex' : 'none';
+    return j.maintenance;
+  } catch { return false; }
+}
+
+// ── NEWS FEED ────────────────────────────────────────────────────────────────
+async function loadNewsFeed() {
+  try {
+    const r = await fetch('/api/news');
+    if (!r.ok) return;
+    const posts = await r.json();
+    const card = document.getElementById('news-feed-card');
+    const list = document.getElementById('news-feed-list');
+    if (!card || !list) return;
+    if (!posts.length) { card.style.display = 'none'; return; }
+    card.style.display = '';
+    list.innerHTML = posts.map(p => `
+      <div style="border-bottom:1px solid rgba(255,255,255,.06);padding-bottom:14px;">
+        <div style="font-size:.75rem;color:#6b7280;margin-bottom:4px;">${new Date(p.created_at).toLocaleDateString('fr-FR')}</div>
+        <div style="font-weight:700;color:#f0f0fa;margin-bottom:6px;font-size:.95rem;">${p.title}</div>
+        <div style="font-size:.85rem;color:#9898b8;line-height:1.6;">${p.content.replace(/\n/g,'<br>')}</div>
+      </div>`).join('');
+  } catch {}
+}
+
+// ── TÉMOIGNAGES ──────────────────────────────────────────────────────────────
+let _testiRating = 5;
+
+function initStarRating() {
+  const stars = document.querySelectorAll('#star-rating span');
+  if (!stars.length) return;
+  function setRating(n) {
+    _testiRating = n;
+    document.getElementById('testi-rating').value = n;
+    stars.forEach((s, i) => s.textContent = i < n ? '★' : '☆');
+    stars.forEach(s => s.style.color = '#fbbf24');
+  }
+  setRating(5);
+  stars.forEach(s => {
+    s.addEventListener('click', () => setRating(parseInt(s.dataset.v)));
+    s.addEventListener('mouseover', () => stars.forEach((x, i) => { x.textContent = i < parseInt(s.dataset.v) ? '★' : '☆'; }));
+    s.addEventListener('mouseout', () => setRating(_testiRating));
+  });
+}
+
+async function loadPublicTestimonials() {
+  try {
+    const r = await fetch('/api/testimonials');
+    if (!r.ok) return;
+    const list = await r.json();
+    const el = document.getElementById('public-testi-list');
+    if (!el) return;
+    if (!list.length) { el.innerHTML = '<p class="empty-state">Aucun avis pour le moment. Soyez le premier !</p>'; return; }
+    const stars = n => '★'.repeat(n) + '☆'.repeat(5 - n);
+    el.innerHTML = list.map(t => `
+      <div style="border-bottom:1px solid rgba(255,255,255,.06);padding-bottom:16px;">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">
+          <span style="font-size:1.1rem;color:#fbbf24;">${stars(t.rating)}</span>
+          <span style="font-size:.75rem;color:#6b7280;">${t.email.replace(/(.{2}).+(@.+)/, '$1***$2')} · ${new Date(t.submitted_at).toLocaleDateString('fr-FR')}</span>
+        </div>
+        <p style="font-size:.88rem;color:#d1d5db;line-height:1.7;margin:0;">${t.content}</p>
+      </div>`).join('');
+  } catch {}
+}
+
+async function submitTestimonial() {
+  const content = document.getElementById('testi-content').value.trim();
+  const rating  = parseInt(document.getElementById('testi-rating').value) || 5;
+  const errEl   = document.getElementById('testi-error');
+  const okEl    = document.getElementById('testi-success');
+  const btn     = document.getElementById('testi-submit-btn');
+  errEl.textContent = ''; okEl.textContent = '';
+  if (content.length < 10) { errEl.textContent = 'Votre avis doit faire au moins 10 caractères.'; return; }
+  btn.disabled = true; btn.textContent = 'Envoi…';
+  try {
+    const r = await fetch('/api/testimonials', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ content, rating })
+    });
+    const j = await r.json();
+    if (r.ok) {
+      okEl.textContent = '✓ Merci ! Votre avis sera affiché après modération.';
+      document.getElementById('testi-content').value = '';
+      loadPublicTestimonials();
+    } else { errEl.textContent = j.error || 'Erreur'; }
+  } catch (e) { errEl.textContent = 'Erreur réseau'; }
+  finally { btn.disabled = false; btn.textContent = 'Soumettre mon avis'; }
+}
 
 function copyAddress() {
   const address = document.getElementById('deposit-address').textContent;
