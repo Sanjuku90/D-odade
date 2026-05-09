@@ -852,7 +852,7 @@
              style="max-width:100%;border-radius:8px;border:1px solid var(--border);margin-bottom:12px;cursor:zoom-in;display:block;"
              alt="Recto"
              title="Cliquer pour ouvrir en plein écran"
-             onclick="openImgFullscreen(this.src)">
+             onclick="openImgFullscreen(this.src,'recto')">
         <div id="kyc-doc-back-wrap" style="display:none">
           <div style="font-size:.75rem;color:var(--text3);margin-bottom:6px;font-weight:600;text-transform:uppercase;letter-spacing:.4px">
             Verso
@@ -862,12 +862,12 @@
                style="max-width:100%;border-radius:8px;border:1px solid var(--border);margin-bottom:12px;cursor:zoom-in;display:block;"
                alt="Verso"
                title="Cliquer pour ouvrir en plein écran"
-               onclick="openImgFullscreen(this.src)">
+               onclick="openImgFullscreen(this.src,'verso')">
         </div>
         <div style="text-align:center;margin-bottom:14px;display:flex;gap:8px;justify-content:center;flex-wrap:wrap;">
-          <button class="btn-info" onclick="openImgFullscreen(document.getElementById('kyc-doc-front').src)" style="font-size:.8rem;padding:6px 14px;">🔍 Agrandir Recto</button>
+          <button class="btn-info" onclick="openImgFullscreen(document.getElementById('kyc-doc-front').src,'recto')" style="font-size:.8rem;padding:6px 14px;">🔍 Agrandir Recto</button>
           <span id="kyc-btn-back-full" style="display:none">
-            <button class="btn-info" onclick="openImgFullscreen(document.getElementById('kyc-doc-back').src)" style="font-size:.8rem;padding:6px 14px;">🔍 Agrandir Verso</button>
+            <button class="btn-info" onclick="openImgFullscreen(document.getElementById('kyc-doc-back').src,'verso')" style="font-size:.8rem;padding:6px 14px;">🔍 Agrandir Verso</button>
           </span>
         </div>
       </div>
@@ -885,10 +885,15 @@
   </div>
 
   <!-- Visionneuse plein écran -->
-  <div id="kyc-fullscreen" onclick="this.style.display='none'" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.92);cursor:zoom-out;overflow:auto;display:none;align-items:center;justify-content:center;">
-    <img id="kyc-fullscreen-img" style="max-width:98vw;max-height:98vh;object-fit:contain;border-radius:6px;box-shadow:0 0 40px rgba(0,0,0,.8);" alt="Document">
-    <div style="position:fixed;top:14px;right:18px;color:#fff;font-size:1.6rem;cursor:pointer;opacity:.8;" onclick="document.getElementById('kyc-fullscreen').style.display='none'">✕</div>
+  <div id="kyc-fullscreen" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.92);overflow:auto;align-items:center;justify-content:center;flex-direction:column;">
+    <img id="kyc-fullscreen-img" style="max-width:98vw;max-height:88vh;object-fit:contain;border-radius:6px;box-shadow:0 0 40px rgba(0,0,0,.8);cursor:default;" alt="Document" onclick="event.stopPropagation()">
+    <div style="position:fixed;top:0;left:0;right:0;display:flex;justify-content:flex-end;align-items:center;gap:10px;padding:12px 18px;background:linear-gradient(to bottom,rgba(0,0,0,.7),transparent);">
+      <button id="kyc-fs-download" onclick="downloadKycImg()" style="background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.3);color:#fff;border-radius:8px;padding:7px 16px;font-size:.85rem;cursor:pointer;backdrop-filter:blur(6px);">⬇ Télécharger</button>
+      <button onclick="document.getElementById('kyc-fullscreen').style.display='none'" style="background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.3);color:#fff;border-radius:8px;padding:7px 16px;font-size:.85rem;cursor:pointer;backdrop-filter:blur(6px);">✕ Fermer</button>
+    </div>
+    <div style="color:rgba(255,255,255,.4);font-size:.75rem;margin-top:10px;">Cliquer en dehors pour fermer</div>
   </div>
+  <div id="kyc-fullscreen-backdrop" onclick="document.getElementById('kyc-fullscreen').style.display='none'" style="display:none;position:fixed;inset:0;z-index:9998;"></div>
 
   <!-- MODAL UTILISATEUR -->
   <div class="overlay" id="user-modal">
@@ -1377,16 +1382,32 @@
         <td><button class="btn-info" onclick="openKycModal(${k.id})">👁 Voir le document</button></td>
       </tr>`).join('');
     }
-    function openImgFullscreen(src) {
+    let _fsImgLabel = 'document';
+    function openImgFullscreen(src, label) {
       if (!src) return;
-      const fs = document.getElementById('kyc-fullscreen');
+      _fsImgLabel = label || 'document-kyc';
       document.getElementById('kyc-fullscreen-img').src = src;
-      fs.style.display = 'flex';
+      document.getElementById('kyc-fullscreen').style.display = 'flex';
+      document.getElementById('kyc-fullscreen-backdrop').style.display = 'block';
+    }
+    function closeFullscreen() {
+      document.getElementById('kyc-fullscreen').style.display = 'none';
+      document.getElementById('kyc-fullscreen-backdrop').style.display = 'none';
+    }
+    function downloadKycImg() {
+      const src = document.getElementById('kyc-fullscreen-img').src;
+      if (!src) return;
+      const a = document.createElement('a');
+      a.href = src;
+      const ext = src.startsWith('data:image/png') ? 'png' : 'jpg';
+      a.download = `${_fsImgLabel}.${ext}`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
     }
     document.addEventListener('keydown', e => {
       if (e.key === 'Escape') {
-        document.getElementById('kyc-fullscreen').style.display = 'none';
-        closeKycModal();
+        closeFullscreen();
       }
     });
 
