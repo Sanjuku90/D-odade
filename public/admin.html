@@ -833,15 +833,45 @@
 
   <!-- MODAL KYC DOCUMENT -->
   <div class="overlay" id="kyc-modal">
-    <div class="modal" style="max-width:560px;width:95%">
+    <div class="modal" style="max-width:620px;width:95%;max-height:90vh;overflow-y:auto;">
       <div class="modal-title">🪪 Document d'identité</div>
       <div id="kyc-modal-email" style="font-size:.8rem;color:var(--text2);margin-bottom:14px;"></div>
-      <div style="font-size:.75rem;color:var(--text3);margin-bottom:6px;font-weight:600;text-transform:uppercase;letter-spacing:.4px">Recto</div>
-      <img id="kyc-doc-front" style="max-width:100%;border-radius:8px;border:1px solid var(--border);margin-bottom:12px;" alt="Recto">
-      <div id="kyc-doc-back-wrap" style="display:none">
-        <div style="font-size:.75rem;color:var(--text3);margin-bottom:6px;font-weight:600;text-transform:uppercase;letter-spacing:.4px">Verso</div>
-        <img id="kyc-doc-back" style="max-width:100%;border-radius:8px;border:1px solid var(--border);margin-bottom:12px;" alt="Verso">
+
+      <div id="kyc-img-loading" style="text-align:center;padding:30px 0;display:none;">
+        <div style="font-size:1.5rem;margin-bottom:8px;">⏳</div>
+        <div style="font-size:.85rem;color:var(--text2);">Chargement des images…</div>
       </div>
+      <div id="kyc-img-error" style="display:none;background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.3);border-radius:8px;padding:12px;margin-bottom:12px;color:#ef4444;font-size:.85rem;text-align:center;"></div>
+
+      <div id="kyc-imgs-wrap" style="display:none">
+        <div style="font-size:.75rem;color:var(--text3);margin-bottom:6px;font-weight:600;text-transform:uppercase;letter-spacing:.4px">
+          Recto
+          <span style="font-weight:400;color:var(--text3);font-size:.7rem;text-transform:none;margin-left:6px;">(cliquer pour agrandir)</span>
+        </div>
+        <img id="kyc-doc-front"
+             style="max-width:100%;border-radius:8px;border:1px solid var(--border);margin-bottom:12px;cursor:zoom-in;display:block;"
+             alt="Recto"
+             title="Cliquer pour ouvrir en plein écran"
+             onclick="openImgFullscreen(this.src)">
+        <div id="kyc-doc-back-wrap" style="display:none">
+          <div style="font-size:.75rem;color:var(--text3);margin-bottom:6px;font-weight:600;text-transform:uppercase;letter-spacing:.4px">
+            Verso
+            <span style="font-weight:400;color:var(--text3);font-size:.7rem;text-transform:none;margin-left:6px;">(cliquer pour agrandir)</span>
+          </div>
+          <img id="kyc-doc-back"
+               style="max-width:100%;border-radius:8px;border:1px solid var(--border);margin-bottom:12px;cursor:zoom-in;display:block;"
+               alt="Verso"
+               title="Cliquer pour ouvrir en plein écran"
+               onclick="openImgFullscreen(this.src)">
+        </div>
+        <div style="text-align:center;margin-bottom:14px;display:flex;gap:8px;justify-content:center;flex-wrap:wrap;">
+          <button class="btn-info" onclick="openImgFullscreen(document.getElementById('kyc-doc-front').src)" style="font-size:.8rem;padding:6px 14px;">🔍 Agrandir Recto</button>
+          <span id="kyc-btn-back-full" style="display:none">
+            <button class="btn-info" onclick="openImgFullscreen(document.getElementById('kyc-doc-back').src)" style="font-size:.8rem;padding:6px 14px;">🔍 Agrandir Verso</button>
+          </span>
+        </div>
+      </div>
+
       <div style="margin-bottom:10px;">
         <label style="font-size:.76rem;font-weight:600;color:var(--text2);display:block;margin-bottom:5px;">Motif de refus (optionnel)</label>
         <input class="adj-input" type="text" id="kyc-reject-reason" placeholder="Ex: Photo floue, document expiré…" style="width:100%">
@@ -852,6 +882,12 @@
         <button class="btn-close" onclick="closeKycModal()">Fermer</button>
       </div>
     </div>
+  </div>
+
+  <!-- Visionneuse plein écran -->
+  <div id="kyc-fullscreen" onclick="this.style.display='none'" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.92);cursor:zoom-out;overflow:auto;display:none;align-items:center;justify-content:center;">
+    <img id="kyc-fullscreen-img" style="max-width:98vw;max-height:98vh;object-fit:contain;border-radius:6px;box-shadow:0 0 40px rgba(0,0,0,.8);" alt="Document">
+    <div style="position:fixed;top:14px;right:18px;color:#fff;font-size:1.6rem;cursor:pointer;opacity:.8;" onclick="document.getElementById('kyc-fullscreen').style.display='none'">✕</div>
   </div>
 
   <!-- MODAL UTILISATEUR -->
@@ -1341,6 +1377,19 @@
         <td><button class="btn-info" onclick="openKycModal(${k.id})">👁 Voir le document</button></td>
       </tr>`).join('');
     }
+    function openImgFullscreen(src) {
+      if (!src) return;
+      const fs = document.getElementById('kyc-fullscreen');
+      document.getElementById('kyc-fullscreen-img').src = src;
+      fs.style.display = 'flex';
+    }
+    document.addEventListener('keydown', e => {
+      if (e.key === 'Escape') {
+        document.getElementById('kyc-fullscreen').style.display = 'none';
+        closeKycModal();
+      }
+    });
+
     async function openKycModal(id) {
       selKycId = id;
       const kyc = allKyc.find(k => k.id === id);
@@ -1350,21 +1399,37 @@
       document.getElementById('kyc-doc-front').src = '';
       document.getElementById('kyc-doc-back').src = '';
       document.getElementById('kyc-doc-back-wrap').style.display = 'none';
-      const isPending = kyc.status === 'pending';
+      document.getElementById('kyc-btn-back-full').style.display = 'none';
       document.getElementById('kyc-approve-btn').style.display = kyc.status !== 'confirmed' ? '' : 'none';
       document.getElementById('kyc-reject-btn').style.display = kyc.status !== 'rejected' ? '' : 'none';
+      document.getElementById('kyc-img-loading').style.display = 'block';
+      document.getElementById('kyc-img-error').style.display = 'none';
+      document.getElementById('kyc-imgs-wrap').style.display = 'none';
       document.getElementById('kyc-modal').classList.add('open');
       try {
         const r = await fetch(`/api/admin/kyc/${id}/document`);
+        document.getElementById('kyc-img-loading').style.display = 'none';
         if (r.ok) {
           const d = await r.json();
-          document.getElementById('kyc-doc-front').src = d.document_front;
+          if (d.document_front) {
+            document.getElementById('kyc-doc-front').src = d.document_front;
+          }
           if (d.document_back) {
             document.getElementById('kyc-doc-back').src = d.document_back;
             document.getElementById('kyc-doc-back-wrap').style.display = 'block';
+            document.getElementById('kyc-btn-back-full').style.display = 'inline';
           }
+          document.getElementById('kyc-imgs-wrap').style.display = 'block';
+        } else {
+          const j = await r.json().catch(() => ({}));
+          document.getElementById('kyc-img-error').textContent = j.error || 'Impossible de charger les images.';
+          document.getElementById('kyc-img-error').style.display = 'block';
         }
-      } catch {}
+      } catch (e) {
+        document.getElementById('kyc-img-loading').style.display = 'none';
+        document.getElementById('kyc-img-error').textContent = 'Erreur réseau : impossible de charger les images.';
+        document.getElementById('kyc-img-error').style.display = 'block';
+      }
     }
     function closeKycModal() {
       document.getElementById('kyc-modal').classList.remove('open');
