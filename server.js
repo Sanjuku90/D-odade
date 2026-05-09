@@ -1503,6 +1503,36 @@ function scheduleDailyReminder() {
   console.log(`[reminder] Rappels quêtes programmés à ${String(hour).padStart(2, '0')}:00 UTC (dans ${Math.round(delay / 60000)} min)`);
 }
 
+// ── AUTO-PING (empêche Render de mettre le serveur en veille) ─────────────────
+function startAutoPing() {
+  const selfUrl = process.env.RENDER_EXTERNAL_URL || process.env.APP_URL;
+  if (!selfUrl) {
+    console.log('[ping] Pas de RENDER_EXTERNAL_URL ni APP_URL — auto-ping désactivé');
+    return;
+  }
+  const target = selfUrl.replace(/\/$/, '') + '/health';
+  const INTERVAL = 9 * 60 * 1000; // toutes les 9 minutes
+  setInterval(async () => {
+    try {
+      const https = require('https');
+      const http = require('http');
+      const lib = target.startsWith('https') ? https : http;
+      await new Promise((resolve, reject) => {
+        const req = lib.get(target, { timeout: 10000 }, (res) => {
+          res.resume();
+          resolve(res.statusCode);
+        });
+        req.on('error', reject);
+        req.on('timeout', () => { req.destroy(); reject(new Error('timeout')); });
+      });
+      console.log(`[ping] ✓ self-ping OK → ${target}`);
+    } catch (e) {
+      console.warn(`[ping] ✗ self-ping échoué : ${e.message}`);
+    }
+  }, INTERVAL);
+  console.log(`[ping] Auto-ping activé — cible : ${target} (toutes les 9 min)`);
+}
+
 // ── DÉMARRAGE ─────────────────────────────────────────────────────────────────
 
 initDB().then(() => {
@@ -1520,6 +1550,7 @@ initDB().then(() => {
 
   app.listen(PORT, '0.0.0.0', () => {
     console.log(`Server running on http://0.0.0.0:${PORT}`);
+    startAutoPing();
   });
 }).catch(err => {
   console.error('FATAL: initDB failed:', err);
