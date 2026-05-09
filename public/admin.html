@@ -523,6 +523,10 @@
             <span class="item-icon">⭐</span> Témoignages
             <span class="nav-badge" id="nb-testi"></span>
           </button>
+          <button class="nav-item" data-page="tickets">
+            <span class="item-icon">🎫</span> Tickets Support
+            <span class="nav-badge" id="nb-tick"></span>
+          </button>
           <button class="nav-item" data-page="messaging">
             <span class="item-icon">✉️</span> Messagerie
           </button>
@@ -782,6 +786,28 @@
             <thead><tr><th>ID</th><th>Utilisateur</th><th>Note</th><th>Avis</th><th>Soumis le</th><th>Statut</th><th>Actions</th></tr></thead>
             <tbody id="testi-tbody"><tr class="empty-row"><td colspan="7">Chargement…</td></tr></tbody>
           </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- TICKETS SUPPORT -->
+    <div class="page" id="page-tickets">
+      <div class="card">
+        <div class="card-header">
+          <div>
+            <div class="card-title">🎫 Tickets Support</div>
+            <div class="card-sub">Répondez aux demandes d'assistance des utilisateurs</div>
+          </div>
+          <div class="filter-row">
+            <input class="search-box" type="text" placeholder="🔍 Email ou sujet..." id="tick-search" oninput="renderAdminTickets()">
+            <button class="chip active" onclick="setTicketF(this,'all')">Tous</button>
+            <button class="chip" onclick="setTicketF(this,'open')">Ouverts</button>
+            <button class="chip" onclick="setTicketF(this,'answered')">Répondus</button>
+            <button class="chip" onclick="setTicketF(this,'closed')">Fermés</button>
+          </div>
+        </div>
+        <div id="tickets-admin-list" style="min-height:100px;">
+          <p style="text-align:center;color:var(--text3);padding:28px;font-size:.85rem;">Chargement…</p>
         </div>
       </div>
     </div>
@@ -1064,11 +1090,12 @@
     const PAGE_LABELS = {
       overview:'Vue d\'ensemble', deposits:'Dépôts',
       withdrawals:'Retraits', users:'Utilisateurs', kyc:'KYC', recovery:'Récupération',
-      messaging:'Messagerie', emails:'Emails envoyés', settings:'Paramètres'
+      tickets:'Tickets Support', messaging:'Messagerie', emails:'Emails envoyés', settings:'Paramètres',
+      news:'Actualités', testimonials:'Témoignages'
     };
     const PAGE_ICONS = {
       overview:'📊', deposits:'💳', withdrawals:'💸', users:'👥', kyc:'🪪', recovery:'🔑',
-      messaging:'✉️', emails:'📧', settings:'⚙️'
+      tickets:'🎫', messaging:'✉️', emails:'📧', settings:'⚙️', news:'📰', testimonials:'⭐'
     };
 
     // ── DROPDOWN TOGGLE ──
@@ -1160,10 +1187,86 @@
     });
 
     async function refreshAll() {
-      await Promise.all([loadStats(), loadDeposits(), loadWithdrawals(), loadUsers(), loadKycList(), loadRecoveryList(), loadEmailLogs(), loadNews(), loadTestimonials()]);
+      await Promise.all([loadStats(), loadDeposits(), loadWithdrawals(), loadUsers(), loadKycList(), loadRecoveryList(), loadEmailLogs(), loadNews(), loadTestimonials(), loadAdminTickets()]);
       populateMsgUserSelect();
       document.getElementById('meta-time').textContent =
         'Actualisé à ' + new Date().toLocaleTimeString('fr-FR');
+    }
+
+    // ── TICKETS SUPPORT ──
+    let allTickets = [], ticketFilter = 'all';
+
+    async function loadAdminTickets() {
+      try {
+        const r = await fetch('/api/admin/tickets');
+        if (r.ok) { allTickets = await r.json(); renderAdminTickets(); updateTicketBadge(); }
+      } catch {}
+    }
+    function updateTicketBadge() {
+      const open = allTickets.filter(t => t.status === 'open').length;
+      const nb = document.getElementById('nb-tick');
+      if (nb) { nb.textContent = open || ''; nb.style.display = open ? 'inline-block' : 'none'; }
+    }
+    function setTicketF(el, f) {
+      ticketFilter = f;
+      document.querySelectorAll('#page-tickets .chip').forEach(b => b.classList.remove('active'));
+      el.classList.add('active');
+      renderAdminTickets();
+    }
+    function renderAdminTickets() {
+      const q = (document.getElementById('tick-search')?.value || '').toLowerCase();
+      let list = ticketFilter === 'all' ? allTickets : allTickets.filter(t => t.status === ticketFilter);
+      if (q) list = list.filter(t => t.user_email.toLowerCase().includes(q) || t.subject.toLowerCase().includes(q));
+      const container = document.getElementById('tickets-admin-list');
+      if (!list.length) { container.innerHTML = '<p style="text-align:center;color:var(--text3);padding:28px;font-size:.85rem;">Aucun ticket trouvé</p>'; return; }
+      const statusColor = s => ({ open:'#fbbf24', answered:'#34d399', closed:'#6b7280' }[s] || '#6b7280');
+      const statusLabel = s => ({ open:'Ouvert', answered:'Répondu', closed:'Fermé' }[s] || s);
+      container.innerHTML = list.map(t => {
+        const replies = (t.replies || []).map(rep => `
+          <div style="display:flex;flex-direction:column;align-items:${rep.sender==='admin'?'flex-start':'flex-end'};margin-top:6px;">
+            <div style="max-width:80%;background:${rep.sender==='admin'?'rgba(167,139,250,.1)':'rgba(52,211,153,.08)'};border:1px solid ${rep.sender==='admin'?'rgba(167,139,250,.15)':'rgba(52,211,153,.15)'};border-radius:${rep.sender==='admin'?'10px 10px 10px 2px':'10px 10px 2px 10px'};padding:7px 12px;font-size:.78rem;color:#d1d5db;line-height:1.5;">
+              <span style="font-size:.67rem;font-weight:700;color:${rep.sender==='admin'?'#a78bfa':'#34d399'};display:block;margin-bottom:2px;">${rep.sender==='admin'?'🎧 Admin':'👤 Utilisateur'}</span>
+              ${rep.message}
+            </div>
+            <span style="font-size:.64rem;color:#6b7280;margin-top:2px;">${fmtDatetime(rep.created_at)}</span>
+          </div>`).join('');
+        return `<div style="padding:18px 20px;border-bottom:1px solid rgba(255,255,255,.05);">
+          <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px;margin-bottom:8px;">
+            <div>
+              <div style="font-size:.88rem;font-weight:600;color:#f0f0fa;">${t.subject}</div>
+              <div style="font-size:.74rem;color:#6b7280;margin-top:3px;">${t.user_email} · ${fmtDatetime(t.created_at)}</div>
+            </div>
+            <div style="display:flex;gap:6px;align-items:center;flex-shrink:0;">
+              <span style="font-size:.7rem;font-weight:700;padding:3px 9px;border-radius:10px;background:rgba(255,255,255,.05);color:${statusColor(t.status)};">${statusLabel(t.status)}</span>
+              ${t.status!=='closed'?`<button onclick="closeAdminTicket(${t.id})" style="background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.08);color:#6b7280;border-radius:7px;padding:3px 9px;font-size:.7rem;cursor:pointer;">Fermer</button>`:''}
+            </div>
+          </div>
+          <div style="font-size:.82rem;color:#9ca3af;line-height:1.6;margin-bottom:${t.replies&&t.replies.length?'10px':'0'};">${t.message}</div>
+          ${replies}
+          ${t.status!=='closed'?`
+          <div style="display:flex;gap:8px;margin-top:12px;">
+            <textarea id="admin-reply-${t.id}" placeholder="Répondre à l'utilisateur…" rows="2" style="flex:1;background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:8px 12px;color:var(--text);font-family:inherit;font-size:.8rem;resize:vertical;outline:none;"></textarea>
+            <button onclick="replyAdminTicket(${t.id})" style="background:linear-gradient(135deg,#7c3aed,#a78bfa);border:none;border-radius:8px;color:#fff;padding:0 14px;cursor:pointer;font-size:.8rem;font-weight:600;white-space:nowrap;">Envoyer</button>
+          </div>`:''}
+        </div>`;
+      }).join('');
+    }
+    async function replyAdminTicket(id) {
+      const ta = document.getElementById(`admin-reply-${id}`);
+      if (!ta || !ta.value.trim()) return;
+      try {
+        const r = await fetch(`/api/admin/tickets/${id}/reply`, {
+          method: 'POST', headers: {'Content-Type':'application/json'},
+          body: JSON.stringify({ message: ta.value.trim() })
+        });
+        if (r.ok) { showToast('Réponse envoyée !', 'success'); loadAdminTickets(); }
+        else showToast('Erreur', 'error');
+      } catch { showToast('Erreur réseau', 'error'); }
+    }
+    async function closeAdminTicket(id) {
+      if (!confirm('Fermer ce ticket ?')) return;
+      const r = await fetch(`/api/admin/tickets/${id}/close`, { method: 'POST' });
+      if (r.ok) { showToast('Ticket fermé', 'success'); loadAdminTickets(); }
     }
 
     // ── MESSAGERIE ──

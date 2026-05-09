@@ -410,6 +410,33 @@ async function initDB() {
     reviewed_at ${TSN}
   )`);
 
+  await db.exec(`CREATE TABLE IF NOT EXISTS support_tickets (
+    id ${PK},
+    user_id INTEGER REFERENCES users(id),
+    subject TEXT NOT NULL,
+    message TEXT NOT NULL,
+    status TEXT DEFAULT 'open',
+    created_at ${TS}
+  )`);
+
+  await db.exec(`CREATE TABLE IF NOT EXISTS ticket_replies (
+    id ${PK},
+    ticket_id INTEGER REFERENCES support_tickets(id),
+    sender TEXT NOT NULL,
+    message TEXT NOT NULL,
+    created_at ${TS}
+  )`);
+
+  await db.exec(`CREATE TABLE IF NOT EXISTS push_subscriptions (
+    id ${PK},
+    user_id INTEGER REFERENCES users(id),
+    endpoint TEXT NOT NULL,
+    p256dh TEXT NOT NULL,
+    auth TEXT NOT NULL,
+    created_at ${TS},
+    UNIQUE(user_id, endpoint)
+  )`);
+
   // Migrations (try/catch car la colonne peut déjà exister)
   const migrations = [
     `ALTER TABLE users ADD COLUMN IF NOT EXISTS can_withdraw INTEGER DEFAULT 0`,
@@ -1714,6 +1741,132 @@ app.post('/api/admin/settings', requireAdmin, async (req, res) => {
   } catch (err) {
     res.status(500).json({ error: 'Erreur serveur' });
   }
+});
+
+// ── SUPPORT TICKETS ───────────────────────────────────────────────────────────
+
+app.get('/api/tickets', requireAuth, async (req, res) => {
+  try {
+    const tickets = await db.all(
+      'SELECT * FROM support_tickets WHERE user_id = ? ORDER BY created_at DESC',
+      [req.session.userId]
+    );
+    for (const t of tickets) {
+      t.replies = await db.all(
+        'SELECT * FROM ticket_replies WHERE ticket_id = ? ORDER BY created_at ASC',
+        [t.id]
+      );
+    }
+    res.json(tickets);
+  } catch { res.status(500).json({ error: 'Erreur serveur' }); }
+});
+
+app.post('/api/tickets', requireAuth, async (req, res) => {
+  const { subject, message } = req.body;
+  if (!subject || !message) return res.status(400).json({ error: 'Sujet et message requis' });
+  try {
+    const r = await db.run(
+      'INSERT INTO support_tickets (user_id, subject, message) VALUES (?, ?, ?)',
+      [req.session.userId, subject.trim(), message.trim()]
+    );
+    res.json({ success: true, id: r.lastInsertRowid });
+  } catch { res.status(500).json({ error: 'Erreur serveur' }); }
+});
+
+app.post('/api/tickets/:id/reply', requireAuth, async (req, res) => {
+  const { message } = req.body;
+  if (!message) return res.status(400).json({ error: 'Message requis' });
+  try {
+    const ticket = await db.get(
+      'SELECT * FROM support_tickets WHERE id = ? AND user_id = ?',
+      [req.params.id, req.session.userId]
+    );
+    if (!ticket) return res.status(404).json({ error: 'Ticket introuvable' });
+    await db.run(
+      'INSERT INTO ticket_replies (ticket_id, sender, message) VALUES (?, ?, ?)',
+      [req.params.id, 'user', message.trim()]
+    );
+    await db.run("UPDATE support_tickets SET status = 'open' WHERE id = ?", [req.params.id]);
+    res.json({ success: true });
+  } catch { res.status(500).json({ error: 'Erreur serveur' }); }
+});
+
+// ── ADMIN TICKETS ─────────────────────────────────────────────────────────────
+
+app.get('/api/admin/tickets', requireAdmin, async (req, res) => {
+  try {
+    const tickets = await db.all(`
+      SELECT t.*, u.email as user_email
+      FROM support_tickets t
+      JOIN users u ON u.id = t.user_id
+      ORDER BY t.created_at DESC
+    `);
+    for (const t of tickets) {
+      t.replies = await db.all(
+        'SELECT * FROM ticket_replies WHERE ticket_id = ? ORDER BY created_at ASC',
+        [t.id]
+      );
+    }
+    res.json(tickets);
+  } catch { res.status(500).json({ error: 'Erreur serveur' }); }
+});
+
+app.post('/api/admin/tickets/:id/reply', requireAdmin, async (req, res) => {
+  const { message } = req.body;
+  if (!message) return res.status(400).json({ error: 'Message requis' });
+  try {
+    await db.run(
+      'INSERT INTO ticket_replies (ticket_id, sender, message) VALUES (?, ?, ?)',
+      [req.params.id, 'admin', message.trim()]
+    );
+    await db.run("UPDATE support_tickets SET status = 'answered' WHERE id = ?", [req.params.id]);
+    res.json({ success: true });
+  } catch { res.status(500).json({ error: 'Erreur serveur' }); }
+});
+
+app.post('/api/admin/tickets/:id/close', requireAdmin, async (req, res) => {
+  try {
+    await db.run("UPDATE support_tickets SET status = 'closed' WHERE id = ?", [req.params.id]);
+    res.json({ success: true });
+  } catch { res.status(500).json({ error: 'Erreur serveur' }); }
+});
+
+// ── PARRAINAGE ────────────────────────────────────────────────────────────────
+
+app.get('/api/referrals', requireAuth, async (req, res) => {
+  try {
+    const user = await db.get('SELECT referral_code FROM users WHERE id = ?', [req.session.userId]);
+    const referrals = await db.all(`
+      SELECT u.email, u.deposit_amount, u.created_at
+      FROM referrals r
+      JOIN users u ON u.id = r.referred_id
+      WHERE r.referrer_id = ?
+      ORDER BY r.created_at DESC
+    `, [req.session.userId]);
+    res.json({ referral_code: user.referral_code, referrals });
+  } catch { res.status(500).json({ error: 'Erreur serveur' }); }
+});
+
+// ── PUSH NOTIFICATIONS ────────────────────────────────────────────────────────
+
+app.post('/api/push/subscribe', requireAuth, async (req, res) => {
+  const { endpoint, p256dh, auth } = req.body;
+  if (!endpoint || !p256dh || !auth) return res.status(400).json({ error: 'Données invalides' });
+  try {
+    await db.run(
+      'INSERT INTO push_subscriptions (user_id, endpoint, p256dh, auth) VALUES (?, ?, ?, ?) ON CONFLICT (user_id, endpoint) DO UPDATE SET p256dh = EXCLUDED.p256dh, auth = EXCLUDED.auth',
+      [req.session.userId, endpoint, p256dh, auth]
+    );
+    res.json({ success: true });
+  } catch { res.status(500).json({ error: 'Erreur serveur' }); }
+});
+
+app.post('/api/push/unsubscribe', requireAuth, async (req, res) => {
+  const { endpoint } = req.body;
+  try {
+    await db.run('DELETE FROM push_subscriptions WHERE user_id = ? AND endpoint = ?', [req.session.userId, endpoint]);
+    res.json({ success: true });
+  } catch { res.status(500).json({ error: 'Erreur serveur' }); }
 });
 
 // ── STATIC ROUTES ─────────────────────────────────────────────────────────────

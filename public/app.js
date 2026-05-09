@@ -137,7 +137,8 @@ function setupEventListeners() {
       btn.classList.add('active');
       
       document.querySelectorAll('.dashboard-view').forEach(v => v.classList.add('hidden'));
-      document.getElementById(view + '-view').classList.remove('hidden');
+      const viewEl = document.getElementById(view + '-view');
+      if (viewEl) viewEl.classList.remove('hidden');
 
       const overlay = document.getElementById('kyc-freeze-overlay');
       if (overlay) {
@@ -147,6 +148,9 @@ function setupEventListeners() {
           overlay.style.display = 'flex';
         }
       }
+
+      if (view === 'support') loadTickets();
+      if (view === 'referral') loadReferrals();
     });
   });
 
@@ -471,6 +475,16 @@ function showDashboard() {
   loadPublicTestimonials();
   initStarRating();
   startDepositPolling();
+  loadTickets();
+  loadReferrals();
+
+  // Afficher le widget chat pour les utilisateurs connectés
+  const widget = document.getElementById('chat-widget');
+  if (widget) widget.style.display = 'block';
+
+  // Listener ticket form
+  const tf = document.getElementById('ticket-form');
+  if (tf && !tf.dataset.bound) { tf.dataset.bound = '1'; tf.addEventListener('submit', submitTicket); }
 }
 
 async function loadUserData() {
@@ -993,4 +1007,287 @@ function showToast(message, type) {
   setTimeout(() => {
     toast.classList.add('hidden');
   }, 3000);
+}
+
+// ── PARRAINAGE ────────────────────────────────────────────────────────────────
+
+async function loadReferrals() {
+  try {
+    const r = await fetch('/api/referrals');
+    if (!r.ok) return;
+    const data = await r.json();
+    const code = data.referral_code || '';
+    const link = `${location.origin}/?ref=${code}`;
+    const inp = document.getElementById('referral-link-input');
+    const codeEl = document.getElementById('referral-code-display');
+    const countEl = document.getElementById('referral-count');
+    const listEl = document.getElementById('referral-list');
+    if (inp) inp.value = link;
+    if (codeEl) codeEl.textContent = code || '—';
+    const referrals = data.referrals || [];
+    if (countEl) countEl.textContent = `${referrals.length} filleul(s)`;
+    if (!listEl) return;
+    if (!referrals.length) {
+      listEl.innerHTML = '<p class="empty-state" style="padding:20px;">Aucun filleul pour le moment. Partagez votre lien !</p>';
+      return;
+    }
+    listEl.innerHTML = `<div style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;">
+      <thead><tr style="border-bottom:1px solid rgba(255,255,255,.06);">
+        <th style="text-align:left;padding:10px 20px;font-size:.75rem;color:#6b7280;font-weight:600;">Email</th>
+        <th style="text-align:left;padding:10px 20px;font-size:.75rem;color:#6b7280;font-weight:600;">Dépôt</th>
+        <th style="text-align:left;padding:10px 20px;font-size:.75rem;color:#6b7280;font-weight:600;">Date</th>
+      </tr></thead>
+      <tbody>${referrals.map(u => `<tr style="border-bottom:1px solid rgba(255,255,255,.04);">
+        <td style="padding:10px 20px;font-size:.83rem;color:#d1d5db;">${u.email.replace(/(.{2}).+(@.+)/, '$1***$2')}</td>
+        <td style="padding:10px 20px;font-size:.83rem;color:${u.deposit_amount > 0 ? '#34d399' : '#6b7280'};">${u.deposit_amount > 0 ? '$' + parseFloat(u.deposit_amount).toFixed(2) : '—'}</td>
+        <td style="padding:10px 20px;font-size:.8rem;color:#6b7280;">${new Date(u.created_at).toLocaleDateString('fr-FR')}</td>
+      </tr>`).join('')}</tbody>
+    </table></div>`;
+  } catch {}
+}
+
+function copyReferralLink() {
+  const inp = document.getElementById('referral-link-input');
+  if (!inp) return;
+  navigator.clipboard.writeText(inp.value).then(() => showToast('Lien copié !', 'success'));
+}
+
+// ── SUPPORT TICKETS ───────────────────────────────────────────────────────────
+
+async function loadTickets() {
+  try {
+    const r = await fetch('/api/tickets');
+    if (!r.ok) return;
+    const tickets = await r.json();
+    const listEl = document.getElementById('tickets-list');
+    if (!listEl) return;
+
+    // Badge notification — tickets avec réponse admin non lus
+    const unanswered = tickets.filter(t => t.status === 'answered').length;
+    const badge = document.getElementById('support-badge');
+    if (badge) {
+      badge.textContent = unanswered;
+      badge.style.display = unanswered > 0 ? 'inline' : 'none';
+    }
+
+    if (!tickets.length) {
+      listEl.innerHTML = '<p class="empty-state" style="padding:20px;">Aucun ticket pour le moment.</p>';
+      return;
+    }
+    listEl.innerHTML = tickets.map(t => {
+      const statusColor = t.status === 'answered' ? '#34d399' : t.status === 'closed' ? '#6b7280' : '#fbbf24';
+      const statusLabel = { open: 'Ouvert', answered: 'Répondu', closed: 'Fermé' }[t.status] || t.status;
+      const replies = (t.replies || []).map(rep => `
+        <div style="display:flex;flex-direction:column;align-items:${rep.sender === 'admin' ? 'flex-start' : 'flex-end'};margin-top:8px;">
+          <div style="max-width:80%;background:${rep.sender === 'admin' ? 'rgba(167,139,250,.1)' : 'rgba(52,211,153,.08)'};border:1px solid ${rep.sender === 'admin' ? 'rgba(167,139,250,.15)' : 'rgba(52,211,153,.15)'};border-radius:${rep.sender === 'admin' ? '10px 10px 10px 2px' : '10px 10px 2px 10px'};padding:8px 12px;font-size:.8rem;color:#d1d5db;line-height:1.5;">
+            <span style="font-size:.7rem;font-weight:600;color:${rep.sender === 'admin' ? '#a78bfa' : '#34d399'};display:block;margin-bottom:3px;">${rep.sender === 'admin' ? '🎧 Support' : '👤 Vous'}</span>
+            ${rep.message}
+          </div>
+          <span style="font-size:.67rem;color:#6b7280;margin-top:3px;">${new Date(rep.created_at).toLocaleString('fr-FR',{hour:'2-digit',minute:'2-digit',day:'2-digit',month:'2-digit'})}</span>
+        </div>`).join('');
+
+      return `<div style="padding:18px 20px;border-bottom:1px solid rgba(255,255,255,.05);">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:10px;">
+          <div>
+            <div style="font-size:.88rem;font-weight:600;color:#f0f0fa;margin-bottom:4px;">${t.subject}</div>
+            <div style="font-size:.78rem;color:#6b7280;">${new Date(t.created_at).toLocaleDateString('fr-FR')}</div>
+          </div>
+          <span style="font-size:.7rem;font-weight:700;padding:3px 9px;border-radius:10px;background:rgba(255,255,255,.05);color:${statusColor};white-space:nowrap;">${statusLabel}</span>
+        </div>
+        <div style="font-size:.82rem;color:#9ca3af;line-height:1.6;margin-bottom:${t.replies && t.replies.length ? '10px' : '0'};">${t.message}</div>
+        ${replies}
+        ${t.status !== 'closed' ? `
+        <div style="display:flex;gap:8px;margin-top:12px;">
+          <textarea id="reply-${t.id}" placeholder="Votre réponse…" rows="2" style="flex:1;background:#16162a;border:1px solid rgba(255,255,255,.08);border-radius:8px;padding:8px 12px;color:#f0f0fa;font-family:inherit;font-size:.8rem;resize:vertical;outline:none;"></textarea>
+          <button onclick="replyTicket(${t.id})" style="background:linear-gradient(135deg,#7c3aed,#a78bfa);border:none;border-radius:8px;color:#fff;padding:0 14px;cursor:pointer;font-size:.8rem;font-weight:600;white-space:nowrap;">Envoyer</button>
+        </div>` : ''}
+      </div>`;
+    }).join('');
+  } catch {}
+}
+
+async function submitTicket(e) {
+  e.preventDefault();
+  const subject = document.getElementById('ticket-subject').value.trim();
+  const message = document.getElementById('ticket-message').value.trim();
+  const btn = document.getElementById('ticket-submit-btn');
+  const errEl = document.getElementById('ticket-error');
+  const okEl = document.getElementById('ticket-success');
+  errEl.textContent = ''; okEl.textContent = '';
+  if (!subject || !message) { errEl.textContent = 'Veuillez remplir tous les champs.'; return; }
+  btn.disabled = true; btn.textContent = 'Envoi…';
+  try {
+    const r = await fetch('/api/tickets', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ subject, message })
+    });
+    const j = await r.json();
+    if (r.ok) {
+      okEl.textContent = '✓ Ticket envoyé ! Notre équipe vous répondra sous 24h.';
+      document.getElementById('ticket-subject').value = '';
+      document.getElementById('ticket-message').value = '';
+      await loadTickets();
+    } else { errEl.textContent = j.error || 'Erreur'; }
+  } catch { errEl.textContent = 'Erreur réseau'; }
+  finally { btn.disabled = false; btn.textContent = 'Envoyer le ticket'; }
+}
+
+async function replyTicket(ticketId) {
+  const ta = document.getElementById(`reply-${ticketId}`);
+  if (!ta || !ta.value.trim()) return;
+  try {
+    const r = await fetch(`/api/tickets/${ticketId}/reply`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ message: ta.value.trim() })
+    });
+    if (r.ok) { await loadTickets(); showToast('Réponse envoyée', 'success'); }
+    else { showToast('Erreur lors de l\'envoi', 'error'); }
+  } catch { showToast('Erreur réseau', 'error'); }
+}
+
+// ── CHAT WIDGET ───────────────────────────────────────────────────────────────
+
+let chatOpen = false;
+let chatSubject = 'Chat rapide';
+
+function toggleChat() {
+  chatOpen = !chatOpen;
+  const panel = document.getElementById('chat-panel');
+  const iconOpen = document.getElementById('chat-icon-open');
+  const iconClose = document.getElementById('chat-icon-close');
+  const dot = document.getElementById('chat-notif-dot');
+  panel.style.display = chatOpen ? 'flex' : 'none';
+  iconOpen.style.display = chatOpen ? 'none' : 'block';
+  iconClose.style.display = chatOpen ? 'block' : 'none';
+  if (chatOpen && dot) dot.style.display = 'none';
+}
+
+async function sendChatMessage() {
+  const input = document.getElementById('chat-input');
+  const msg = input ? input.value.trim() : '';
+  if (!msg) return;
+
+  const messagesEl = document.getElementById('chat-messages');
+  messagesEl.innerHTML += `
+    <div style="display:flex;justify-content:flex-end;">
+      <div style="max-width:80%;background:rgba(124,58,237,.3);border:1px solid rgba(167,139,250,.2);border-radius:10px 10px 2px 10px;padding:8px 12px;font-size:.82rem;color:#e9d5ff;line-height:1.5;">${msg}</div>
+    </div>`;
+  input.value = '';
+  messagesEl.scrollTop = messagesEl.scrollHeight;
+
+  try {
+    const r = await fetch('/api/tickets', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ subject: chatSubject, message: msg })
+    });
+    if (r.ok) {
+      messagesEl.innerHTML += `
+        <div style="background:rgba(167,139,250,.1);border:1px solid rgba(167,139,250,.15);border-radius:10px 10px 10px 2px;padding:10px 14px;font-size:.82rem;color:#d1d5db;line-height:1.5;">
+          ✓ Message reçu ! Notre équipe vous répondra sous 24h. Consultez l'onglet <strong>Support</strong> pour suivre votre demande.
+        </div>`;
+      messagesEl.scrollTop = messagesEl.scrollHeight;
+    } else {
+      const j = await r.json();
+      if (j.error && j.error.includes('connecté')) {
+        document.getElementById('chat-login-prompt').style.display = 'block';
+        document.getElementById('chat-input-area').style.display = 'none';
+        messagesEl.innerHTML += `<div style="text-align:center;font-size:.8rem;color:#f87171;padding:8px;">Veuillez vous connecter pour envoyer un message.</div>`;
+      }
+    }
+  } catch {
+    messagesEl.innerHTML += `<div style="text-align:center;font-size:.8rem;color:#f87171;padding:8px;">Erreur réseau. Réessayez.</div>`;
+  }
+  messagesEl.scrollTop = messagesEl.scrollHeight;
+}
+
+// ── PUSH NOTIFICATIONS ────────────────────────────────────────────────────────
+
+async function requestPushPermission() {
+  if (!('serviceWorker' in navigator) || !('PushManager' in window)) return;
+  try {
+    const permission = await Notification.requestPermission();
+    if (permission !== 'granted') return;
+    const reg = await navigator.serviceWorker.ready;
+    const sub = await reg.pushManager.subscribe({
+      userVisibleOnly: true,
+      applicationServerKey: urlBase64ToUint8Array('BEl62iUYgUivxIkv69yViEuiBIa-Ib9-SkvMeAtA3LFgDzkrxZJjSgSnfckjZAQ4cOHHsO0KbRoXBzElvXXXXXX')
+    });
+    const { endpoint, keys } = sub.toJSON ? sub.toJSON() : { endpoint: sub.endpoint, keys: {} };
+    await fetch('/api/push/subscribe', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ endpoint, p256dh: keys.p256dh, auth: keys.auth })
+    });
+    showToast('Notifications activées !', 'success');
+    updatePushButton(true);
+  } catch {}
+}
+
+function updatePushButton(active) {
+  const btn = document.getElementById('push-toggle-btn');
+  if (!btn) return;
+  btn.textContent = active ? '🔔 Notifications activées' : '🔕 Activer les notifications';
+  btn.style.opacity = active ? '0.6' : '1';
+  btn.disabled = active;
+}
+
+function urlBase64ToUint8Array(base64String) {
+  const padding = '='.repeat((4 - base64String.length % 4) % 4);
+  const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+  const rawData = window.atob(base64);
+  const output = new Uint8Array(rawData.length);
+  for (let i = 0; i < rawData.length; ++i) output[i] = rawData.charCodeAt(i);
+  return output;
+}
+
+// ── PAGES LÉGALES ─────────────────────────────────────────────────────────────
+
+function showLegal(type) {
+  const content = {
+    cgu: `<h2 style="font-size:1.4rem;font-weight:700;margin-bottom:6px;">Conditions Générales d'Utilisation</h2>
+<p style="font-size:.78rem;color:#6b7280;margin-bottom:24px;">Dernière mise à jour : 1er mai 2026</p>
+<h3 style="font-size:1rem;font-weight:600;margin:20px 0 8px;">1. Objet</h3>
+<p style="font-size:.88rem;color:#d1d5db;line-height:1.8;margin-bottom:16px;">QuestInvest est une plateforme de gains passifs permettant aux utilisateurs de déposer des fonds et de compléter des quêtes pour obtenir des récompenses. L'utilisation du service implique l'acceptation pleine et entière des présentes CGU.</p>
+<h3 style="font-size:1rem;font-weight:600;margin:20px 0 8px;">2. Inscription et compte</h3>
+<p style="font-size:.88rem;color:#d1d5db;line-height:1.8;margin-bottom:16px;">Toute inscription requiert une adresse email valide. L'utilisateur est seul responsable de la confidentialité de ses identifiants. Un seul compte par personne est autorisé.</p>
+<h3 style="font-size:1rem;font-weight:600;margin:20px 0 8px;">3. Dépôts et récompenses</h3>
+<p style="font-size:.88rem;color:#d1d5db;line-height:1.8;margin-bottom:16px;">Le dépôt minimum est de 55 USD en USDT (réseau TRC20). Les récompenses sont créditées après validation administrative. QuestInvest ne garantit pas de rendement fixe et les gains peuvent varier.</p>
+<h3 style="font-size:1rem;font-weight:600;margin:20px 0 8px;">4. Quêtes</h3>
+<p style="font-size:.88rem;color:#d1d5db;line-height:1.8;margin-bottom:16px;">Les quêtes s'effectuent sur des cycles de 14 jours. Une fois le cycle expiré, les quêtes non complétées sont perdues. Les récompenses sont calculées sur la base du dépôt actif.</p>
+<h3 style="font-size:1rem;font-weight:600;margin:20px 0 8px;">5. Retraits</h3>
+<p style="font-size:.88rem;color:#d1d5db;line-height:1.8;margin-bottom:16px;">Un seul retrait est autorisé par cycle de 14 jours par compte. Les retraits sont traités sous 48h ouvrées après validation KYC.</p>
+<h3 style="font-size:1rem;font-weight:600;margin:20px 0 8px;">6. Responsabilités</h3>
+<p style="font-size:.88rem;color:#d1d5db;line-height:1.8;margin-bottom:16px;">QuestInvest ne pourra être tenu responsable des pertes liées aux fluctuations des cryptomonnaies, à une interruption de service ou à une utilisation frauduleuse du compte.</p>
+<h3 style="font-size:1rem;font-weight:600;margin:20px 0 8px;">7. Résiliation</h3>
+<p style="font-size:.88rem;color:#d1d5db;line-height:1.8;margin-bottom:16px;">QuestInvest se réserve le droit de suspendre ou de clôturer tout compte en cas de violation des présentes CGU, de fraude avérée ou d'activité suspecte.</p>
+<h3 style="font-size:1rem;font-weight:600;margin:20px 0 8px;">8. Contact</h3>
+<p style="font-size:.88rem;color:#d1d5db;line-height:1.8;">Pour toute question juridique : support@questinvest.com</p>`,
+
+    privacy: `<h2 style="font-size:1.4rem;font-weight:700;margin-bottom:6px;">Politique de Confidentialité</h2>
+<p style="font-size:.78rem;color:#6b7280;margin-bottom:24px;">Dernière mise à jour : 1er mai 2026</p>
+<h3 style="font-size:1rem;font-weight:600;margin:20px 0 8px;">1. Données collectées</h3>
+<p style="font-size:.88rem;color:#d1d5db;line-height:1.8;margin-bottom:16px;">Nous collectons : adresse email, prénom, nom, données de transactions, documents KYC (pièce d'identité recto/verso), adresses IP de connexion et données de navigation anonymisées.</p>
+<h3 style="font-size:1rem;font-weight:600;margin:20px 0 8px;">2. Utilisation des données</h3>
+<p style="font-size:.88rem;color:#d1d5db;line-height:1.8;margin-bottom:16px;">Vos données sont utilisées pour : gérer votre compte, traiter vos transactions, vérifier votre identité (KYC), vous envoyer des communications liées au service et prévenir la fraude.</p>
+<h3 style="font-size:1rem;font-weight:600;margin:20px 0 8px;">3. Conservation des données</h3>
+<p style="font-size:.88rem;color:#d1d5db;line-height:1.8;margin-bottom:16px;">Les données sont conservées pendant la durée d'utilisation du compte, plus 5 ans pour des raisons légales et comptables. Les documents KYC sont conservés 3 ans après la clôture du compte.</p>
+<h3 style="font-size:1rem;font-weight:600;margin:20px 0 8px;">4. Partage des données</h3>
+<p style="font-size:.88rem;color:#d1d5db;line-height:1.8;margin-bottom:16px;">Vos données ne sont jamais vendues. Elles peuvent être partagées avec des prestataires techniques (hébergement sécurisé en Europe) et les autorités compétentes en cas d'obligation légale.</p>
+<h3 style="font-size:1rem;font-weight:600;margin:20px 0 8px;">5. Vos droits</h3>
+<p style="font-size:.88rem;color:#d1d5db;line-height:1.8;margin-bottom:16px;">Conformément au RGPD, vous disposez d'un droit d'accès, de rectification, de suppression, de portabilité et d'opposition. Exercez vos droits en contactant : privacy@questinvest.com</p>
+<h3 style="font-size:1rem;font-weight:600;margin:20px 0 8px;">6. Cookies</h3>
+<p style="font-size:.88rem;color:#d1d5db;line-height:1.8;margin-bottom:16px;">Nous utilisons des cookies de session essentiels au fonctionnement du service. Aucun cookie publicitaire n'est utilisé.</p>
+<h3 style="font-size:1rem;font-weight:600;margin:20px 0 8px;">7. Sécurité</h3>
+<p style="font-size:.88rem;color:#d1d5db;line-height:1.8;">Vos données sont chiffrées en transit (HTTPS/TLS) et au repos. Les mots de passe sont hashés (bcrypt). Un accès 2FA est disponible pour renforcer la sécurité de votre compte.</p>`
+  };
+
+  const modal = document.getElementById('legal-modal');
+  const contentEl = document.getElementById('legal-content');
+  if (!modal || !contentEl) return;
+  contentEl.innerHTML = content[type] || '';
+  modal.style.display = 'flex';
+}
+
+function closeLegal() {
+  const modal = document.getElementById('legal-modal');
+  if (modal) modal.style.display = 'none';
 }
