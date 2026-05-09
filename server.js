@@ -417,7 +417,7 @@ async function initDB() {
     `ALTER TABLE users ADD COLUMN IF NOT EXISTS first_name TEXT DEFAULT ''`,
     `ALTER TABLE users ADD COLUMN IF NOT EXISTS last_name TEXT DEFAULT ''`,
     `ALTER TABLE users ADD COLUMN IF NOT EXISTS is_banned INTEGER DEFAULT 0`,
-    `ALTER TABLE users ADD COLUMN IF NOT EXISTS last_login DATETIME`,
+    `ALTER TABLE users ADD COLUMN IF NOT EXISTS last_login TIMESTAMP`,
   ];
   for (const m of migrations) {
     try { await db.exec(m); } catch (_) {}

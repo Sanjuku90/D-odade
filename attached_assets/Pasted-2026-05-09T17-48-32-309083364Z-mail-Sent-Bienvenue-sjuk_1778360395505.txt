@@ -1,0 +1,150 @@
+2026-05-09T17:48:32.309083364Z [mail] Sent "Bienvenue 🎊" → sjuku19@gmail.com
+2026-05-09T17:53:28.153709647Z [ping] ✓ self-ping OK → https://questquest-urjv.onrender.com/health
+2026-05-09T18:02:28.152319975Z [ping] ✓ self-ping OK → https://questquest-urjv.onrender.com/health
+2026-05-09T18:11:28.152313759Z [ping] ✓ self-ping OK → https://questquest-urjv.onrender.com/health
+2026-05-09T18:20:28.165616039Z [ping] ✓ self-ping OK → https://questquest-urjv.onrender.com/health
+2026-05-09T18:29:28.169118055Z [ping] ✓ self-ping OK → https://questquest-urjv.onrender.com/health
+2026-05-09T18:38:28.162216727Z [ping] ✓ self-ping OK → https://questquest-urjv.onrender.com/health
+2026-05-09T18:47:28.169597014Z [ping] ✓ self-ping OK → https://questquest-urjv.onrender.com/health
+2026-05-09T18:56:28.179149223Z [ping] ✓ self-ping OK → https://questquest-urjv.onrender.com/health
+2026-05-09T19:05:28.193407703Z [ping] ✓ self-ping OK → https://questquest-urjv.onrender.com/health
+2026-05-09T19:14:28.186633218Z [ping] ✓ self-ping OK → https://questquest-urjv.onrender.com/health
+2026-05-09T19:23:28.182722049Z [ping] ✓ self-ping OK → https://questquest-urjv.onrender.com/health
+2026-05-09T19:32:28.190993433Z [ping] ✓ self-ping OK → https://questquest-urjv.onrender.com/health
+2026-05-09T19:41:28.197888208Z [ping] ✓ self-ping OK → https://questquest-urjv.onrender.com/health
+2026-05-09T19:50:28.202923353Z [ping] ✓ self-ping OK → https://questquest-urjv.onrender.com/health
+2026-05-09T19:59:28.20737748Z [ping] ✓ self-ping OK → https://questquest-urjv.onrender.com/health
+2026-05-09T20:08:28.207069644Z [ping] ✓ self-ping OK → https://questquest-urjv.onrender.com/health
+2026-05-09T20:17:28.224166529Z [ping] ✓ self-ping OK → https://questquest-urjv.onrender.com/health
+2026-05-09T20:26:28.213598361Z [ping] ✓ self-ping OK → https://questquest-urjv.onrender.com/health
+2026-05-09T20:35:28.23749377Z [ping] ✓ self-ping OK → https://questquest-urjv.onrender.com/health
+2026-05-09T20:44:28.228684344Z [ping] ✓ self-ping OK → https://questquest-urjv.onrender.com/health
+2026-05-09T20:53:28.226619323Z [ping] ✓ self-ping OK → https://questquest-urjv.onrender.com/health
+2026-05-09T20:56:43.665026438Z Login error: LibsqlError: SQLITE_UNKNOWN: SQLite error: no such column: last_login
+2026-05-09T20:56:43.665054579Z     at mapHranaError (/opt/render/project/src/node_modules/@libsql/client/lib-cjs/hrana.js:298:16)
+2026-05-09T20:56:43.665061879Z     at /opt/render/project/src/node_modules/@libsql/client/lib-cjs/http.js:110:52
+2026-05-09T20:56:43.665067059Z     at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+2026-05-09T20:56:43.665072249Z     at async Object.run (/opt/render/project/src/db.js:51:22)
+2026-05-09T20:56:43.665076919Z     at async /opt/render/project/src/server.js:568:5 {
+2026-05-09T20:56:43.665081729Z   code: 'SQLITE_UNKNOWN',
+2026-05-09T20:56:43.66508649Z   rawCode: undefined,
+2026-05-09T20:56:43.66509187Z   [cause]: [ResponseError: SQLite error: no such column: last_login] {
+2026-05-09T20:56:43.66509636Z     code: 'SQLITE_UNKNOWN',
+2026-05-09T20:56:43.66510064Z     proto: {
+2026-05-09T20:56:43.66510575Z       message: 'SQLite error: no such column: last_login',
+2026-05-09T20:56:43.66511032Z       code: 'SQLITE_UNKNOWN'
+2026-05-09T20:56:43.66511492Z     }
+2026-05-09T20:56:43.66511926Z   }
+2026-05-09T20:56:43.66512377Z }
+2026-05-09T20:56:53.647422732Z Login error: LibsqlError: SQLITE_UNKNOWN: SQLite error: no such column: last_login
+2026-05-09T20:56:53.647446743Z     at mapHranaError (/opt/render/project/src/node_modules/@libsql/client/lib-cjs/hrana.js:298:16)
+2026-05-09T20:56:53.647451563Z     at /opt/render/project/src/node_modules/@libsql/client/lib-cjs/http.js:110:52
+2026-05-09T20:56:53.647455613Z     at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+2026-05-09T20:56:53.647461123Z     at async Object.run (/opt/render/project/src/db.js:51:22)
+2026-05-09T20:56:53.647465193Z     at async /opt/render/project/src/server.js:568:5 {
+2026-05-09T20:56:53.647470333Z   code: 'SQLITE_UNKNOWN',
+2026-05-09T20:56:53.647475164Z   rawCode: undefined,
+2026-05-09T20:56:53.647480364Z   [cause]: [ResponseError: SQLite error: no such column: last_login] {
+2026-05-09T20:56:53.647484344Z     code: 'SQLITE_UNKNOWN',
+2026-05-09T20:56:53.647488284Z     proto: {
+2026-05-09T20:56:53.647492274Z       message: 'SQLite error: no such column: last_login',
+2026-05-09T20:56:53.647496214Z       code: 'SQLITE_UNKNOWN'
+2026-05-09T20:56:53.647500134Z     }
+2026-05-09T20:56:53.647504174Z   }
+2026-05-09T20:56:53.647508144Z }
+2026-05-09T20:56:55.544358895Z Login error: LibsqlError: SQLITE_UNKNOWN: SQLite error: no such column: last_login
+2026-05-09T20:56:55.544381696Z     at mapHranaError (/opt/render/project/src/node_modules/@libsql/client/lib-cjs/hrana.js:298:16)
+2026-05-09T20:56:55.544387236Z     at /opt/render/project/src/node_modules/@libsql/client/lib-cjs/http.js:110:52
+2026-05-09T20:56:55.544391956Z     at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+2026-05-09T20:56:55.544397826Z     at async Object.run (/opt/render/project/src/db.js:51:22)
+2026-05-09T20:56:55.544402627Z     at async /opt/render/project/src/server.js:568:5 {
+2026-05-09T20:56:55.544408007Z   code: 'SQLITE_UNKNOWN',
+2026-05-09T20:56:55.544413447Z   rawCode: undefined,
+2026-05-09T20:56:55.544418787Z   [cause]: [ResponseError: SQLite error: no such column: last_login] {
+2026-05-09T20:56:55.544432527Z     code: 'SQLITE_UNKNOWN',
+2026-05-09T20:56:55.544435587Z     proto: {
+2026-05-09T20:56:55.544438807Z       message: 'SQLite error: no such column: last_login',
+2026-05-09T20:56:55.544441837Z       code: 'SQLITE_UNKNOWN'
+2026-05-09T20:56:55.544445268Z     }
+2026-05-09T20:56:55.544448508Z   }
+2026-05-09T20:56:55.544451818Z }
+2026-05-09T20:56:56.691183219Z Login error: LibsqlError: SQLITE_UNKNOWN: SQLite error: no such column: last_login
+2026-05-09T20:56:56.691204539Z     at mapHranaError (/opt/render/project/src/node_modules/@libsql/client/lib-cjs/hrana.js:298:16)
+2026-05-09T20:56:56.691207979Z     at /opt/render/project/src/node_modules/@libsql/client/lib-cjs/http.js:110:52
+2026-05-09T20:56:56.691210899Z     at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+2026-05-09T20:56:56.691214529Z     at async Object.run (/opt/render/project/src/db.js:51:22)
+2026-05-09T20:56:56.6912174Z     at async /opt/render/project/src/server.js:568:5 {
+2026-05-09T20:56:56.6912208Z   code: 'SQLITE_UNKNOWN',
+2026-05-09T20:56:56.69122417Z   rawCode: undefined,
+2026-05-09T20:56:56.69122763Z   [cause]: [ResponseError: SQLite error: no such column: last_login] {
+2026-05-09T20:56:56.69123031Z     code: 'SQLITE_UNKNOWN',
+2026-05-09T20:56:56.69123306Z     proto: {
+2026-05-09T20:56:56.69123585Z       message: 'SQLite error: no such column: last_login',
+2026-05-09T20:56:56.69123872Z       code: 'SQLITE_UNKNOWN'
+2026-05-09T20:56:56.69124148Z     }
+2026-05-09T20:56:56.69124408Z   }
+2026-05-09T20:56:56.69124684Z }
+2026-05-09T20:56:57.04707902Z Login error: LibsqlError: SQLITE_UNKNOWN: SQLite error: no such column: last_login
+2026-05-09T20:56:57.047098411Z     at mapHranaError (/opt/render/project/src/node_modules/@libsql/client/lib-cjs/hrana.js:298:16)
+2026-05-09T20:56:57.0471018Z     at /opt/render/project/src/node_modules/@libsql/client/lib-cjs/http.js:110:52
+2026-05-09T20:56:57.047116971Z     at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+2026-05-09T20:56:57.047121151Z     at async Object.run (/opt/render/project/src/db.js:51:22)
+2026-05-09T20:56:57.047123861Z     at async /opt/render/project/src/server.js:568:5 {
+2026-05-09T20:56:57.047126831Z   code: 'SQLITE_UNKNOWN',
+2026-05-09T20:56:57.047129951Z   rawCode: undefined,
+2026-05-09T20:56:57.047133191Z   [cause]: [ResponseError: SQLite error: no such column: last_login] {
+2026-05-09T20:56:57.047135972Z     code: 'SQLITE_UNKNOWN',
+2026-05-09T20:56:57.047138601Z     proto: {
+2026-05-09T20:56:57.047141382Z       message: 'SQLite error: no such column: last_login',
+2026-05-09T20:56:57.047144142Z       code: 'SQLITE_UNKNOWN'
+2026-05-09T20:56:57.047146822Z     }
+2026-05-09T20:56:57.047149602Z   }
+2026-05-09T20:56:57.047152482Z }
+2026-05-09T20:57:14.353705119Z Login error: LibsqlError: SQLITE_UNKNOWN: SQLite error: no such column: last_login
+2026-05-09T20:57:14.35373241Z     at mapHranaError (/opt/render/project/src/node_modules/@libsql/client/lib-cjs/hrana.js:298:16)
+2026-05-09T20:57:14.35374017Z     at /opt/render/project/src/node_modules/@libsql/client/lib-cjs/http.js:110:52
+2026-05-09T20:57:14.35374693Z     at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+2026-05-09T20:57:14.35375183Z     at async Object.run (/opt/render/project/src/db.js:51:22)
+2026-05-09T20:57:14.3537557Z     at async /opt/render/project/src/server.js:568:5 {
+2026-05-09T20:57:14.35376008Z   code: 'SQLITE_UNKNOWN',
+2026-05-09T20:57:14.353766821Z   rawCode: undefined,
+2026-05-09T20:57:14.353771281Z   [cause]: [ResponseError: SQLite error: no such column: last_login] {
+2026-05-09T20:57:14.353784251Z     code: 'SQLITE_UNKNOWN',
+2026-05-09T20:57:14.353786941Z     proto: {
+2026-05-09T20:57:14.353789601Z       message: 'SQLite error: no such column: last_login',
+2026-05-09T20:57:14.353792091Z       code: 'SQLITE_UNKNOWN'
+2026-05-09T20:57:14.353794561Z     }
+2026-05-09T20:57:14.353797101Z   }
+2026-05-09T20:57:14.353799602Z }
+2026-05-09T20:57:16.644691353Z Login error: LibsqlError: SQLITE_UNKNOWN: SQLite error: no such column: last_login
+2026-05-09T20:57:16.644714853Z     at mapHranaError (/opt/render/project/src/node_modules/@libsql/client/lib-cjs/hrana.js:298:16)
+2026-05-09T20:57:16.644719113Z     at /opt/render/project/src/node_modules/@libsql/client/lib-cjs/http.js:110:52
+2026-05-09T20:57:16.644722764Z     at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+2026-05-09T20:57:16.644727314Z     at async Object.run (/opt/render/project/src/db.js:51:22)
+2026-05-09T20:57:16.644730994Z     at async /opt/render/project/src/server.js:568:5 {
+2026-05-09T20:57:16.644735374Z   code: 'SQLITE_UNKNOWN',
+2026-05-09T20:57:16.644739554Z   rawCode: undefined,
+2026-05-09T20:57:16.644743864Z   [cause]: [ResponseError: SQLite error: no such column: last_login] {
+2026-05-09T20:57:16.644747484Z     code: 'SQLITE_UNKNOWN',
+2026-05-09T20:57:16.644750874Z     proto: {
+2026-05-09T20:57:16.644757505Z       message: 'SQLite error: no such column: last_login',
+2026-05-09T20:57:16.644761055Z       code: 'SQLITE_UNKNOWN'
+2026-05-09T20:57:16.644764575Z     }
+2026-05-09T20:57:16.644768235Z   }
+2026-05-09T20:57:16.644771735Z }
+2026-05-09T20:57:37.350379376Z Login error: LibsqlError: SQLITE_UNKNOWN: SQLite error: no such column: last_login
+2026-05-09T20:57:37.350417857Z     at mapHranaError (/opt/render/project/src/node_modules/@libsql/client/lib-cjs/hrana.js:298:16)
+2026-05-09T20:57:37.350424387Z     at /opt/render/project/src/node_modules/@libsql/client/lib-cjs/http.js:110:52
+2026-05-09T20:57:37.350430907Z     at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+2026-05-09T20:57:37.350436847Z     at async Object.run (/opt/render/project/src/db.js:51:22)
+2026-05-09T20:57:37.350442307Z     at async /opt/render/project/src/server.js:568:5 {
+2026-05-09T20:57:37.350448557Z   code: 'SQLITE_UNKNOWN',
+2026-05-09T20:57:37.350454368Z   rawCode: undefined,
+2026-05-09T20:57:37.350460438Z   [cause]: [ResponseError: SQLite error: no such column: last_login] {
+2026-05-09T20:57:37.350466078Z     code: 'SQLITE_UNKNOWN',
+2026-05-09T20:57:37.350471528Z     proto: {
+2026-05-09T20:57:37.350477388Z       message: 'SQLite error: no such column: last_login',
+2026-05-09T20:57:37.350483148Z       code: 'SQLITE_UNKNOWN'
+2026-05-09T20:57:37.350489198Z     }
+2026-05-09T20:57:37.350494949Z   }
+2026-05-09T20:57:37.350500629Z }
