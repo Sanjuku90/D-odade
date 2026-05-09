@@ -1168,6 +1168,45 @@ app.post('/api/admin/withdrawals/:id/reject', requireAdmin, async (req, res) => 
   }
 });
 
+// ── ADMIN MESSAGERIE ──────────────────────────────────────────────────────────
+
+app.post('/api/admin/send-message', requireAdmin, async (req, res) => {
+  const { to, subject, message } = req.body;
+  if (!subject || !subject.trim()) return res.status(400).json({ error: 'Sujet requis' });
+  if (!message || !message.trim()) return res.status(400).json({ error: 'Message requis' });
+
+  const msgHtml = message.trim()
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/\n/g, '<br>');
+
+  const bodyHtml = `
+    <p style="font-size:1rem;color:#e2e8f0;line-height:1.7;">${msgHtml}</p>
+    <hr style="border:none;border-top:1px solid #374151;margin:24px 0;">
+    <p style="font-size:.8rem;color:#6b7280;">Ce message a été envoyé par l'équipe QuestInvest.</p>`;
+
+  try {
+    if (to === 'all') {
+      const users = await db.all('SELECT email FROM users');
+      let sent = 0, failed = 0;
+      for (const u of users) {
+        const r = await sendEmail(u.email, subject.trim(), bodyHtml, subject.trim());
+        r.success ? sent++ : failed++;
+      }
+      return res.json({ success: true, sent, failed, total: users.length });
+    } else {
+      const user = await db.get('SELECT email FROM users WHERE email = ?', [to]);
+      if (!user) return res.status(404).json({ error: 'Utilisateur introuvable' });
+      const r = await sendEmail(user.email, subject.trim(), bodyHtml, subject.trim());
+      if (!r.success) return res.status(500).json({ error: r.error || 'Envoi échoué' });
+      return res.json({ success: true, sent: 1 });
+    }
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 // ── ADMIN KYC ─────────────────────────────────────────────────────────────────
 
 app.get('/api/admin/kyc', requireAdmin, async (req, res) => {
