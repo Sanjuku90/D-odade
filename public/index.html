@@ -38,7 +38,7 @@
   <style>
     #splash-screen {
       position: fixed;
-      inset: 0;
+      top: 0; right: 0; bottom: 0; left: 0;
       background: #050509;
       display: flex;
       flex-direction: column;
@@ -107,7 +107,7 @@
   </div>
 
   <!-- MAINTENANCE OVERLAY -->
-  <div id="maintenance-overlay" style="display:none;position:fixed;inset:0;z-index:99999;background:#050509;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:32px;">
+  <div id="maintenance-overlay" style="display:none;position:fixed;top:0;right:0;bottom:0;left:0;z-index:99999;background:#050509;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:32px;">
     <div style="font-size:3.5rem;margin-bottom:20px;">🔧</div>
     <h1 style="font-size:1.6rem;font-weight:800;color:#f5f5fa;margin-bottom:12px;">Site en maintenance</h1>
     <p style="color:#6b7280;font-size:.95rem;max-width:420px;line-height:1.7;margin-bottom:28px;">Nous effectuons une mise à jour. La plateforme sera de nouveau disponible très prochainement. Merci de votre patience.</p>
@@ -833,7 +833,7 @@
         <main class="dashboard-main">
 
           <!-- ========== OVERLAY GEL KYC ========== -->
-          <div id="kyc-freeze-overlay" class="hidden" style="position:absolute;inset:0;z-index:100;background:rgba(8,10,18,0.82);backdrop-filter:blur(6px);display:flex;align-items:center;justify-content:center;border-radius:0 16px 16px 0;">
+          <div id="kyc-freeze-overlay" class="hidden" style="position:absolute;top:0;right:0;bottom:0;left:0;z-index:100;background:rgba(8,10,18,0.82);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);display:flex;align-items:center;justify-content:center;border-radius:0 16px 16px 0;">
             <div style="text-align:center;max-width:440px;padding:40px 32px;background:rgba(15,17,30,0.97);border:1px solid rgba(251,191,36,0.25);border-radius:20px;box-shadow:0 24px 64px rgba(0,0,0,0.6);">
               <div style="font-size:3rem;margin-bottom:16px;">🔒</div>
               <h2 style="font-size:1.35rem;font-weight:700;color:#f5f5fa;margin-bottom:10px;">Compte temporairement gelé</h2>
@@ -1320,7 +1320,7 @@
   </div>
 
   <!-- iOS Install Instructions Sheet -->
-  <div id="ios-install-sheet" style="display:none;position:fixed;inset:0;z-index:9995;align-items:flex-end;background:rgba(0,0,0,0.6);backdrop-filter:blur(6px);">
+  <div id="ios-install-sheet" style="display:none;position:fixed;top:0;right:0;bottom:0;left:0;z-index:9995;align-items:flex-end;background:rgba(0,0,0,0.6);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);">
     <div style="width:100%;background:#16162a;border-radius:20px 20px 0 0;border-top:1px solid rgba(167,139,250,0.2);padding:0 0 calc(24px + env(safe-area-inset-bottom,0px));box-shadow:0 -20px 60px rgba(0,0,0,0.7);">
       <!-- Handle bar -->
       <div style="display:flex;justify-content:center;padding:12px 0 4px;">
@@ -1376,7 +1376,7 @@
   </div>
 
   <!-- Pages légales (footer) -->
-  <div id="legal-modal" style="display:none;position:fixed;inset:0;z-index:9500;background:rgba(0,0,0,.75);backdrop-filter:blur(4px);align-items:center;justify-content:center;padding:20px;">
+  <div id="legal-modal" style="display:none;position:fixed;top:0;right:0;bottom:0;left:0;z-index:9500;background:rgba(0,0,0,.75);-webkit-backdrop-filter:blur(4px);backdrop-filter:blur(4px);align-items:center;justify-content:center;padding:20px;">
     <div style="background:#12122a;border:1px solid rgba(167,139,250,.2);border-radius:16px;max-width:680px;width:100%;max-height:80vh;overflow-y:auto;padding:32px 36px;position:relative;">
       <button onclick="closeLegal()" style="position:absolute;top:16px;right:16px;background:rgba(255,255,255,.07);border:none;color:#aaa;border-radius:50%;width:32px;height:32px;font-size:1rem;cursor:pointer;">✕</button>
       <div id="legal-content"></div>

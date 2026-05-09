@@ -991,11 +991,37 @@ async function submitTestimonial() {
   finally { btn.disabled = false; btn.textContent = 'Soumettre mon avis'; }
 }
 
+function copyToClipboard(text, successMsg) {
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(text).then(() => {
+      showToast(successMsg || 'Copié !', 'success');
+    }).catch(() => {
+      _clipboardFallback(text, successMsg);
+    });
+  } else {
+    _clipboardFallback(text, successMsg);
+  }
+}
+
+function _clipboardFallback(text, successMsg) {
+  try {
+    const ta = document.createElement('textarea');
+    ta.value = text;
+    ta.style.cssText = 'position:fixed;top:-9999px;left:-9999px;opacity:0;';
+    document.body.appendChild(ta);
+    ta.focus();
+    ta.select();
+    document.execCommand('copy');
+    document.body.removeChild(ta);
+    showToast(successMsg || 'Copié !', 'success');
+  } catch {
+    showToast('Impossible de copier — copiez manuellement.', 'error');
+  }
+}
+
 function copyAddress() {
   const address = document.getElementById('deposit-address').textContent;
-  navigator.clipboard.writeText(address).then(() => {
-    showToast('Adresse copiee!', 'success');
-  });
+  copyToClipboard(address, 'Adresse copiée !');
 }
 
 function showToast(message, type) {
@@ -1049,7 +1075,7 @@ async function loadReferrals() {
 function copyReferralLink() {
   const inp = document.getElementById('referral-link-input');
   if (!inp) return;
-  navigator.clipboard.writeText(inp.value).then(() => showToast('Lien copié !', 'success'));
+  copyToClipboard(inp.value, 'Lien copié !');
 }
 
 // ── SUPPORT TICKETS ───────────────────────────────────────────────────────────
@@ -1203,23 +1229,39 @@ async function sendChatMessage() {
 // ── PUSH NOTIFICATIONS ────────────────────────────────────────────────────────
 
 async function requestPushPermission() {
-  if (!('serviceWorker' in navigator) || !('PushManager' in window)) return;
+  if (!('serviceWorker' in navigator) || !('PushManager' in window) || !('Notification' in window)) {
+    showToast('Notifications non supportées sur ce navigateur.', 'error');
+    return;
+  }
   try {
-    const permission = await Notification.requestPermission();
-    if (permission !== 'granted') return;
+    let permission;
+    if (typeof Notification.requestPermission === 'function') {
+      const result = Notification.requestPermission();
+      if (result && typeof result.then === 'function') {
+        permission = await result;
+      } else {
+        permission = await new Promise(resolve => Notification.requestPermission(resolve));
+      }
+    }
+    if (permission !== 'granted') {
+      showToast('Permission refusée — activez les notifications dans vos réglages.', 'error');
+      return;
+    }
     const reg = await navigator.serviceWorker.ready;
     const sub = await reg.pushManager.subscribe({
       userVisibleOnly: true,
       applicationServerKey: urlBase64ToUint8Array('BEl62iUYgUivxIkv69yViEuiBIa-Ib9-SkvMeAtA3LFgDzkrxZJjSgSnfckjZAQ4cOHHsO0KbRoXBzElvXXXXXX')
     });
-    const { endpoint, keys } = sub.toJSON ? sub.toJSON() : { endpoint: sub.endpoint, keys: {} };
+    const subJson = sub.toJSON ? sub.toJSON() : { endpoint: sub.endpoint, keys: {} };
     await fetch('/api/push/subscribe', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ endpoint, p256dh: keys.p256dh, auth: keys.auth })
+      body: JSON.stringify({ endpoint: subJson.endpoint, p256dh: subJson.keys.p256dh, auth: subJson.keys.auth })
     });
     showToast('Notifications activées !', 'success');
     updatePushButton(true);
-  } catch {}
+  } catch (e) {
+    showToast('Impossible d\'activer les notifications.', 'error');
+  }
 }
 
 function updatePushButton(active) {
