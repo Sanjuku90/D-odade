@@ -654,6 +654,12 @@ async function loadHistory() {
           amount: '+$' + parseFloat(q.reward_earned).toFixed(2),
           date: new Date(q.completed_date).toLocaleDateString('fr-FR'),
           positive: true
+        })),
+        ...(data.referralBonuses || []).map(b => ({
+          type: '🎁 Bonus parrainage',
+          amount: '+$' + parseFloat(b.bonus_amount).toFixed(2),
+          date: new Date(b.created_at).toLocaleDateString('fr-FR'),
+          positive: true
         }))
       ];
 
@@ -1051,7 +1057,16 @@ async function loadReferrals() {
     if (inp) inp.value = link;
     if (codeEl) codeEl.textContent = code || '—';
     const referrals = data.referrals || [];
+    const totalBonus = data.total_bonus || 0;
     if (countEl) countEl.textContent = `${referrals.length} filleul(s)`;
+
+    // Afficher le total des bonus gagnés
+    const bonusTotalEl = document.getElementById('referral-bonus-total');
+    if (bonusTotalEl) {
+      bonusTotalEl.textContent = totalBonus > 0 ? `+$${totalBonus.toFixed(2)} gagnés` : '—';
+      bonusTotalEl.style.color = totalBonus > 0 ? '#a78bfa' : '#6b7280';
+    }
+
     if (!listEl) return;
     if (!referrals.length) {
       listEl.innerHTML = '<p class="empty-state" style="padding:20px;">Aucun filleul pour le moment. Partagez votre lien !</p>';
@@ -1060,14 +1075,20 @@ async function loadReferrals() {
     listEl.innerHTML = `<div style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;">
       <thead><tr style="border-bottom:1px solid rgba(255,255,255,.06);">
         <th style="text-align:left;padding:10px 20px;font-size:.75rem;color:#6b7280;font-weight:600;">Email</th>
-        <th style="text-align:left;padding:10px 20px;font-size:.75rem;color:#6b7280;font-weight:600;">Dépôt</th>
+        <th style="text-align:left;padding:10px 20px;font-size:.75rem;color:#6b7280;font-weight:600;">1er dépôt</th>
+        <th style="text-align:left;padding:10px 20px;font-size:.75rem;color:#6b7280;font-weight:600;">Bonus reçu</th>
         <th style="text-align:left;padding:10px 20px;font-size:.75rem;color:#6b7280;font-weight:600;">Date</th>
       </tr></thead>
-      <tbody>${referrals.map(u => `<tr style="border-bottom:1px solid rgba(255,255,255,.04);">
-        <td style="padding:10px 20px;font-size:.83rem;color:#d1d5db;">${u.email.replace(/(.{2}).+(@.+)/, '$1***$2')}</td>
-        <td style="padding:10px 20px;font-size:.83rem;color:${u.deposit_amount > 0 ? '#34d399' : '#6b7280'};">${u.deposit_amount > 0 ? '$' + parseFloat(u.deposit_amount).toFixed(2) : '—'}</td>
-        <td style="padding:10px 20px;font-size:.8rem;color:#6b7280;">${new Date(u.created_at).toLocaleDateString('fr-FR')}</td>
-      </tr>`).join('')}</tbody>
+      <tbody>${referrals.map(u => {
+        const hasPaid = u.bonus_paid;
+        const bonusAmt = hasPaid ? `<span style="color:#a78bfa;font-weight:600;">+$${parseFloat(u.bonus_amount).toFixed(2)}</span>` : `<span style="color:#6b7280;font-size:.75rem;">En attente</span>`;
+        return `<tr style="border-bottom:1px solid rgba(255,255,255,.04);">
+          <td style="padding:10px 20px;font-size:.83rem;color:#d1d5db;">${u.email.replace(/(.{2}).+(@.+)/, '$1***$2')}</td>
+          <td style="padding:10px 20px;font-size:.83rem;color:${u.deposit_amount > 0 ? '#34d399' : '#6b7280'};">${u.deposit_amount > 0 ? '$' + parseFloat(u.deposit_amount).toFixed(2) : '—'}</td>
+          <td style="padding:10px 20px;">${bonusAmt}</td>
+          <td style="padding:10px 20px;font-size:.8rem;color:#6b7280;">${new Date(u.created_at).toLocaleDateString('fr-FR')}</td>
+        </tr>`;
+      }).join('')}</tbody>
     </table></div>`;
   } catch {}
 }

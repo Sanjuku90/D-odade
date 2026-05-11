@@ -348,8 +348,13 @@ async function initDB() {
     id ${PK},
     referrer_id INTEGER REFERENCES users(id),
     referred_id INTEGER REFERENCES users(id),
+    bonus_paid INTEGER DEFAULT 0,
+    bonus_amount REAL DEFAULT 0,
     created_at ${TS}
   )`);
+  // Migration: add bonus columns to existing referrals table
+  try { await db.run('ALTER TABLE referrals ADD COLUMN bonus_paid INTEGER DEFAULT 0'); } catch {}
+  try { await db.run('ALTER TABLE referrals ADD COLUMN bonus_amount REAL DEFAULT 0'); } catch {}
 
   await db.exec(`CREATE TABLE IF NOT EXISTS withdrawals (
     id ${PK},
@@ -899,7 +904,15 @@ app.get('/api/history', requireAuth, async (req, res) => {
       ORDER BY uq.completed_date DESC LIMIT 10
     `, [req.session.userId]);
 
-    res.json({ deposits, withdrawals, questRewards });
+    const referralBonuses = await db.all(`
+      SELECT r.bonus_amount, r.created_at, u.email as referred_email
+      FROM referrals r
+      JOIN users u ON u.id = r.referred_id
+      WHERE r.referrer_id = ? AND r.bonus_paid = 1
+      ORDER BY r.created_at DESC LIMIT 10
+    `, [req.session.userId]);
+
+    res.json({ deposits, withdrawals, questRewards, referralBonuses });
   } catch (err) {
     res.status(500).json({ error: 'Erreur serveur' });
   }
@@ -1124,14 +1137,46 @@ app.post('/api/admin/deposits/:id/approve', requireAdmin, async (req, res) => {
     if (!deposit) return res.status(404).json({ error: 'Dépôt non trouvé' });
     if (deposit.status !== 'pending') return res.status(400).json({ error: 'Ce dépôt a déjà été traité' });
 
+    const REFERRAL_BONUS_RATE = 0.10; // 10%
+
+    // Vérifier si c'est le 1er dépôt confirmé du filleul
+    const previousConfirmed = await db.get(
+      "SELECT id FROM deposits WHERE user_id = ? AND status = 'confirmed' LIMIT 1",
+      [deposit.user_id]
+    );
+    const isFirstDeposit = !previousConfirmed;
+
+    // Chercher un parrain non encore bonifié pour ce filleul
+    let referralBonus = null;
+    if (isFirstDeposit) {
+      const referral = await db.get(
+        'SELECT * FROM referrals WHERE referred_id = ? AND bonus_paid = 0',
+        [deposit.user_id]
+      );
+      if (referral) {
+        referralBonus = { referral, bonusAmount: parseFloat((deposit.amount * REFERRAL_BONUS_RATE).toFixed(2)) };
+      }
+    }
+
     await db.transaction(async (tx) => {
       await tx.run('UPDATE deposits SET status = ? WHERE id = ?', ['confirmed', depositId]);
       await tx.run(
         'UPDATE users SET deposit_amount = deposit_amount + ?, balance = balance + ? WHERE id = ?',
         [deposit.amount, deposit.amount, deposit.user_id]
       );
+      if (referralBonus) {
+        await tx.run(
+          'UPDATE users SET balance = balance + ? WHERE id = ?',
+          [referralBonus.bonusAmount, referralBonus.referral.referrer_id]
+        );
+        await tx.run(
+          'UPDATE referrals SET bonus_paid = 1, bonus_amount = ? WHERE id = ?',
+          [referralBonus.bonusAmount, referralBonus.referral.id]
+        );
+      }
     });
 
+    // Email filleul — dépôt confirmé
     const approvedUser = await db.get('SELECT email FROM users WHERE id = ?', [deposit.user_id]);
     sendEmailIfEnabled('deposit_confirmed', approvedUser.email, '✅ Dépôt confirmé — Votre capital est actif !',
       `<p>Bonjour,</p>
@@ -1142,7 +1187,24 @@ app.post('/api/admin/deposits/:id/approve', requireAdmin, async (req, res) => {
        <p>Vous pouvez maintenant <strong>compléter vos quêtes</strong> pour commencer à générer des récompenses dès aujourd'hui !</p>`,
       '✅ Dépôt confirmé'
     );
-    res.json({ success: true, message: 'Dépôt approuvé' });
+
+    // Email parrain — bonus de parrainage
+    if (referralBonus) {
+      const referrer = await db.get('SELECT email FROM users WHERE id = ?', [referralBonus.referral.referrer_id]);
+      if (referrer) {
+        sendEmailIfEnabled('deposit_confirmed', referrer.email, '🎁 Bonus de parrainage crédité !',
+          `<p>Bonjour,</p>
+           <p>Bonne nouvelle ! L'un de vos filleuls vient de confirmer son premier dépôt.</p>
+           <p>En récompense, un <strong>bonus de parrainage de 10%</strong> a été crédité sur votre solde :</p>
+           <div class="amount" style="color:#a78bfa;">+$${referralBonus.bonusAmount.toFixed(2)}</div>
+           <hr class="divider">
+           <p>Continuez à inviter des amis pour cumuler davantage de bonus !</p>`,
+          '🎁 Bonus parrainage'
+        );
+      }
+    }
+
+    res.json({ success: true, message: 'Dépôt approuvé', referralBonus: referralBonus ? referralBonus.bonusAmount : null });
   } catch (err) {
     res.status(500).json({ error: 'Erreur serveur' });
   }
@@ -1837,13 +1899,14 @@ app.get('/api/referrals', requireAuth, async (req, res) => {
   try {
     const user = await db.get('SELECT referral_code FROM users WHERE id = ?', [req.session.userId]);
     const referrals = await db.all(`
-      SELECT u.email, u.deposit_amount, u.created_at
+      SELECT u.email, u.deposit_amount, u.created_at, r.bonus_paid, r.bonus_amount
       FROM referrals r
       JOIN users u ON u.id = r.referred_id
       WHERE r.referrer_id = ?
       ORDER BY r.created_at DESC
     `, [req.session.userId]);
-    res.json({ referral_code: user.referral_code, referrals });
+    const totalBonus = referrals.reduce((sum, r) => sum + (r.bonus_paid ? parseFloat(r.bonus_amount) : 0), 0);
+    res.json({ referral_code: user.referral_code, referrals, total_bonus: parseFloat(totalBonus.toFixed(2)) });
   } catch { res.status(500).json({ error: 'Erreur serveur' }); }
 });
 
