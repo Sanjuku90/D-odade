@@ -356,6 +356,18 @@ async function initDB() {
   try { await db.run('ALTER TABLE referrals ADD COLUMN bonus_paid INTEGER DEFAULT 0'); } catch {}
   try { await db.run('ALTER TABLE referrals ADD COLUMN bonus_amount REAL DEFAULT 0'); } catch {}
 
+  // Anti-fraude : IP par utilisateur
+  try { await db.run('ALTER TABLE users ADD COLUMN registration_ip TEXT'); } catch {}
+  try { await db.run('ALTER TABLE users ADD COLUMN last_login_ip TEXT'); } catch {}
+
+  await db.exec(`CREATE TABLE IF NOT EXISTS blocked_ips (
+    id ${PK},
+    ip TEXT UNIQUE NOT NULL,
+    reason TEXT,
+    blocked_by TEXT DEFAULT 'admin',
+    blocked_at ${TS}
+  )`);
+
   await db.exec(`CREATE TABLE IF NOT EXISTS withdrawals (
     id ${PK},
     user_id INTEGER REFERENCES users(id),
@@ -531,13 +543,31 @@ function requireAdmin(req, res, next) {
   next();
 }
 
+// ── HELPERS ───────────────────────────────────────────────────────────────────
+
+function getClientIp(req) {
+  const fwd = req.headers['x-forwarded-for'];
+  if (fwd) return fwd.split(',')[0].trim();
+  return req.ip || (req.connection && req.connection.remoteAddress) || 'unknown';
+}
+
 // ── AUTH ENDPOINTS ────────────────────────────────────────────────────────────
 
 app.post('/api/register', async (req, res) => {
   const { email, password, referralCode } = req.body;
   if (!email || !password) return res.status(400).json({ error: 'Email et mot de passe requis' });
 
+  const clientIp = getClientIp(req);
+
   try {
+    // Anti-fraude : IP bloquée ?
+    const blockedIp = await db.get('SELECT id FROM blocked_ips WHERE ip = ?', [clientIp]);
+    if (blockedIp) return res.status(403).json({ error: 'Accès refusé depuis cette adresse IP.' });
+
+    // Anti-fraude : un seul compte par IP
+    const existingIpUser = await db.get('SELECT id FROM users WHERE registration_ip = ?', [clientIp]);
+    if (existingIpUser) return res.status(400).json({ error: 'Un compte existe déjà depuis votre adresse IP. Un seul compte est autorisé par adresse.' });
+
     const existingUser = await db.get('SELECT id FROM users WHERE email = ?', [email]);
     if (existingUser) return res.status(400).json({ error: 'Cet email existe déjà' });
 
@@ -545,8 +575,8 @@ app.post('/api/register', async (req, res) => {
     const newReferralCode = generateReferralCode();
 
     const result = await db.run(
-      'INSERT INTO users (email, password, referral_code) VALUES (?, ?, ?)',
-      [email, hashedPassword, newReferralCode]
+      'INSERT INTO users (email, password, referral_code, registration_ip) VALUES (?, ?, ?, ?)',
+      [email, hashedPassword, newReferralCode, clientIp]
     );
 
     if (referralCode) {
@@ -597,7 +627,12 @@ app.post('/api/login', async (req, res) => {
     const validPassword = await bcrypt.compare(password, user.password);
     if (!validPassword) return res.status(401).json({ error: 'Email ou mot de passe incorrect' });
 
-    try { await db.run('UPDATE users SET last_login = CURRENT_TIMESTAMP WHERE id = ?', [user.id]); } catch (_) {}
+    const loginIp = getClientIp(req);
+    try { await db.run('UPDATE users SET last_login = CURRENT_TIMESTAMP, last_login_ip = ? WHERE id = ?', [loginIp, user.id]); } catch (_) {}
+
+    // Anti-fraude : IP bloquée au login aussi
+    const blockedAtLogin = await db.get('SELECT id FROM blocked_ips WHERE ip = ?', [loginIp]);
+    if (blockedAtLogin) return res.status(403).json({ error: 'Accès refusé depuis cette adresse IP.' });
 
     const emailConfigured = !!(process.env.GMAIL_CLIENT_ID && process.env.GMAIL_REFRESH_TOKEN && process.env.MAIL_USER);
 
@@ -1468,6 +1503,7 @@ app.get('/api/admin/users', requireAdmin, async (req, res) => {
   try {
     const users = await db.all(`
       SELECT u.id, u.email, u.balance, u.deposit_amount, u.referral_code, u.created_at, u.can_withdraw,
+        u.is_banned, u.last_login, u.registration_ip, u.last_login_ip,
         (SELECT COUNT(*) FROM referrals WHERE referrer_id = u.id) as referrals_count,
         (SELECT COALESCE(SUM(amount),0) FROM deposits WHERE user_id = u.id AND status = 'confirmed') as total_deposited,
         (SELECT COALESCE(SUM(amount),0) FROM withdrawals WHERE user_id = u.id AND status = 'confirmed') as total_withdrawn,
@@ -1610,6 +1646,48 @@ app.post('/api/admin/users/:id/ban', requireAdmin, async (req, res) => {
     const newBan = u.is_banned ? 0 : 1;
     await db.run('UPDATE users SET is_banned = ? WHERE id = ?', [newBan, u.id]);
     res.json({ success: true, is_banned: newBan });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// ── ANTI-FRAUDE : IP BLOQUÉES ─────────────────────────────────────────────────
+
+app.get('/api/admin/blocked-ips', requireAdmin, async (req, res) => {
+  try {
+    const ips = await db.all('SELECT * FROM blocked_ips ORDER BY blocked_at DESC');
+    res.json(ips);
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+app.post('/api/admin/block-ip', requireAdmin, async (req, res) => {
+  const { ip, reason } = req.body;
+  if (!ip) return res.status(400).json({ error: 'IP requise' });
+  try {
+    await db.run(
+      'INSERT INTO blocked_ips (ip, reason) VALUES (?, ?) ON CONFLICT (ip) DO UPDATE SET reason = EXCLUDED.reason, blocked_at = CURRENT_TIMESTAMP',
+      [ip.trim(), reason || 'Fraude suspectée']
+    );
+    res.json({ success: true });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+app.post('/api/admin/blocked-ips/:id/unblock', requireAdmin, async (req, res) => {
+  try {
+    await db.run('DELETE FROM blocked_ips WHERE id = ?', [req.params.id]);
+    res.json({ success: true });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// Bloquer l'IP d'un utilisateur en un clic
+app.post('/api/admin/users/:id/block-ip', requireAdmin, async (req, res) => {
+  try {
+    const u = await db.get('SELECT id, email, registration_ip FROM users WHERE id = ?', [req.params.id]);
+    if (!u) return res.status(404).json({ error: 'Utilisateur introuvable' });
+    if (!u.registration_ip) return res.status(400).json({ error: 'Pas d\'IP enregistrée pour cet utilisateur' });
+    await db.run(
+      'INSERT INTO blocked_ips (ip, reason) VALUES (?, ?) ON CONFLICT (ip) DO UPDATE SET reason = EXCLUDED.reason, blocked_at = CURRENT_TIMESTAMP',
+      [u.registration_ip, `Fraude — compte ${u.email}`]
+    );
+    res.json({ success: true, ip: u.registration_ip });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 

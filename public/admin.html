@@ -508,6 +508,10 @@
           <button class="nav-item" data-page="users">
             <span class="item-icon">👥</span> Utilisateurs
           </button>
+          <button class="nav-item" data-page="antifraud">
+            <span class="item-icon">🛡️</span> Anti-fraude
+            <span class="nav-badge" id="nb-blocked"></span>
+          </button>
           <button class="nav-item" data-page="kyc">
             <span class="item-icon">🪪</span> KYC
             <span class="nav-badge" id="nb-kyc"></span>
@@ -678,6 +682,52 @@
               <th>Utilisateur</th><th>Solde</th><th>Déposé</th><th>Retiré</th><th>Parrainages</th><th>Retraits</th><th>Inscription</th><th>Actions</th>
             </tr></thead>
             <tbody id="users-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ANTI-FRAUDE -->
+    <div class="page" id="page-antifraud">
+      <div class="card" style="margin-bottom:20px;">
+        <div class="card-header">
+          <div>
+            <div class="card-title">🛡️ Anti-fraude — IPs bloquées</div>
+            <div class="card-sub">Gérez les adresses IP interdites d'inscription et de connexion</div>
+          </div>
+        </div>
+        <!-- Blocage manuel -->
+        <div style="padding:16px 20px;border-bottom:1px solid var(--border);display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;">
+          <div style="flex:1;min-width:180px;">
+            <label style="font-size:.75rem;color:var(--text3);display:block;margin-bottom:4px;">Adresse IP</label>
+            <input id="manual-ip-input" type="text" placeholder="Ex : 192.168.1.1" class="search-box" style="width:100%;margin:0;">
+          </div>
+          <div style="flex:2;min-width:200px;">
+            <label style="font-size:.75rem;color:var(--text3);display:block;margin-bottom:4px;">Motif</label>
+            <input id="manual-ip-reason" type="text" placeholder="Ex : Tentative de fraude" class="search-box" style="width:100%;margin:0;">
+          </div>
+          <button class="btn-ko" style="height:36px;padding:0 18px;font-size:.82rem;" onclick="blockManualIp()">🚫 Bloquer cette IP</button>
+        </div>
+        <!-- Liste -->
+        <div class="tbl-wrap">
+          <table>
+            <thead><tr>
+              <th>Adresse IP</th><th>Motif</th><th>Bloquée le</th><th>Actions</th>
+            </tr></thead>
+            <tbody id="blocked-ips-tbody"><tr class="empty-row"><td colspan="4">Aucune IP bloquée</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Statistiques anti-fraude -->
+      <div class="card">
+        <div class="card-header"><div class="card-title">Détection — comptes multiples par IP</div></div>
+        <div class="tbl-wrap">
+          <table>
+            <thead><tr>
+              <th>Adresse IP</th><th>Nb comptes</th><th>Emails</th><th>Actions</th>
+            </tr></thead>
+            <tbody id="ip-duplicates-tbody"><tr class="empty-row"><td colspan="4">Chargement…</td></tr></tbody>
           </table>
         </div>
       </div>
@@ -1187,7 +1237,7 @@
     });
 
     async function refreshAll() {
-      await Promise.all([loadStats(), loadDeposits(), loadWithdrawals(), loadUsers(), loadKycList(), loadRecoveryList(), loadEmailLogs(), loadNews(), loadTestimonials(), loadAdminTickets()]);
+      await Promise.all([loadStats(), loadDeposits(), loadWithdrawals(), loadUsers(), loadKycList(), loadRecoveryList(), loadEmailLogs(), loadNews(), loadTestimonials(), loadAdminTickets(), loadBlockedIps()]);
       populateMsgUserSelect();
       document.getElementById('meta-time').textContent =
         'Actualisé à ' + new Date().toLocaleTimeString('fr-FR');
@@ -1686,6 +1736,8 @@
         <div class="modal-row"><span class="modal-key">Parrainages</span><span class="modal-val">${u.referrals_count}</span></div>
         <div class="modal-row"><span class="modal-key">Code parrainage</span><span class="modal-val">${u.referral_code||'—'}</span></div>
         <div class="modal-row"><span class="modal-key">Inscription</span><span class="modal-val">${fmt(u.created_at)}</span></div>
+        <div class="modal-row"><span class="modal-key">IP inscription</span><span class="modal-val" style="font-family:monospace;font-size:.8rem;color:var(--yellow)">${u.registration_ip||'—'}</span></div>
+        <div class="modal-row"><span class="modal-key">Dernière IP</span><span class="modal-val" style="font-family:monospace;font-size:.8rem;color:var(--text3)">${u.last_login_ip||'—'}</span></div>
         <div class="modal-row"><span class="modal-key">Statut retrait</span><span class="modal-val">${wBadge}</span></div>
         <div class="modal-row"><span class="modal-key">Dernière connexion</span><span class="modal-val">${u.last_login ? fmt(u.last_login) : '—'}</span></div>
         <div class="modal-row"><span class="modal-key">Compte</span><span class="modal-val">${u.is_banned ? '<span class="badge b-rejected">🚫 Suspendu</span>' : '<span class="badge b-confirmed">✓ Actif</span>'}</span></div>
@@ -1693,6 +1745,7 @@
           <button class="${u.is_banned ? 'btn-ok' : 'btn-ko'}" style="font-size:.75rem;padding:4px 10px" onclick="toggleBan()">
             ${u.is_banned ? '✅ Réactiver le compte' : '🚫 Suspendre le compte'}
           </button>
+          ${u.registration_ip ? `<button class="btn-ko" style="font-size:.75rem;padding:4px 10px;background:rgba(234,179,8,0.15);border-color:rgba(234,179,8,0.3);color:#fbbf24;" onclick="blockUserIp(${u.id})">🛡️ Bloquer l'IP</button>` : ''}
         </div>`;
       document.getElementById('adj-amt').value = '';
       document.getElementById('m-err').style.display = 'none';
@@ -1727,6 +1780,100 @@
       else { alert(j.error || 'Erreur'); }
     }
     document.getElementById('user-modal').addEventListener('click', e => { if(e.target===e.currentTarget) closeModal(); });
+
+    // ── ANTI-FRAUDE ──
+    let allBlockedIps = [];
+
+    async function loadBlockedIps() {
+      try {
+        const r = await fetch('/api/admin/blocked-ips');
+        if (!r.ok) return;
+        allBlockedIps = await r.json();
+        renderBlockedIps();
+        loadIpDuplicates();
+        const badge = document.getElementById('nb-blocked');
+        if (badge) { badge.textContent = allBlockedIps.length || ''; badge.style.display = allBlockedIps.length ? 'inline-flex' : 'none'; }
+      } catch {}
+    }
+
+    function renderBlockedIps() {
+      const tb = document.getElementById('blocked-ips-tbody');
+      if (!tb) return;
+      if (!allBlockedIps.length) { tb.innerHTML = '<tr class="empty-row"><td colspan="4">Aucune IP bloquée</td></tr>'; return; }
+      tb.innerHTML = allBlockedIps.map(b => `<tr>
+        <td style="font-family:monospace;color:var(--red)">${b.ip}</td>
+        <td style="color:var(--text2);font-size:.82rem">${b.reason||'—'}</td>
+        <td class="td-date">${fmt(b.blocked_at)}</td>
+        <td><button class="btn-ok" style="font-size:.75rem;padding:3px 10px" onclick="unblockIp(${b.id})">✓ Débloquer</button></td>
+      </tr>`).join('');
+    }
+
+    async function unblockIp(id) {
+      if (!confirm('Débloquer cette IP ?')) return;
+      const r = await fetch(`/api/admin/blocked-ips/${id}/unblock`, { method: 'POST' });
+      if (r.ok) { showToast('IP débloquée', 'success'); loadBlockedIps(); }
+    }
+
+    async function blockManualIp() {
+      const ip = document.getElementById('manual-ip-input').value.trim();
+      const reason = document.getElementById('manual-ip-reason').value.trim();
+      if (!ip) { showToast('Entrez une adresse IP', 'error'); return; }
+      const r = await fetch('/api/admin/block-ip', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ip, reason })
+      });
+      if (r.ok) {
+        showToast(`IP ${ip} bloquée`, 'success');
+        document.getElementById('manual-ip-input').value = '';
+        document.getElementById('manual-ip-reason').value = '';
+        loadBlockedIps();
+      } else {
+        const j = await r.json();
+        showToast(j.error || 'Erreur', 'error');
+      }
+    }
+
+    async function blockUserIp(userId) {
+      const u = allUsers.find(x => x.id === userId);
+      if (!u || !u.registration_ip) return;
+      if (!confirm(`Bloquer l'IP ${u.registration_ip} (empêche tout nouveau compte depuis cette adresse) ?`)) return;
+      const r = await fetch(`/api/admin/users/${userId}/block-ip`, { method: 'POST' });
+      const j = await r.json();
+      if (r.ok) { showToast(`IP ${j.ip} bloquée`, 'success'); loadBlockedIps(); }
+      else showToast(j.error || 'Erreur', 'error');
+    }
+
+    async function loadIpDuplicates() {
+      const tb = document.getElementById('ip-duplicates-tbody');
+      if (!tb) return;
+      try {
+        // Grouper les utilisateurs par IP d'inscription côté client
+        const ipMap = {};
+        (allUsers || []).forEach(u => {
+          if (!u.registration_ip) return;
+          if (!ipMap[u.registration_ip]) ipMap[u.registration_ip] = [];
+          ipMap[u.registration_ip].push(u);
+        });
+        const dupes = Object.entries(ipMap).filter(([, users]) => users.length > 1)
+          .sort((a, b) => b[1].length - a[1].length);
+        if (!dupes.length) { tb.innerHTML = '<tr class="empty-row"><td colspan="4">Aucune IP avec plusieurs comptes détectée</td></tr>'; return; }
+        tb.innerHTML = dupes.map(([ip, users]) => `<tr>
+          <td style="font-family:monospace;color:var(--yellow)">${ip}</td>
+          <td style="color:var(--red);font-weight:700">${users.length}</td>
+          <td style="font-size:.78rem;color:var(--text3)">${users.map(u => u.email).join(', ')}</td>
+          <td><button class="btn-ko" style="font-size:.75rem;padding:3px 10px" onclick="blockManualIpDirect('${ip}','Multi-comptes détectés')">🚫 Bloquer</button></td>
+        </tr>`).join('');
+      } catch {}
+    }
+
+    async function blockManualIpDirect(ip, reason) {
+      if (!confirm(`Bloquer l'IP ${ip} ?`)) return;
+      const r = await fetch('/api/admin/block-ip', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ip, reason })
+      });
+      if (r.ok) { showToast(`IP ${ip} bloquée`, 'success'); loadBlockedIps(); }
+    }
 
     // ── TEST EMAIL ──
     async function sendTestEmail() {
