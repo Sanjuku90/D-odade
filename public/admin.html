@@ -1037,17 +1037,6 @@
           <button class="btn-save" onclick="saveEmailSettings()">Enregistrer les paramètres email</button>
           <div class="f-ok" id="es-ok" style="display:none;">✓ Paramètres email mis à jour !</div>
           <div class="f-err" id="es-err" style="display:none;"></div>
-
-          <!-- Test d'envoi -->
-          <div style="margin-top:20px;padding-top:18px;border-top:1px solid var(--border);">
-            <div class="f-label" style="margin-bottom:8px;">📨 Envoyer un email de test</div>
-            <div style="display:flex;gap:8px;align-items:center;">
-              <input class="f-input" type="email" id="test-email-addr" placeholder="destinataire@exemple.com" style="flex:1;box-sizing:border-box;">
-              <button class="btn-save" id="test-email-btn" onclick="sendTestEmail()" style="white-space:nowrap;flex-shrink:0;">Envoyer</button>
-            </div>
-            <div id="test-email-ok" style="display:none;margin-top:8px;font-size:.8rem;color:#34d399;font-weight:600;"></div>
-            <div id="test-email-err" style="display:none;margin-top:8px;font-size:.8rem;color:#ef4444;font-weight:600;"></div>
-          </div>
         </div>
 
         <div class="s-card">
@@ -2090,33 +2079,6 @@
         }
       } catch (e) {
         err.textContent = 'Erreur réseau.'; err.style.display = 'block';
-      }
-    }
-    async function sendTestEmail() {
-      const ok  = document.getElementById('test-email-ok');
-      const err = document.getElementById('test-email-err');
-      const btn = document.getElementById('test-email-btn');
-      const to  = document.getElementById('test-email-addr').value.trim();
-      ok.style.display = 'none'; err.style.display = 'none';
-      if (!to) { err.textContent = 'Entrez une adresse email.'; err.style.display = 'block'; return; }
-      btn.disabled = true; btn.textContent = 'Envoi…';
-      try {
-        const r = await fetch('/api/admin/test-email', {
-          method: 'POST', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ to })
-        });
-        const j = await r.json();
-        if (r.ok) {
-          ok.textContent = '✓ ' + j.message;
-          ok.style.display = 'block';
-          showToast('Email de test envoyé !', 'success');
-        } else {
-          err.textContent = j.error; err.style.display = 'block';
-        }
-      } catch (e) {
-        err.textContent = 'Erreur réseau.'; err.style.display = 'block';
-      } finally {
-        btn.disabled = false; btn.textContent = 'Envoyer';
       }
     }
     async function saveAddr(e) {
