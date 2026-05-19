@@ -637,8 +637,9 @@ app.post('/api/login', async (req, res) => {
     if (blockedAtLogin) return res.status(403).json({ error: 'Accès refusé depuis cette adresse IP.' });
 
     const emailConfigured = !!(process.env.GMAIL_CLIENT_ID && process.env.GMAIL_REFRESH_TOKEN && process.env.MAIL_USER);
+    const emailsGloballyDisabled = getSetting('email_all_disabled') === '1';
 
-    if (!emailConfigured) {
+    if (!emailConfigured || emailsGloballyDisabled) {
       req.session.userId = user.id;
       req.session.save((err) => {
         if (err) return res.status(500).json({ error: 'Erreur serveur' });
