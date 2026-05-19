@@ -1016,6 +1016,19 @@
             </div>
           </div>
 
+          <!-- Interrupteur maître -->
+          <div id="email-master-wrap" style="display:flex;align-items:center;justify-content:space-between;background:rgba(239,68,68,.07);border:1px solid rgba(239,68,68,.25);border-radius:10px;padding:12px 16px;margin-bottom:16px;">
+            <div>
+              <div style="font-size:.88rem;font-weight:700;color:#ef4444;">🔴 Couper tous les emails</div>
+              <div style="font-size:.75rem;color:var(--text3);margin-top:2px;">Aucun email ne sera envoyé, quel que soit le type</div>
+            </div>
+            <label style="position:relative;display:inline-block;width:48px;height:26px;cursor:pointer;flex-shrink:0;">
+              <input type="checkbox" id="email-master-toggle" style="opacity:0;width:0;height:0;" onchange="onMasterToggleChange(this)">
+              <span id="email-master-slider" style="position:absolute;inset:0;background:#374151;border-radius:26px;transition:.25s;"></span>
+              <span id="email-master-knob" style="position:absolute;left:3px;top:3px;width:20px;height:20px;background:#fff;border-radius:50%;transition:.25s;"></span>
+            </label>
+          </div>
+
           <div class="f-label" style="margin-bottom:8px;">Activer / désactiver par type</div>
           <div id="email-toggles-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:8px 20px;margin-bottom:18px;">
             <!-- Rempli par JS -->
@@ -2005,6 +2018,21 @@
       'daily_reminder':       '⚡ Rappel quotidien quêtes',
     };
     let _emailSettings = {};
+    function applyMasterToggleUI(disabled) {
+      const slider = document.getElementById('email-master-slider');
+      const knob   = document.getElementById('email-master-knob');
+      const grid   = document.getElementById('email-toggles-grid');
+      const chk    = document.getElementById('email-master-toggle');
+      if (!slider) return;
+      chk.checked = disabled;
+      slider.style.background = disabled ? '#ef4444' : '#374151';
+      knob.style.transform    = disabled ? 'translateX(22px)' : 'translateX(0)';
+      grid.style.opacity      = disabled ? '0.35' : '1';
+      grid.style.pointerEvents = disabled ? 'none' : '';
+    }
+    function onMasterToggleChange(el) {
+      applyMasterToggleUI(el.checked);
+    }
     async function loadEmailSettings() {
       try {
         const r = await fetch('/api/admin/email-settings');
@@ -2021,6 +2049,7 @@
             ${label}
           </label>`;
         }).join('');
+        applyMasterToggleUI(_emailSettings.all_disabled === true);
       } catch {}
     }
     async function saveEmailSettings() {
@@ -2029,6 +2058,7 @@
       ok.style.display = 'none'; err.style.display = 'none';
       const hour  = parseInt(document.getElementById('es-hour').value, 10);
       const twofa = parseInt(document.getElementById('es-twofa').value, 10);
+      const all_disabled = document.getElementById('email-master-toggle').checked;
       const toggles = {};
       for (const key of Object.keys(EMAIL_TOGGLE_LABELS)) {
         const el = document.getElementById(`etog-${key}`);
@@ -2037,7 +2067,7 @@
       try {
         const r = await fetch('/api/admin/email-settings', {
           method: 'POST', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ reminder_hour: hour, twofa_expiry: twofa, toggles })
+          body: JSON.stringify({ reminder_hour: hour, twofa_expiry: twofa, toggles, all_disabled })
         });
         const j = await r.json();
         if (r.ok) {

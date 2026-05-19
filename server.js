@@ -155,6 +155,7 @@ async function setSetting(key, value) {
 
 // ── Email helpers ─────────────────────────────────────────────────────────────
 function isEmailEnabled(type) {
+  if (getSetting('email_all_disabled') === '1') return false;
   return getSetting(`email_toggle_${type}`) !== '0';
 }
 
@@ -514,6 +515,7 @@ async function initDB() {
     'email_toggle_withdrawal_confirmed': '1',
     'email_toggle_withdrawal_rejected': '1',
     'email_toggle_daily_reminder': '1',
+    'email_all_disabled': '0',
   };
   for (const [key, val] of Object.entries(emailDefaults)) {
     await db.run('INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT (key) DO NOTHING', [key, val]);
@@ -1578,8 +1580,9 @@ app.post('/api/admin/test-email', requireAdmin, async (req, res) => {
 app.get('/api/admin/email-settings', requireAdmin, (req, res) => {
   try {
     res.json({
-      reminder_hour: parseInt(getSetting('email_reminder_hour') || '9', 10),
-      twofa_expiry:  parseInt(getSetting('email_twofa_expiry')  || '10', 10),
+      reminder_hour:    parseInt(getSetting('email_reminder_hour') || '9', 10),
+      twofa_expiry:     parseInt(getSetting('email_twofa_expiry')  || '10', 10),
+      all_disabled:     getSetting('email_all_disabled') === '1',
       toggles: {
         welcome:              getSetting('email_toggle_welcome')              !== '0',
         '2fa':                getSetting('email_toggle_2fa')                 !== '0',
@@ -1600,7 +1603,7 @@ app.get('/api/admin/email-settings', requireAdmin, (req, res) => {
 
 app.post('/api/admin/email-settings', requireAdmin, async (req, res) => {
   try {
-    const { reminder_hour, twofa_expiry, toggles } = req.body;
+    const { reminder_hour, twofa_expiry, toggles, all_disabled } = req.body;
     if (reminder_hour !== undefined) {
       const h = parseInt(reminder_hour, 10);
       if (!isNaN(h) && h >= 0 && h <= 23) {
@@ -1611,6 +1614,9 @@ app.post('/api/admin/email-settings', requireAdmin, async (req, res) => {
     if (twofa_expiry !== undefined) {
       const t = parseInt(twofa_expiry, 10);
       if (!isNaN(t) && t >= 1 && t <= 60) await setSetting('email_twofa_expiry', String(t));
+    }
+    if (all_disabled !== undefined) {
+      await setSetting('email_all_disabled', all_disabled ? '1' : '0');
     }
     if (toggles && typeof toggles === 'object') {
       const allowed = ['welcome','2fa','deposit_received','deposit_confirmed','deposit_rejected',
