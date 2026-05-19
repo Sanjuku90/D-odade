@@ -1634,6 +1634,28 @@ app.post('/api/admin/email-settings', requireAdmin, async (req, res) => {
 
 // ── MAINTENANCE ───────────────────────────────────────────────────────────────
 
+app.post('/api/admin/test-email', requireAdmin, async (req, res) => {
+  const { to } = req.body;
+  if (!to || !to.includes('@')) return res.status(400).json({ error: 'Adresse email invalide.' });
+  if (getSetting('email_all_disabled') === '1') {
+    return res.status(400).json({ error: 'Les emails sont désactivés globalement. Réactivez-les d\'abord.' });
+  }
+  const result = await sendEmail(
+    to,
+    '✅ Test email QuestInvest',
+    `<p>Bonjour,</p>
+     <p>Ceci est un <strong>email de test</strong> envoyé depuis le panel admin de QuestInvest.</p>
+     <p>Si vous recevez ce message, la configuration Gmail est correctement fonctionnelle.</p>
+     <div class="amount">✅ Config OK</div>`,
+    '✅ Test email'
+  );
+  if (result.success) {
+    res.json({ success: true, message: `Email de test envoyé à ${to}` });
+  } else {
+    res.status(500).json({ error: `Échec de l'envoi : ${result.error}` });
+  }
+});
+
 app.get('/api/maintenance', (req, res) => {
   res.json({ maintenance: getSetting('maintenance_mode') === '1' });
 });
