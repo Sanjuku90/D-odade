@@ -1000,6 +1000,21 @@
           <div class="f-ok" id="test-email-ok">✓ Email envoyé ! Vérifiez votre boîte de réception (et les spams).</div>
           <div class="f-err" id="test-email-err"></div>
         </div>
+        <!-- MASTER EMAIL SWITCH — carte dédiée -->
+        <div class="s-card" id="email-master-card">
+          <div class="s-title">📧 Envoi d'emails</div>
+          <div class="s-desc">Interrupteur global. Quand désactivé, aucun email n'est envoyé (ni 2FA, ni notifications) et la connexion ne demande plus de code.</div>
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-top:16px;padding:16px;background:rgba(167,139,250,.06);border:1px solid rgba(167,139,250,.15);border-radius:12px;">
+            <div>
+              <div id="email-master-status-label" style="font-size:1rem;font-weight:700;color:var(--text1);">Emails activés</div>
+              <div style="font-size:.78rem;color:var(--text3);margin-top:3px;">Cliquez sur le bouton pour changer l'état</div>
+            </div>
+            <button id="email-master-btn" onclick="toggleMasterEmail()" style="padding:10px 22px;border-radius:8px;border:none;cursor:pointer;font-weight:700;font-size:.88rem;transition:.2s;background:#374151;color:#fff;">
+              Désactiver
+            </button>
+          </div>
+        </div>
+
         <!-- EMAIL SETTINGS CARD -->
         <div class="s-card" id="email-settings-card">
           <div class="s-title">⚙️ Configuration des emails</div>
@@ -1014,19 +1029,6 @@
               <label class="f-label">Expiration code 2FA (minutes, 1–60)</label>
               <input class="f-input" type="number" id="es-twofa" min="1" max="60" placeholder="10" style="width:100%;box-sizing:border-box;">
             </div>
-          </div>
-
-          <!-- Interrupteur maître -->
-          <div id="email-master-wrap" style="display:flex;align-items:center;justify-content:space-between;background:rgba(239,68,68,.07);border:1px solid rgba(239,68,68,.25);border-radius:10px;padding:12px 16px;margin-bottom:16px;">
-            <div>
-              <div style="font-size:.88rem;font-weight:700;color:#ef4444;">🔴 Couper tous les emails</div>
-              <div style="font-size:.75rem;color:var(--text3);margin-top:2px;">Aucun email ne sera envoyé, quel que soit le type</div>
-            </div>
-            <label style="position:relative;display:inline-block;width:48px;height:26px;cursor:pointer;flex-shrink:0;">
-              <input type="checkbox" id="email-master-toggle" style="opacity:0;width:0;height:0;" onchange="onMasterToggleChange(this)">
-              <span id="email-master-slider" style="position:absolute;inset:0;background:#374151;border-radius:26px;transition:.25s;"></span>
-              <span id="email-master-knob" style="position:absolute;left:3px;top:3px;width:20px;height:20px;background:#fff;border-radius:50%;transition:.25s;"></span>
-            </label>
           </div>
 
           <div class="f-label" style="margin-bottom:8px;">Activer / désactiver par type</div>
@@ -2018,21 +2020,47 @@
       'daily_reminder':       '⚡ Rappel quotidien quêtes',
     };
     let _emailSettings = {};
-    function applyMasterToggleUI(disabled) {
-      const slider = document.getElementById('email-master-slider');
-      const knob   = document.getElementById('email-master-knob');
-      const grid   = document.getElementById('email-toggles-grid');
-      const chk    = document.getElementById('email-master-toggle');
-      if (!slider) return;
-      chk.checked = disabled;
-      slider.style.background = disabled ? '#ef4444' : '#374151';
-      knob.style.transform    = disabled ? 'translateX(22px)' : 'translateX(0)';
-      grid.style.opacity      = disabled ? '0.35' : '1';
-      grid.style.pointerEvents = disabled ? 'none' : '';
+    let _emailsDisabled = false;
+
+    function applyMasterEmailUI(disabled) {
+      _emailsDisabled = disabled;
+      const label = document.getElementById('email-master-status-label');
+      const btn   = document.getElementById('email-master-btn');
+      const grid  = document.getElementById('email-toggles-grid');
+      if (!label || !btn) return;
+      if (disabled) {
+        label.textContent   = '🔴 Emails désactivés';
+        label.style.color   = '#ef4444';
+        btn.textContent     = 'Réactiver';
+        btn.style.background = '#22c55e';
+      } else {
+        label.textContent   = '🟢 Emails activés';
+        label.style.color   = '#22c55e';
+        btn.textContent     = 'Désactiver';
+        btn.style.background = '#ef4444';
+      }
+      if (grid) {
+        grid.style.opacity      = disabled ? '0.4' : '1';
+        grid.style.pointerEvents = disabled ? 'none' : '';
+      }
     }
-    function onMasterToggleChange(el) {
-      applyMasterToggleUI(el.checked);
+
+    async function toggleMasterEmail() {
+      const btn = document.getElementById('email-master-btn');
+      btn.disabled = true;
+      try {
+        const r = await fetch('/api/admin/email-settings', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ all_disabled: !_emailsDisabled })
+        });
+        if (r.ok) {
+          applyMasterEmailUI(!_emailsDisabled);
+          showToast(_emailsDisabled ? 'Emails réactivés ✓' : 'Emails désactivés ✓', 'success');
+        }
+      } catch {}
+      btn.disabled = false;
     }
+
     async function loadEmailSettings() {
       try {
         const r = await fetch('/api/admin/email-settings');
@@ -2049,16 +2077,16 @@
             ${label}
           </label>`;
         }).join('');
-        applyMasterToggleUI(_emailSettings.all_disabled === true);
+        applyMasterEmailUI(_emailSettings.all_disabled === true);
       } catch {}
     }
+
     async function saveEmailSettings() {
       const ok  = document.getElementById('es-ok');
       const err = document.getElementById('es-err');
       ok.style.display = 'none'; err.style.display = 'none';
       const hour  = parseInt(document.getElementById('es-hour').value, 10);
       const twofa = parseInt(document.getElementById('es-twofa').value, 10);
-      const all_disabled = document.getElementById('email-master-toggle').checked;
       const toggles = {};
       for (const key of Object.keys(EMAIL_TOGGLE_LABELS)) {
         const el = document.getElementById(`etog-${key}`);
@@ -2067,7 +2095,7 @@
       try {
         const r = await fetch('/api/admin/email-settings', {
           method: 'POST', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ reminder_hour: hour, twofa_expiry: twofa, toggles, all_disabled })
+          body: JSON.stringify({ reminder_hour: hour, twofa_expiry: twofa, toggles })
         });
         const j = await r.json();
         if (r.ok) {
