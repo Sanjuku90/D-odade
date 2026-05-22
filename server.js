@@ -456,12 +456,21 @@ async function initDB() {
   )`);
 
   // Migrations (try/catch car la colonne peut déjà exister)
-  try { await db.run('ALTER TABLE users ADD COLUMN can_withdraw INTEGER DEFAULT 0'); } catch {}
-  try { await db.run('ALTER TABLE quests ADD COLUMN quest_type TEXT DEFAULT \'regular\''); } catch {}
-  try { await db.run('ALTER TABLE users ADD COLUMN first_name TEXT DEFAULT \'\''); } catch {}
-  try { await db.run('ALTER TABLE users ADD COLUMN last_name TEXT DEFAULT \'\''); } catch {}
-  try { await db.run('ALTER TABLE users ADD COLUMN is_banned INTEGER DEFAULT 0'); } catch {}
-  try { await db.run('ALTER TABLE users ADD COLUMN last_login TIMESTAMP'); } catch {}
+  const migrationsList = [
+    ['ALTER TABLE users ADD COLUMN can_withdraw INTEGER DEFAULT 0'],
+    ['ALTER TABLE quests ADD COLUMN quest_type TEXT DEFAULT \'regular\''],
+    ['ALTER TABLE users ADD COLUMN first_name TEXT DEFAULT \'\''],
+    ['ALTER TABLE users ADD COLUMN last_name TEXT DEFAULT \'\''],
+    ['ALTER TABLE users ADD COLUMN is_banned INTEGER DEFAULT 0'],
+    ['ALTER TABLE users ADD COLUMN last_login TIMESTAMP'],
+  ];
+  for (const [sql] of migrationsList) {
+    try { await db.run(sql); } catch (e) {
+      if (!e.message?.includes('duplicate column') && !e.message?.includes('already exists')) {
+        console.warn('[migration] Ignoré:', e.message?.split('\n')[0]);
+      }
+    }
+  }
 
   // Adresse de dépôt par défaut
   const settingsCount = await db.get("SELECT COUNT(*) as count FROM settings WHERE key = 'deposit_address'");
@@ -1517,7 +1526,15 @@ app.get('/api/admin/users', requireAdmin, async (req, res) => {
     `);
     res.json(users);
   } catch (err) {
-    res.status(500).json({ error: 'Erreur serveur' });
+    console.error('[admin/users] Erreur requête:', err.message);
+    try {
+      const users = await db.all(`SELECT id, email, balance, deposit_amount, referral_code, created_at FROM users ORDER BY created_at DESC`);
+      const result = users.map(u => ({ ...u, can_withdraw: 0, is_banned: 0, last_login: null, registration_ip: null, last_login_ip: null, referrals_count: 0, total_deposited: 0, total_withdrawn: 0, pending_deposits: 0 }));
+      res.json(result);
+    } catch (err2) {
+      console.error('[admin/users] Erreur fallback:', err2.message);
+      res.status(500).json({ error: 'Erreur serveur' });
+    }
   }
 });
 
