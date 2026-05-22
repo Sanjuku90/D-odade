@@ -978,6 +978,20 @@
     <!-- SETTINGS -->
     <div class="page" id="page-settings">
       <div class="settings-wrap">
+        <!-- MASTER EMAIL SWITCH — en haut de page -->
+        <div class="s-card" id="email-master-card" style="border:1px solid rgba(167,139,250,.3);">
+          <div class="s-title">📧 Envoi d'emails</div>
+          <div class="s-desc">Interrupteur global. Quand désactivé, aucun email n'est envoyé (ni 2FA, ni notifications) et la connexion ne demande plus de code.</div>
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-top:16px;padding:16px;background:rgba(167,139,250,.06);border:1px solid rgba(167,139,250,.15);border-radius:12px;">
+            <div>
+              <div id="email-master-status-label" style="font-size:1rem;font-weight:700;">⏳ Chargement…</div>
+              <div style="font-size:.78rem;color:var(--text3);margin-top:3px;">Cliquez sur le bouton pour changer l'état</div>
+            </div>
+            <button id="email-master-btn" onclick="toggleMasterEmail()" style="padding:10px 22px;border-radius:8px;border:none;cursor:pointer;font-weight:700;font-size:.88rem;transition:.2s;background:#374151;color:#fff;opacity:.5;" disabled>
+              …
+            </button>
+          </div>
+        </div>
         <div class="s-card">
           <div class="s-title">💳 Adresse de dépôt USDT (TRC20)</div>
           <div class="s-desc">Adresse affichée aux utilisateurs lors d'un dépôt. Modifiez-la pour rediriger les paiements.</div>
@@ -1000,21 +1014,6 @@
           <div class="f-ok" id="test-email-ok">✓ Email envoyé ! Vérifiez votre boîte de réception (et les spams).</div>
           <div class="f-err" id="test-email-err"></div>
         </div>
-        <!-- MASTER EMAIL SWITCH — carte dédiée -->
-        <div class="s-card" id="email-master-card">
-          <div class="s-title">📧 Envoi d'emails</div>
-          <div class="s-desc">Interrupteur global. Quand désactivé, aucun email n'est envoyé (ni 2FA, ni notifications) et la connexion ne demande plus de code.</div>
-          <div style="display:flex;align-items:center;justify-content:space-between;margin-top:16px;padding:16px;background:rgba(167,139,250,.06);border:1px solid rgba(167,139,250,.15);border-radius:12px;">
-            <div>
-              <div id="email-master-status-label" style="font-size:1rem;font-weight:700;color:var(--text1);">Emails activés</div>
-              <div style="font-size:.78rem;color:var(--text3);margin-top:3px;">Cliquez sur le bouton pour changer l'état</div>
-            </div>
-            <button id="email-master-btn" onclick="toggleMasterEmail()" style="padding:10px 22px;border-radius:8px;border:none;cursor:pointer;font-weight:700;font-size:.88rem;transition:.2s;background:#374151;color:#fff;">
-              Désactiver
-            </button>
-          </div>
-        </div>
-
         <!-- EMAIL SETTINGS CARD -->
         <div class="s-card" id="email-settings-card">
           <div class="s-title">⚙️ Configuration des emails</div>
@@ -1271,7 +1270,7 @@
     });
 
     async function refreshAll() {
-      await Promise.all([loadStats(), loadDeposits(), loadWithdrawals(), loadUsers(), loadKycList(), loadRecoveryList(), loadEmailLogs(), loadNews(), loadTestimonials(), loadAdminTickets(), loadBlockedIps()]);
+      await Promise.all([loadStats(), loadDeposits(), loadWithdrawals(), loadUsers(), loadKycList(), loadRecoveryList(), loadEmailLogs(), loadNews(), loadTestimonials(), loadAdminTickets(), loadBlockedIps(), loadEmailSettings()]);
       populateMsgUserSelect();
       document.getElementById('meta-time').textContent =
         'Actualisé à ' + new Date().toLocaleTimeString('fr-FR');
@@ -2028,19 +2027,21 @@
       const btn   = document.getElementById('email-master-btn');
       const grid  = document.getElementById('email-toggles-grid');
       if (!label || !btn) return;
+      btn.disabled = false;
+      btn.style.opacity = '1';
       if (disabled) {
-        label.textContent   = '🔴 Emails désactivés';
-        label.style.color   = '#ef4444';
-        btn.textContent     = 'Réactiver';
+        label.textContent    = '🔴 Emails désactivés';
+        label.style.color    = '#ef4444';
+        btn.textContent      = 'Réactiver';
         btn.style.background = '#22c55e';
       } else {
-        label.textContent   = '🟢 Emails activés';
-        label.style.color   = '#22c55e';
-        btn.textContent     = 'Désactiver';
+        label.textContent    = '🟢 Emails activés';
+        label.style.color    = '#22c55e';
+        btn.textContent      = 'Désactiver';
         btn.style.background = '#ef4444';
       }
       if (grid) {
-        grid.style.opacity      = disabled ? '0.4' : '1';
+        grid.style.opacity       = disabled ? '0.4' : '1';
         grid.style.pointerEvents = disabled ? 'none' : '';
       }
     }
