@@ -637,7 +637,13 @@ app.post('/api/login', async (req, res) => {
     if (blockedAtLogin) return res.status(403).json({ error: 'Accès refusé depuis cette adresse IP.' });
 
     const emailConfigured = !!(process.env.GMAIL_CLIENT_ID && process.env.GMAIL_REFRESH_TOKEN && process.env.MAIL_USER);
-    const emailsGloballyDisabled = getSetting('email_all_disabled') === '1';
+
+    // Lecture directe en DB pour ne pas dépendre du cache
+    let emailsGloballyDisabled = getSetting('email_all_disabled') === '1';
+    try {
+      const row = await db.get("SELECT value FROM settings WHERE key = 'email_all_disabled'");
+      if (row) emailsGloballyDisabled = row.value === '1';
+    } catch (_) {}
 
     if (!emailConfigured || emailsGloballyDisabled) {
       req.session.userId = user.id;
