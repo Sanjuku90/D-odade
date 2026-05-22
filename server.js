@@ -456,17 +456,12 @@ async function initDB() {
   )`);
 
   // Migrations (try/catch car la colonne peut déjà exister)
-  const migrations = [
-    `ALTER TABLE users ADD COLUMN IF NOT EXISTS can_withdraw INTEGER DEFAULT 0`,
-    `ALTER TABLE quests ADD COLUMN IF NOT EXISTS quest_type TEXT DEFAULT 'regular'`,
-    `ALTER TABLE users ADD COLUMN IF NOT EXISTS first_name TEXT DEFAULT ''`,
-    `ALTER TABLE users ADD COLUMN IF NOT EXISTS last_name TEXT DEFAULT ''`,
-    `ALTER TABLE users ADD COLUMN IF NOT EXISTS is_banned INTEGER DEFAULT 0`,
-    `ALTER TABLE users ADD COLUMN IF NOT EXISTS last_login TIMESTAMP`,
-  ];
-  for (const m of migrations) {
-    try { await db.exec(m); } catch (_) {}
-  }
+  try { await db.run('ALTER TABLE users ADD COLUMN can_withdraw INTEGER DEFAULT 0'); } catch {}
+  try { await db.run('ALTER TABLE quests ADD COLUMN quest_type TEXT DEFAULT \'regular\''); } catch {}
+  try { await db.run('ALTER TABLE users ADD COLUMN first_name TEXT DEFAULT \'\''); } catch {}
+  try { await db.run('ALTER TABLE users ADD COLUMN last_name TEXT DEFAULT \'\''); } catch {}
+  try { await db.run('ALTER TABLE users ADD COLUMN is_banned INTEGER DEFAULT 0'); } catch {}
+  try { await db.run('ALTER TABLE users ADD COLUMN last_login TIMESTAMP'); } catch {}
 
   // Adresse de dépôt par défaut
   const settingsCount = await db.get("SELECT COUNT(*) as count FROM settings WHERE key = 'deposit_address'");
