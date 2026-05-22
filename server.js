@@ -515,7 +515,7 @@ async function initDB() {
     'email_toggle_withdrawal_confirmed': '1',
     'email_toggle_withdrawal_rejected': '1',
     'email_toggle_daily_reminder': '1',
-    'email_all_disabled': '0',
+    'email_all_disabled': '1',
   };
   for (const [key, val] of Object.entries(emailDefaults)) {
     await db.run('INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT (key) DO NOTHING', [key, val]);
