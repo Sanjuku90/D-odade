@@ -505,6 +505,9 @@
             <span class="item-icon">💸</span> Retraits
             <span class="nav-badge" id="nb-with"></span>
           </button>
+          <button class="nav-item" data-page="withdraw-access">
+            <span class="item-icon">🔓</span> Accès Retraits
+          </button>
           <button class="nav-item" data-page="users">
             <span class="item-icon">👥</span> Utilisateurs
           </button>
@@ -653,6 +656,37 @@
               <th>ID</th><th>Utilisateur</th><th>Montant</th><th>Hash Tx</th><th>Date</th><th>Statut</th><th>Actions</th>
             </tr></thead>
             <tbody id="dep-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- WITHDRAW ACCESS -->
+    <div class="page" id="page-withdraw-access">
+      <div class="card">
+        <div class="card-header">
+          <div>
+            <div class="card-title">Accès aux retraits</div>
+            <div class="card-sub">Autorisez ou bloquez les retraits par utilisateur</div>
+          </div>
+          <div class="filter-row">
+            <input class="search-box" type="text" placeholder="🔍 Rechercher un email..." id="wa-search" oninput="renderWithdrawAccess()">
+            <button class="chip active" onclick="setWaF(this,'all')">Tous</button>
+            <button class="chip" onclick="setWaF(this,'allowed')">✅ Autorisés</button>
+            <button class="chip" onclick="setWaF(this,'blocked')">🚫 Bloqués</button>
+          </div>
+        </div>
+        <div class="tbl-wrap">
+          <table>
+            <thead><tr>
+              <th>Utilisateur</th>
+              <th>Solde</th>
+              <th>Total déposé</th>
+              <th>Total retiré</th>
+              <th>Statut retrait</th>
+              <th>Actions</th>
+            </tr></thead>
+            <tbody id="wa-tbody"></tbody>
           </table>
         </div>
       </div>
@@ -1172,12 +1206,12 @@
 
     const PAGE_LABELS = {
       overview:'Vue d\'ensemble', deposits:'Dépôts',
-      withdrawals:'Retraits', users:'Utilisateurs', kyc:'KYC', recovery:'Récupération',
+      withdrawals:'Retraits', 'withdraw-access':'Accès Retraits', users:'Utilisateurs', kyc:'KYC', recovery:'Récupération',
       tickets:'Tickets Support', messaging:'Messagerie', emails:'Emails envoyés', settings:'Paramètres',
       news:'Actualités', testimonials:'Témoignages'
     };
     const PAGE_ICONS = {
-      overview:'📊', deposits:'💳', withdrawals:'💸', users:'👥', kyc:'🪪', recovery:'🔑',
+      overview:'📊', deposits:'💳', withdrawals:'💸', 'withdraw-access':'🔓', users:'👥', kyc:'🪪', recovery:'🔑',
       tickets:'🎫', messaging:'✉️', emails:'📧', settings:'⚙️', news:'📰', testimonials:'⭐'
     };
 
@@ -1730,7 +1764,7 @@
     async function loadUsers() {
       try {
         const r = await fetch('/api/admin/users');
-        if (r.ok) { allUsers = await r.json(); renderUsers(); checkDuplicateIpAlert(); }
+        if (r.ok) { allUsers = await r.json(); renderUsers(); renderWithdrawAccess(); checkDuplicateIpAlert(); }
       } catch {}
     }
     function renderUsers() {
@@ -1811,6 +1845,59 @@
       const j = await r.json();
       if (r.ok) { await loadUsers(); openModal(selUserId); }
       else { alert(j.error || 'Erreur'); }
+    }
+
+    // ── WITHDRAW ACCESS PAGE ──
+    let waFilter = 'all';
+    function setWaF(el, f) {
+      waFilter = f;
+      document.querySelectorAll('#page-withdraw-access .chip').forEach(b => b.classList.remove('active'));
+      el.classList.add('active');
+      renderWithdrawAccess();
+    }
+    function renderWithdrawAccess() {
+      const q = (document.getElementById('wa-search')?.value || '').toLowerCase();
+      let list = [...allUsers];
+      if (waFilter === 'allowed') list = list.filter(u => u.can_withdraw);
+      if (waFilter === 'blocked')  list = list.filter(u => !u.can_withdraw);
+      if (q) list = list.filter(u => u.email.toLowerCase().includes(q));
+      const tb = document.getElementById('wa-tbody');
+      if (!tb) return;
+      if (!list.length) {
+        tb.innerHTML = '<tr class="empty-row"><td colspan="6">Aucun utilisateur trouvé</td></tr>';
+        return;
+      }
+      tb.innerHTML = list.map(u => {
+        const badge = u.can_withdraw
+          ? '<span class="badge b-confirmed">✅ Autorisé</span>'
+          : '<span class="badge b-rejected">🚫 Bloqué</span>';
+        const btn = u.can_withdraw
+          ? `<button class="btn-ko" style="font-size:.75rem;padding:5px 12px" onclick="toggleWithdrawAccess(${u.id})">🚫 Bloquer</button>`
+          : `<button class="btn-ok" style="font-size:.75rem;padding:5px 12px" onclick="toggleWithdrawAccess(${u.id})">✅ Autoriser</button>`;
+        return `<tr>
+          <td><div class="u-cell"><div class="u-av">${u.email[0].toUpperCase()}</div><span style="color:var(--text2);font-size:.8rem">${u.email}</span></div></td>
+          <td class="td-amount" style="color:var(--green)">$${parseFloat(u.balance).toFixed(2)}</td>
+          <td style="color:var(--text2)">$${parseFloat(u.total_deposited||0).toFixed(2)}</td>
+          <td style="color:var(--text2)">$${parseFloat(u.total_withdrawn||0).toFixed(2)}</td>
+          <td>${badge}</td>
+          <td>${btn}</td>
+        </tr>`;
+      }).join('');
+    }
+    async function toggleWithdrawAccess(userId) {
+      const u = allUsers.find(x => x.id === userId);
+      if (!u) return;
+      const action = u.can_withdraw ? 'bloquer' : 'autoriser';
+      if (!confirm(`Voulez-vous ${action} les retraits pour ${u.email} ?`)) return;
+      const r = await fetch(`/api/admin/users/${userId}/toggle-withdraw`, { method: 'POST' });
+      const j = await r.json();
+      if (r.ok) {
+        showToast(u.can_withdraw ? `🚫 Retraits bloqués pour ${u.email}` : `✅ Retraits autorisés pour ${u.email}`, 'success');
+        await loadUsers();
+        renderWithdrawAccess();
+      } else {
+        showToast(j.error || 'Erreur', 'error');
+      }
     }
     document.getElementById('user-modal').addEventListener('click', e => { if(e.target===e.currentTarget) closeModal(); });
 
