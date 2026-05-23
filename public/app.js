@@ -506,7 +506,9 @@ async function loadUserData() {
         document.getElementById('profile-date').textContent = new Date(user.created_at).toLocaleDateString('fr-FR');
       }
 
-      applyKycFreeze(user.kyc_status);
+      const activeTab = document.querySelector('.dash-tab.active');
+      const isOnKycTab = activeTab && activeTab.dataset.view === 'kyc';
+      if (!isOnKycTab) applyKycFreeze(user.kyc_status);
     }
   } catch (err) {
     console.error('Error loading user data');

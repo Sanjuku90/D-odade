@@ -1106,6 +1106,7 @@ app.post('/api/kyc', requireAuth, async (req, res) => {
     }
     res.json({ success: true, message: 'Documents soumis, en attente de vérification' });
   } catch (err) {
+    console.error('[kyc/submit] Erreur:', err.message);
     res.status(500).json({ error: 'Erreur serveur' });
   }
 });
@@ -1403,6 +1404,7 @@ app.get('/api/admin/kyc', requireAdmin, async (req, res) => {
     `);
     res.json(submissions);
   } catch (err) {
+    console.error('[admin/kyc] Erreur requête:', err.message);
     res.status(500).json({ error: 'Erreur serveur' });
   }
 });
