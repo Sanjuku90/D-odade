@@ -86,6 +86,7 @@ QuestInvest est une plateforme d'investissement où les utilisateurs peuvent dé
 - 13 Avr 2026: Migration vers l'environnement Replit, installation des dépendances Node.js, configuration du workflow sur le serveur Express, et renforcement de la configuration de session/variables sensibles
 - 13 Avr 2026: Réinitialisation des quêtes changée de quotidienne à un cycle de 2 semaines
 - 13 Avr 2026: Dépôt minimum changé à 55$
+- 23 Mai 2026: Dépôt minimum changé à 250$
 - 11 Mai 2026: Dépôt minimum changé à 249$, frais d'activation de 1$ ajoutés
 - 14 Déc 2024: Création initiale du projet
 - Adresse de dépôt fixe: TAB1oeEKDS5NATwFAaUrTioDU9djX7anyS
