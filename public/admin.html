@@ -1633,7 +1633,7 @@
               if (_admLastSnapshot.size > 0) {
                 _admUnread++;
                 _admPlaySound();
-                _admFireNotif('🆕 Nouveau ticket support', t.user_email + ' — ' + t.subject);
+                _admFireNotif('🆕 Nouveau message support', t.user_email + ' — ' + (t.message||'').slice(0, 60));
                 setTimeout(() => {
                   const el = document.querySelector(`.adm-wachat-conv-item[data-id="${t.id}"]`);
                   if (el) { el.classList.add('adm-chat-flash'); setTimeout(() => el.classList.remove('adm-chat-flash'), 1400); }
@@ -1735,7 +1735,7 @@
     function renderAdminTickets() {
       const q = (document.getElementById('adm-tick-search')?.value || '').toLowerCase();
       let list = ticketFilter === 'all' ? allTickets : allTickets.filter(t => t.status === ticketFilter);
-      if (q) list = list.filter(t => (t.user_email||'').toLowerCase().includes(q) || t.subject.toLowerCase().includes(q));
+      if (q) list = list.filter(t => (t.user_email||'').toLowerCase().includes(q) || (t.message||'').toLowerCase().includes(q));
       const container = document.getElementById('adm-tickets-list');
       if (!container) return;
       if (!list.length) {
@@ -1766,7 +1766,6 @@
               <div class="adm-conv-item-email">${escAdm(t.user_email||'—')}</div>
               <div class="adm-conv-item-time">${fmtTime(ts)}</div>
             </div>
-            <div class="adm-conv-item-subject">${escAdm(t.subject)}</div>
             <div class="adm-conv-item-bottom">
               <div class="adm-conv-item-preview">${escAdm(previewShort)}</div>
               ${isOpen ? `<div class="adm-unread-dot"></div>` : `<div class="adm-status-mini ${dotClass}"></div>`}
@@ -1795,8 +1794,8 @@
       const statusLabels = {open:'Ouvert',answered:'Répondu',closed:'Fermé'};
       const initials = (ticket.user_email||'U').charAt(0).toUpperCase();
       document.getElementById('adm-conv-avatar').textContent = initials;
-      document.getElementById('adm-conv-subject').textContent = ticket.subject;
-      document.getElementById('adm-conv-email').textContent = ticket.user_email || '—';
+      document.getElementById('adm-conv-subject').textContent = ticket.user_email || '—';
+      document.getElementById('adm-conv-email').textContent = 'Discussion support';
       const badge = document.getElementById('adm-conv-badge');
       badge.textContent = statusLabels[ticket.status] || ticket.status;
       badge.className = 'adm-conv-badge ' + ticket.status;

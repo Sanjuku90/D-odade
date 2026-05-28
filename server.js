@@ -1951,14 +1951,25 @@ app.get('/api/tickets', requireAuth, async (req, res) => {
 });
 
 app.post('/api/tickets', requireAuth, async (req, res) => {
-  const { subject, message } = req.body;
-  if (!subject || !message) return res.status(400).json({ error: 'Sujet et message requis' });
+  const { message } = req.body;
+  if (!message || !message.trim()) return res.status(400).json({ error: 'Message requis' });
   try {
-    const r = await db.run(
-      'INSERT INTO support_tickets (user_id, subject, message) VALUES (?, ?, ?)',
-      [req.session.userId, subject.trim(), message.trim()]
+    const existing = await db.get(
+      "SELECT * FROM support_tickets WHERE user_id = ? AND status != 'closed' ORDER BY created_at DESC LIMIT 1",
+      [req.session.userId]
     );
-    res.json({ success: true, id: r.lastInsertRowid });
+    if (existing) {
+      await db.run('INSERT INTO ticket_replies (ticket_id, sender, message) VALUES (?, ?, ?)',
+        [existing.id, 'user', message.trim()]);
+      await db.run("UPDATE support_tickets SET status = 'open' WHERE id = ?", [existing.id]);
+      res.json({ success: true, id: existing.id });
+    } else {
+      const r = await db.run(
+        'INSERT INTO support_tickets (user_id, subject, message) VALUES (?, ?, ?)',
+        [req.session.userId, 'Support', message.trim()]
+      );
+      res.json({ success: true, id: r.lastInsertRowid });
+    }
   } catch { res.status(500).json({ error: 'Erreur serveur' }); }
 });
 
@@ -1988,6 +1999,9 @@ app.get('/api/admin/tickets', requireAdmin, async (req, res) => {
       SELECT t.*, u.email as user_email
       FROM support_tickets t
       JOIN users u ON u.id = t.user_id
+      WHERE t.id IN (
+        SELECT MAX(id) FROM support_tickets GROUP BY user_id
+      )
       ORDER BY t.created_at DESC
     `);
     for (const t of tickets) {

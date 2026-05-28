@@ -1196,49 +1196,26 @@
 
           <!-- ========== SUPPORT TICKETS ========== -->
           <div id="support-view" class="dashboard-view hidden">
-            <!-- WhatsApp-like Chat Interface -->
-            <div class="wachat-shell">
+            <div class="wachat-shell single-conv">
 
-              <!-- LEFT: Conversation List -->
-              <div class="wachat-sidebar" id="wachat-sidebar">
-                <div class="wachat-sidebar-header">
-                  <div class="wachat-sidebar-title">
-                    <div class="wachat-avatar-sm" style="background:linear-gradient(135deg,#7c3aed,#a78bfa);">
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
-                    </div>
-                    <span>Service client</span>
-                  </div>
-                  <button class="wachat-new-btn" onclick="openNewTicketModal()">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-                    Nouveau
-                  </button>
-                </div>
-                <div class="wachat-search-wrap">
-                  <svg class="wachat-search-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-                  <input id="wachat-search" class="wachat-search-input" placeholder="Rechercher une conversation…" oninput="filterConversations(this.value)">
-                </div>
-                <div class="wachat-conv-list" id="wachat-conv-list">
-                  <div class="wachat-empty-convs">
-                    <div class="wachat-empty-icon">💬</div>
-                    <p>Aucune conversation</p>
-                    <span>Cliquez sur "Nouveau" pour démarrer</span>
-                  </div>
-                </div>
-              </div>
+              <!-- Full-width chat panel — one conversation per user -->
+              <div class="wachat-main" id="wachat-main" style="flex:1;width:100%;min-width:0;">
 
-              <!-- RIGHT: Chat Panel -->
-              <div class="wachat-main" id="wachat-main">
-
-                <!-- Empty state (no conversation selected) -->
+                <!-- Empty state: no conversation yet -->
                 <div class="wachat-no-conv" id="wachat-no-conv">
                   <div class="wachat-no-conv-inner">
                     <div class="wachat-no-conv-icon">
                       <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="rgba(167,139,250,0.5)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
                     </div>
                     <h3>Service client QuestInvest</h3>
-                    <p>Sélectionnez une conversation ou démarrez-en une nouvelle.<br>Notre équipe répond en moins de 24h.</p>
-                    <button class="btn btn-primary" style="margin-top:16px;font-size:.85rem;" onclick="openNewTicketModal()">
-                      + Nouvelle conversation
+                    <p>Envoyez un message ci-dessous pour démarrer votre conversation.<br>Notre équipe répond en moins de 24h.</p>
+                  </div>
+                  <div class="wachat-input-area" id="wachat-start-area">
+                    <textarea id="wachat-start-input" class="wachat-textarea" placeholder="Écrivez votre premier message…" rows="1"
+                      onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendFirstMessage();}"
+                      oninput="autoGrow(this)"></textarea>
+                    <button class="wachat-send-btn" onclick="sendFirstMessage()" title="Envoyer">
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
                     </button>
                   </div>
                 </div>
@@ -1247,26 +1224,21 @@
                 <div class="wachat-conv-view hidden" id="wachat-conv-view">
                   <!-- Chat header -->
                   <div class="wachat-conv-header">
-                    <button class="wachat-back-btn" onclick="backToList()" title="Retour">
-                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="15 18 9 12 15 6"/></svg>
-                    </button>
-                    <div class="wachat-conv-avatar" id="conv-avatar">S</div>
+                    <div class="wachat-conv-avatar">S</div>
                     <div class="wachat-conv-meta">
-                      <div class="wachat-conv-name" id="conv-subject">—</div>
-                      <div class="wachat-conv-status" id="conv-status-label">Support QuestInvest</div>
+                      <div class="wachat-conv-name">Support QuestInvest</div>
+                      <div class="wachat-conv-status" id="conv-status-label">Notre équipe répond en moins de 24h</div>
                     </div>
                     <div class="wachat-conv-badge" id="conv-status-badge"></div>
                   </div>
 
                   <!-- Messages feed -->
-                  <div class="wachat-messages" id="wachat-messages">
-                    <!-- injected by JS -->
-                  </div>
+                  <div class="wachat-messages" id="wachat-messages"></div>
 
                   <!-- Closed notice -->
                   <div class="wachat-closed-notice hidden" id="wachat-closed-notice">
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-                    Cette conversation est clôturée.
+                    Cette conversation est clôturée. Envoyez un message pour la rouvrir.
                   </div>
 
                   <!-- Input area -->
@@ -1279,33 +1251,6 @@
                     </button>
                   </div>
                 </div>
-              </div>
-            </div>
-
-            <!-- New Ticket Modal -->
-            <div class="wachat-modal-overlay hidden" id="new-ticket-modal" onclick="if(event.target===this)closeNewTicketModal()">
-              <div class="wachat-modal">
-                <div class="wachat-modal-header">
-                  <h3>Nouvelle conversation</h3>
-                  <button class="wachat-modal-close" onclick="closeNewTicketModal()">✕</button>
-                </div>
-                <form id="ticket-form" onsubmit="submitTicket(event)">
-                  <div class="wachat-modal-body">
-                    <div class="form-group" style="margin-bottom:14px;">
-                      <label>Sujet</label>
-                      <input type="text" id="ticket-subject" placeholder="Ex : Problème de dépôt" required style="width:100%;">
-                    </div>
-                    <div class="form-group" style="margin:0;">
-                      <label>Message</label>
-                      <textarea id="ticket-message" rows="5" placeholder="Décrivez votre problème en détail…" required style="width:100%;background:#16162a;border:1px solid rgba(255,255,255,.08);border-radius:8px;padding:10px 14px;color:#f0f0fa;font-family:inherit;font-size:.9rem;resize:vertical;outline:none;transition:border-color .2s;" onfocus="this.style.borderColor='rgba(167,139,250,.5)'" onblur="this.style.borderColor='rgba(255,255,255,.08)'"></textarea>
-                    </div>
-                    <p class="error-msg" id="ticket-error" style="margin-top:8px;"></p>
-                  </div>
-                  <div class="wachat-modal-footer">
-                    <button type="button" class="btn" style="background:rgba(255,255,255,.06);color:#94a3b8;border:1px solid rgba(255,255,255,.08);" onclick="closeNewTicketModal()">Annuler</button>
-                    <button type="submit" class="btn btn-primary" id="ticket-submit-btn">Envoyer</button>
-                  </div>
-                </form>
               </div>
             </div>
           </div>

@@ -489,9 +489,6 @@ function showDashboard() {
   const widget = document.getElementById('chat-widget');
   if (widget) widget.style.display = 'block';
 
-  // Listener ticket form
-  const tf = document.getElementById('ticket-form');
-  if (tf && !tf.dataset.bound) { tf.dataset.bound = '1'; tf.addEventListener('submit', submitTicket); }
 }
 
 async function loadUserData() {
@@ -1108,55 +1105,48 @@ function copyReferralLink() {
   copyToClipboard(inp.value, 'Lien copié !');
 }
 
-// ── SUPPORT — WhatsApp-like Interface ────────────────────────────────────────
+// ── SUPPORT — Discussion unique par utilisateur ───────────────────────────────
 
-let _allTickets = [];
-let _activeTicketId = null;
+let _currentTicket = null;
 
 async function loadTickets() {
   try {
     const r = await fetch('/api/tickets');
     if (!r.ok) return;
-    const fresh = await r.json();
+    const tickets = await r.json();
 
-    // ── Detect new admin replies → notification ──
-    fresh.forEach(t => {
+    // Detect new admin replies → notification
+    if (tickets.length > 0) {
+      const t = tickets[0];
       const prevCount = _lastTicketSnapshot.get(t.id);
       const curCount = (t.replies || []).length;
       if (prevCount !== undefined && curCount > prevCount) {
-        // Check if latest new reply is from admin
         const newReplies = (t.replies || []).slice(prevCount);
         const hasAdminReply = newReplies.some(rep => rep.sender === 'admin');
         if (hasAdminReply) {
           _chatUnread++;
           _playChatSound();
-          _fireChatNotif(
-            '💬 Nouveau message support',
-            t.subject + ' — ' + newReplies[newReplies.length - 1].message.slice(0, 80)
-          );
-          // Flash item in sidebar
-          setTimeout(() => {
-            const el = document.querySelector(`.wachat-conv-item[data-id="${t.id}"]`);
-            if (el) { el.classList.add('chat-flash'); setTimeout(() => el.classList.remove('chat-flash'), 1400); }
-          }, 100);
+          _fireChatNotif('💬 Nouveau message support', newReplies[newReplies.length - 1].message.slice(0, 80));
         }
       }
       _lastTicketSnapshot.set(t.id, curCount);
-    });
+    }
     _updateChatTabTitle();
 
-    _allTickets = fresh;
-
-    // Badge nav
-    const answered = _allTickets.filter(t => t.status === 'answered' && t.id !== _activeTicketId).length;
-    const badge = document.getElementById('support-badge');
-    if (badge) { badge.textContent = answered; badge.style.display = answered > 0 ? 'inline' : 'none'; }
-
-    renderConvList(_allTickets);
-
-    if (_activeTicketId) {
-      const updated = _allTickets.find(t => t.id === _activeTicketId);
-      if (updated) renderConversation(updated);
+    if (tickets.length > 0) {
+      _currentTicket = tickets[0];
+      const isUnread = _currentTicket.status === 'answered';
+      const badge = document.getElementById('support-badge');
+      if (badge) { badge.textContent = isUnread ? '!' : ''; badge.style.display = isUnread ? 'inline' : 'none'; }
+      document.getElementById('wachat-no-conv')?.classList.add('hidden');
+      document.getElementById('wachat-conv-view')?.classList.remove('hidden');
+      renderConversation(_currentTicket);
+    } else {
+      _currentTicket = null;
+      const badge = document.getElementById('support-badge');
+      if (badge) badge.style.display = 'none';
+      document.getElementById('wachat-no-conv')?.classList.remove('hidden');
+      document.getElementById('wachat-conv-view')?.classList.add('hidden');
     }
   } catch {}
 }
@@ -1224,98 +1214,24 @@ async function requestChatNotifPerm() {
   }
 }
 
-function renderConvList(tickets) {
-  const listEl = document.getElementById('wachat-conv-list');
-  if (!listEl) return;
-
-  if (!tickets.length) {
-    listEl.innerHTML = `<div class="wachat-empty-convs">
-      <div class="wachat-empty-icon">💬</div>
-      <p>Aucune conversation</p>
-      <span>Cliquez sur "Nouveau" pour démarrer</span>
-    </div>`;
-    return;
-  }
-
-  const statusLabel = { open: 'Ouvert', answered: 'Répondu', closed: 'Fermé' };
-
-  listEl.innerHTML = tickets.map(t => {
-    const lastReply = t.replies && t.replies.length ? t.replies[t.replies.length - 1] : null;
-    const preview = lastReply ? lastReply.message : t.message;
-    const previewShort = preview.length > 50 ? preview.slice(0, 50) + '…' : preview;
-    const ts = lastReply ? lastReply.created_at : t.created_at;
-    const time = fmtChatTime(ts);
-    const initials = t.subject ? t.subject.charAt(0).toUpperCase() : 'S';
-    const isActive = t.id === _activeTicketId;
-    const isUnread = t.status === 'answered';
-
-    return `<div class="wachat-conv-item${isActive ? ' active' : ''}" onclick="openConversation(${t.id})" data-id="${t.id}">
-      <div class="wachat-conv-avatar">${initials}</div>
-      <div class="wachat-conv-item-body">
-        <div class="wachat-conv-item-top">
-          <div class="wachat-conv-item-name">${escHtml(t.subject)}</div>
-          <div class="wachat-conv-item-time">${time}</div>
-        </div>
-        <div class="wachat-conv-item-bottom">
-          <div class="wachat-conv-item-preview">${escHtml(previewShort)}</div>
-          ${isUnread ? `<div class="wachat-unread-badge">!</div>` : `<div class="wachat-status-dot ${t.status}"></div>`}
-        </div>
-      </div>
-    </div>`;
-  }).join('');
-}
-
-function openConversation(id) {
-  _activeTicketId = id;
-  const ticket = _allTickets.find(t => t.id === id);
-  if (!ticket) return;
-
-  // Reset unread when opening a conversation
-  _chatUnread = Math.max(0, _chatUnread - 1);
-  _updateChatTabTitle();
-
-  // Mobile: show chat panel
-  document.getElementById('wachat-sidebar')?.closest('.wachat-shell')?.classList.add('show-chat');
-
-  // Show conv view, hide empty state
-  document.getElementById('wachat-no-conv').classList.add('hidden');
-  document.getElementById('wachat-conv-view').classList.remove('hidden');
-
-  // Highlight active item
-  document.querySelectorAll('.wachat-conv-item').forEach(el => {
-    el.classList.toggle('active', parseInt(el.dataset.id) === id);
-  });
-
-  renderConversation(ticket);
-}
-
 function renderConversation(ticket) {
-  const statusLabels = { open: 'Ouvert', answered: 'Répondu', closed: 'Fermé' };
+  const statusLabels = { open: 'Ouvert', answered: 'Répondu', closed: 'Clôturé' };
 
-  // Header
-  document.getElementById('conv-subject').textContent = ticket.subject;
-  document.getElementById('conv-status-label').textContent = 'Support QuestInvest';
   const badge = document.getElementById('conv-status-badge');
-  badge.textContent = statusLabels[ticket.status] || ticket.status;
-  badge.className = `wachat-conv-badge ${ticket.status}`;
+  if (badge) { badge.textContent = statusLabels[ticket.status] || ticket.status; badge.className = `wachat-conv-badge ${ticket.status}`; }
 
-  // Messages
   const msgsEl = document.getElementById('wachat-messages');
-  const allMessages = buildMessageTimeline(ticket);
-  msgsEl.innerHTML = allMessages;
-  msgsEl.scrollTop = msgsEl.scrollHeight;
+  if (msgsEl) { msgsEl.innerHTML = buildMessageTimeline(ticket); msgsEl.scrollTop = msgsEl.scrollHeight; }
 
-  // Input / closed
   const inputArea = document.getElementById('wachat-input-area');
   const closedNotice = document.getElementById('wachat-closed-notice');
   if (ticket.status === 'closed') {
-    inputArea.classList.add('hidden');
-    closedNotice.classList.remove('hidden');
+    closedNotice?.classList.remove('hidden');
   } else {
-    inputArea.classList.remove('hidden');
-    closedNotice.classList.add('hidden');
-    document.getElementById('wachat-reply-input').focus();
+    closedNotice?.classList.add('hidden');
   }
+  inputArea?.classList.remove('hidden');
+  document.getElementById('wachat-reply-input')?.focus();
 }
 
 function buildMessageTimeline(ticket) {
@@ -1351,62 +1267,36 @@ function buildMessageTimeline(ticket) {
   return html;
 }
 
-function backToList() {
-  document.getElementById('wachat-sidebar')?.closest('.wachat-shell')?.classList.remove('show-chat');
-}
-
-function filterConversations(query) {
-  const q = query.toLowerCase().trim();
-  const filtered = q ? _allTickets.filter(t => t.subject.toLowerCase().includes(q) || t.message.toLowerCase().includes(q)) : _allTickets;
-  renderConvList(filtered);
-}
-
-function openNewTicketModal() {
-  document.getElementById('new-ticket-modal').classList.remove('hidden');
-  setTimeout(() => document.getElementById('ticket-subject')?.focus(), 50);
-}
-
-function closeNewTicketModal() {
-  document.getElementById('new-ticket-modal').classList.add('hidden');
-  document.getElementById('ticket-error').textContent = '';
-}
-
-async function submitTicket(e) {
-  e.preventDefault();
-  const subject = document.getElementById('ticket-subject').value.trim();
-  const message = document.getElementById('ticket-message').value.trim();
-  const btn = document.getElementById('ticket-submit-btn');
-  const errEl = document.getElementById('ticket-error');
-  errEl.textContent = '';
-  if (!subject || !message) { errEl.textContent = 'Veuillez remplir tous les champs.'; return; }
-  btn.disabled = true; btn.textContent = 'Envoi…';
+async function sendFirstMessage() {
+  const input = document.getElementById('wachat-start-input');
+  const msg = input?.value.trim();
+  if (!msg) return;
+  const btn = input?.parentElement?.querySelector('.wachat-send-btn');
+  if (btn) btn.disabled = true;
   try {
     const r = await fetch('/api/tickets', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ subject, message })
+      body: JSON.stringify({ message: msg })
     });
-    const j = await r.json();
     if (r.ok) {
-      document.getElementById('ticket-subject').value = '';
-      document.getElementById('ticket-message').value = '';
-      closeNewTicketModal();
+      input.value = '';
+      input.style.height = 'auto';
       await loadTickets();
-      // Open the new conversation
-      const newest = _allTickets[0];
-      if (newest) openConversation(newest.id);
-      showToast('Conversation créée !', 'success');
-    } else { errEl.textContent = j.error || 'Erreur'; }
-  } catch { errEl.textContent = 'Erreur réseau'; }
-  finally { btn.disabled = false; btn.textContent = 'Envoyer'; }
+    } else {
+      const j = await r.json();
+      showToast(j.error || 'Erreur lors de l\'envoi', 'error');
+    }
+  } catch { showToast('Erreur réseau', 'error'); }
+  finally { if (btn) btn.disabled = false; }
 }
 
 async function sendReply() {
-  if (!_activeTicketId) return;
+  if (!_currentTicket) return;
   const input = document.getElementById('wachat-reply-input');
   const msg = input ? input.value.trim() : '';
   if (!msg) return;
 
-  const btn = document.querySelector('.wachat-send-btn');
+  const btn = document.querySelector('#wachat-input-area .wachat-send-btn');
   if (btn) btn.disabled = true;
 
   // Optimistic bubble
@@ -1422,7 +1312,7 @@ async function sendReply() {
   input.style.height = 'auto';
 
   try {
-    const r = await fetch(`/api/tickets/${_activeTicketId}/reply`, {
+    const r = await fetch(`/api/tickets/${_currentTicket.id}/reply`, {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ message: msg })
     });
@@ -1509,7 +1399,7 @@ async function sendChatMessage() {
   try {
     const r = await fetch('/api/tickets', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ subject: chatSubject, message: msg })
+      body: JSON.stringify({ message: msg })
     });
     if (r.ok) {
       messagesEl.innerHTML += `
