@@ -1129,6 +1129,7 @@ async function loadTickets() {
         const hasAdminReply = newReplies.some(rep => rep.sender === 'admin');
         if (hasAdminReply) {
           _chatUnread++;
+          _playChatSound();
           _fireChatNotif(
             '💬 Nouveau message support',
             t.subject + ' — ' + newReplies[newReplies.length - 1].message.slice(0, 80)
@@ -1177,6 +1178,29 @@ function _updateChatTabTitle() {
   } else {
     document.title = 'QuestInvest';
   }
+}
+
+function _playChatSound() {
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    const gain = ctx.createGain();
+    gain.connect(ctx.destination);
+    // Two-tone WhatsApp-like ding: high then slightly lower
+    [[880, 0, 0.12], [1100, 0.1, 0.22]].forEach(([freq, start, end]) => {
+      const osc = ctx.createOscillator();
+      const g = ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.value = freq;
+      g.gain.setValueAtTime(0, ctx.currentTime + start);
+      g.gain.linearRampToValueAtTime(0.18, ctx.currentTime + start + 0.01);
+      g.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + end);
+      osc.connect(g);
+      g.connect(ctx.destination);
+      osc.start(ctx.currentTime + start);
+      osc.stop(ctx.currentTime + end);
+    });
+    setTimeout(() => ctx.close(), 500);
+  } catch {}
 }
 
 function _fireChatNotif(title, body) {

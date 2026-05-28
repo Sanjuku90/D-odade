@@ -1632,6 +1632,7 @@
               // Brand new ticket
               if (_admLastSnapshot.size > 0) {
                 _admUnread++;
+                _admPlaySound();
                 _admFireNotif('🆕 Nouveau ticket support', t.user_email + ' — ' + t.subject);
                 setTimeout(() => {
                   const el = document.querySelector(`.adm-wachat-conv-item[data-id="${t.id}"]`);
@@ -1643,6 +1644,7 @@
               const hasUserReply = newReplies.some(rep => rep.sender !== 'admin');
               if (hasUserReply && t.id !== admActiveTicketId) {
                 _admUnread++;
+                _admPlaySound();
                 _admFireNotif('💬 Réponse utilisateur', t.user_email + ' — ' + newReplies[newReplies.length - 1].message.slice(0, 80));
                 setTimeout(() => {
                   const el = document.querySelector(`.adm-wachat-conv-item[data-id="${t.id}"]`);
@@ -1662,6 +1664,26 @@
             if (updated) admRenderConversation(updated);
           }
         }
+      } catch {}
+    }
+
+    function _admPlaySound() {
+      try {
+        const ctx = new (window.AudioContext || window.webkitAudioContext)();
+        [[880, 0, 0.12], [1100, 0.1, 0.22]].forEach(([freq, start, end]) => {
+          const osc = ctx.createOscillator();
+          const g = ctx.createGain();
+          osc.type = 'sine';
+          osc.frequency.value = freq;
+          g.gain.setValueAtTime(0, ctx.currentTime + start);
+          g.gain.linearRampToValueAtTime(0.18, ctx.currentTime + start + 0.01);
+          g.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + end);
+          osc.connect(g);
+          g.connect(ctx.destination);
+          osc.start(ctx.currentTime + start);
+          osc.stop(ctx.currentTime + end);
+        });
+        setTimeout(() => ctx.close(), 500);
       } catch {}
     }
 
