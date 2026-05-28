@@ -3101,6 +3101,570 @@ body::after {
 }
 
 /* ── KYC UPLOAD ZONE ── */
+/* ── WACHAT — WhatsApp-like Support Interface ── */
+
+.wachat-shell {
+  display: flex;
+  height: calc(100vh - 140px);
+  min-height: 520px;
+  border-radius: 18px;
+  overflow: hidden;
+  border: 1px solid rgba(148,163,184,0.10);
+  background: #0a0a13;
+  box-shadow: 0 8px 40px rgba(0,0,0,0.5);
+}
+
+/* SIDEBAR */
+.wachat-sidebar {
+  width: 320px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  border-right: 1px solid rgba(148,163,184,0.08);
+  background: #0d0d1a;
+}
+
+.wachat-sidebar-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 18px 18px 14px;
+  border-bottom: 1px solid rgba(148,163,184,0.07);
+  flex-shrink: 0;
+}
+
+.wachat-sidebar-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-weight: 700;
+  font-size: 1rem;
+  color: #f5f5fa;
+}
+
+.wachat-avatar-sm {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.wachat-new-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: linear-gradient(135deg, #7c3aed, #a78bfa);
+  border: none;
+  border-radius: 20px;
+  color: #fff;
+  font-size: 0.78rem;
+  font-weight: 600;
+  padding: 7px 13px;
+  cursor: pointer;
+  transition: opacity .2s, transform .15s;
+  white-space: nowrap;
+}
+.wachat-new-btn:hover { opacity: 0.88; transform: translateY(-1px); }
+
+.wachat-search-wrap {
+  position: relative;
+  padding: 10px 14px;
+  flex-shrink: 0;
+}
+
+.wachat-search-icon {
+  position: absolute;
+  left: 26px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #64748b;
+  pointer-events: none;
+}
+
+.wachat-search-input {
+  width: 100%;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.07);
+  border-radius: 24px;
+  padding: 9px 14px 9px 34px;
+  color: #f0f0fa;
+  font-size: 0.82rem;
+  font-family: inherit;
+  outline: none;
+  transition: border-color .2s;
+}
+.wachat-search-input:focus { border-color: rgba(167,139,250,0.4); }
+.wachat-search-input::placeholder { color: #4b5563; }
+
+.wachat-conv-list {
+  flex: 1;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(167,139,250,0.15) transparent;
+}
+
+.wachat-empty-convs {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 48px 24px;
+  text-align: center;
+  gap: 8px;
+}
+.wachat-empty-icon { font-size: 2.4rem; margin-bottom: 6px; }
+.wachat-empty-convs p { font-size: 0.9rem; font-weight: 600; color: #94a3b8; }
+.wachat-empty-convs span { font-size: 0.78rem; color: #4b5563; }
+
+.wachat-conv-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 13px 16px;
+  cursor: pointer;
+  transition: background .15s;
+  border-bottom: 1px solid rgba(255,255,255,0.03);
+  position: relative;
+}
+.wachat-conv-item:hover { background: rgba(167,139,250,0.06); }
+.wachat-conv-item.active { background: rgba(167,139,250,0.10); }
+
+.wachat-conv-avatar {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #4c1d95, #7c3aed);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 1rem;
+  color: #e9d5ff;
+  flex-shrink: 0;
+  position: relative;
+}
+
+.wachat-conv-item-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.wachat-conv-item-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 3px;
+}
+
+.wachat-conv-item-name {
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: #f0f0fa;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 160px;
+}
+
+.wachat-conv-item-time {
+  font-size: 0.68rem;
+  color: #4b5563;
+  flex-shrink: 0;
+}
+
+.wachat-conv-item-preview {
+  font-size: 0.78rem;
+  color: #64748b;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.wachat-conv-item-bottom {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.wachat-unread-badge {
+  background: #7c3aed;
+  color: #fff;
+  font-size: 0.65rem;
+  font-weight: 700;
+  border-radius: 10px;
+  padding: 2px 6px;
+  min-width: 18px;
+  text-align: center;
+}
+
+.wachat-status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.wachat-status-dot.open { background: #fbbf24; }
+.wachat-status-dot.answered { background: #34d399; }
+.wachat-status-dot.closed { background: #4b5563; }
+
+/* MAIN PANEL */
+.wachat-main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  position: relative;
+  background: #080811;
+}
+
+/* Subtle dot pattern background */
+.wachat-main::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image: radial-gradient(circle, rgba(167,139,250,0.04) 1px, transparent 1px);
+  background-size: 28px 28px;
+  pointer-events: none;
+}
+
+.wachat-no-conv {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  z-index: 1;
+}
+
+.wachat-no-conv-inner {
+  text-align: center;
+  padding: 32px;
+}
+
+.wachat-no-conv-icon {
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  background: rgba(167,139,250,0.07);
+  border: 1px solid rgba(167,139,250,0.15);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 20px;
+}
+
+.wachat-no-conv-inner h3 {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: #e9d5ff;
+  margin-bottom: 8px;
+}
+
+.wachat-no-conv-inner p {
+  font-size: 0.83rem;
+  color: #64748b;
+  line-height: 1.7;
+}
+
+/* CONV VIEW */
+.wachat-conv-view {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  z-index: 1;
+  min-height: 0;
+}
+
+.wachat-conv-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 20px;
+  background: rgba(13,13,26,0.95);
+  border-bottom: 1px solid rgba(148,163,184,0.08);
+  flex-shrink: 0;
+  backdrop-filter: blur(12px);
+}
+
+.wachat-back-btn {
+  display: none;
+  background: none;
+  border: none;
+  color: #94a3b8;
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 8px;
+  transition: color .2s;
+}
+.wachat-back-btn:hover { color: #a78bfa; }
+
+.wachat-conv-meta { flex: 1; min-width: 0; }
+
+.wachat-conv-name {
+  font-size: 0.92rem;
+  font-weight: 700;
+  color: #f0f0fa;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.wachat-conv-status {
+  font-size: 0.72rem;
+  color: #64748b;
+  margin-top: 1px;
+}
+
+.wachat-conv-badge {
+  font-size: 0.68rem;
+  font-weight: 700;
+  padding: 3px 10px;
+  border-radius: 12px;
+  white-space: nowrap;
+}
+.wachat-conv-badge.open { background: rgba(251,191,36,0.12); color: #fbbf24; border: 1px solid rgba(251,191,36,0.25); }
+.wachat-conv-badge.answered { background: rgba(52,211,153,0.10); color: #34d399; border: 1px solid rgba(52,211,153,0.2); }
+.wachat-conv-badge.closed { background: rgba(100,116,139,0.12); color: #64748b; border: 1px solid rgba(100,116,139,0.2); }
+
+/* MESSAGES */
+.wachat-messages {
+  flex: 1;
+  overflow-y: auto;
+  padding: 20px 20px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(167,139,250,0.15) transparent;
+}
+
+.wachat-date-sep {
+  text-align: center;
+  margin: 12px 0;
+  font-size: 0.7rem;
+  color: #4b5563;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.wachat-date-sep::before, .wachat-date-sep::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: rgba(255,255,255,0.05);
+}
+
+.wachat-msg-row {
+  display: flex;
+  flex-direction: column;
+  margin-bottom: 6px;
+}
+.wachat-msg-row.mine { align-items: flex-end; }
+.wachat-msg-row.theirs { align-items: flex-start; }
+
+.wachat-msg-sender {
+  font-size: 0.68rem;
+  font-weight: 600;
+  margin-bottom: 3px;
+  padding: 0 4px;
+}
+.wachat-msg-row.theirs .wachat-msg-sender { color: #a78bfa; }
+.wachat-msg-row.mine .wachat-msg-sender { color: #34d399; }
+
+.wachat-bubble {
+  max-width: 72%;
+  padding: 10px 14px;
+  line-height: 1.55;
+  font-size: 0.87rem;
+  color: #e2e8f0;
+  position: relative;
+  word-break: break-word;
+}
+
+.wachat-msg-row.theirs .wachat-bubble {
+  background: #1a1a2e;
+  border: 1px solid rgba(167,139,250,0.12);
+  border-radius: 4px 16px 16px 16px;
+}
+
+.wachat-msg-row.mine .wachat-bubble {
+  background: linear-gradient(135deg, #5b21b6, #7c3aed);
+  border: none;
+  border-radius: 16px 4px 16px 16px;
+  color: #ede9fe;
+}
+
+.wachat-msg-time {
+  font-size: 0.65rem;
+  color: #4b5563;
+  margin-top: 3px;
+  padding: 0 4px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.wachat-msg-row.mine .wachat-msg-time { color: rgba(167,139,250,0.6); }
+
+.wachat-first-msg {
+  background: rgba(167,139,250,0.05);
+  border: 1px dashed rgba(167,139,250,0.2);
+  border-radius: 12px;
+  padding: 14px 16px;
+  margin-bottom: 8px;
+}
+.wachat-first-msg-label {
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: #a78bfa;
+  margin-bottom: 5px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.wachat-first-msg-text {
+  font-size: 0.85rem;
+  color: #94a3b8;
+  line-height: 1.6;
+}
+
+/* CLOSED NOTICE */
+.wachat-closed-notice {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 10px 16px;
+  background: rgba(100,116,139,0.08);
+  border-top: 1px solid rgba(100,116,139,0.15);
+  font-size: 0.78rem;
+  color: #64748b;
+  flex-shrink: 0;
+}
+
+/* INPUT AREA */
+.wachat-input-area {
+  display: flex;
+  align-items: flex-end;
+  gap: 10px;
+  padding: 12px 16px;
+  border-top: 1px solid rgba(148,163,184,0.07);
+  background: rgba(13,13,26,0.9);
+  flex-shrink: 0;
+  backdrop-filter: blur(12px);
+}
+
+.wachat-textarea {
+  flex: 1;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 22px;
+  padding: 11px 18px;
+  color: #f0f0fa;
+  font-size: 0.88rem;
+  font-family: inherit;
+  resize: none;
+  outline: none;
+  line-height: 1.45;
+  max-height: 120px;
+  overflow-y: auto;
+  transition: border-color .2s;
+  scrollbar-width: none;
+}
+.wachat-textarea:focus { border-color: rgba(167,139,250,0.45); }
+.wachat-textarea::placeholder { color: #4b5563; }
+
+.wachat-send-btn {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #7c3aed, #a78bfa);
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: opacity .2s, transform .15s, box-shadow .2s;
+  box-shadow: 0 4px 14px rgba(124,58,237,0.4);
+}
+.wachat-send-btn:hover { opacity: 0.88; transform: scale(1.07); }
+.wachat-send-btn:active { transform: scale(0.95); }
+
+/* MODAL */
+.wachat-modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9100;
+  background: rgba(0,0,0,0.65);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  backdrop-filter: blur(4px);
+  padding: 20px;
+}
+.wachat-modal-overlay.hidden { display: none; }
+
+.wachat-modal {
+  background: #12122a;
+  border: 1px solid rgba(167,139,250,0.2);
+  border-radius: 20px;
+  width: 100%;
+  max-width: 480px;
+  box-shadow: 0 24px 64px rgba(0,0,0,0.7);
+  overflow: hidden;
+}
+
+.wachat-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 20px 24px 16px;
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+}
+.wachat-modal-header h3 { font-size: 1rem; font-weight: 700; color: #f0f0fa; }
+
+.wachat-modal-close {
+  background: rgba(255,255,255,0.06);
+  border: none;
+  color: #64748b;
+  border-radius: 50%;
+  width: 30px;
+  height: 30px;
+  cursor: pointer;
+  font-size: 0.8rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background .2s, color .2s;
+}
+.wachat-modal-close:hover { background: rgba(248,113,113,0.12); color: #f87171; }
+
+.wachat-modal-body { padding: 20px 24px; }
+
+.wachat-modal-footer {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+  padding: 16px 24px 20px;
+  border-top: 1px solid rgba(255,255,255,0.06);
+}
+
+/* RESPONSIVE */
+@media (max-width: 680px) {
+  .wachat-shell { height: calc(100vh - 110px); border-radius: 12px; }
+  .wachat-sidebar { width: 100%; border-right: none; }
+  .wachat-main { display: none; }
+  .wachat-shell.show-chat .wachat-sidebar { display: none; }
+  .wachat-shell.show-chat .wachat-main { display: flex; }
+  .wachat-back-btn { display: flex !important; }
+  .wachat-bubble { max-width: 85%; }
+}
+
 .kyc-upload-zone {
   border: 2px dashed rgba(167,139,250,0.3);
   border-radius: 12px;
