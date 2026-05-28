@@ -460,6 +460,229 @@
     }
     .login-btn:hover { opacity: 0.9; }
     .login-err { color: var(--red); font-size: 0.82rem; margin-top: 12px; min-height: 18px; }
+
+    /* ── ADMIN WHATSAPP CHAT ── */
+    .adm-wachat-shell {
+      display: flex; height: calc(100vh - 64px);
+      background: var(--bg2); border-radius: 16px; overflow: hidden;
+      border: 1px solid rgba(255,255,255,.06);
+    }
+    /* Sidebar */
+    .adm-wachat-sidebar {
+      width: 340px; min-width: 280px; max-width: 360px;
+      display: flex; flex-direction: column;
+      background: var(--bg2); border-right: 1px solid rgba(255,255,255,.06);
+      flex-shrink: 0;
+    }
+    .adm-wachat-sidebar-header {
+      padding: 18px 16px 12px;
+      display: flex; justify-content: space-between; align-items: center;
+      border-bottom: 1px solid rgba(255,255,255,.04);
+    }
+    .adm-wachat-sidebar-title {
+      display: flex; align-items: center; gap: 10px;
+      font-size: .95rem; font-weight: 700; color: #f0f0fa;
+    }
+    .adm-wachat-support-avatar {
+      width: 36px; height: 36px; border-radius: 50%;
+      background: linear-gradient(135deg,#7c3aed,#a78bfa);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1rem;
+    }
+    .adm-open-badge {
+      background: rgba(251,191,36,.12); border: 1px solid rgba(251,191,36,.25);
+      color: #fbbf24; font-size: .68rem; font-weight: 700;
+      padding: 3px 9px; border-radius: 20px;
+    }
+    .adm-wachat-search-wrap {
+      position: relative; padding: 10px 14px;
+      border-bottom: 1px solid rgba(255,255,255,.04);
+    }
+    .adm-wachat-search-icon {
+      position: absolute; left: 26px; top: 50%; transform: translateY(-50%);
+      color: #6b7280; pointer-events: none;
+    }
+    .adm-wachat-search {
+      width: 100%; padding: 8px 12px 8px 34px;
+      background: var(--bg3); border: 1px solid var(--border);
+      border-radius: 20px; color: var(--text); font-size: .82rem;
+      outline: none; box-sizing: border-box;
+    }
+    .adm-wachat-filters {
+      display: flex; gap: 6px; padding: 10px 14px;
+      border-bottom: 1px solid rgba(255,255,255,.04); overflow-x: auto;
+      scrollbar-width: none;
+    }
+    .adm-wachat-filters::-webkit-scrollbar { display: none; }
+    .adm-wachat-filter {
+      flex-shrink: 0; padding: 4px 12px; border-radius: 20px;
+      border: 1px solid rgba(255,255,255,.08); background: transparent;
+      color: #9ca3af; font-size: .74rem; cursor: pointer; transition: all .15s;
+    }
+    .adm-wachat-filter.active {
+      background: rgba(124,58,237,.2); border-color: rgba(124,58,237,.4);
+      color: #a78bfa; font-weight: 600;
+    }
+    .adm-wachat-conv-list { flex: 1; overflow-y: auto; scrollbar-width: thin; scrollbar-color: rgba(255,255,255,.06) transparent; }
+
+    /* Conv item */
+    .adm-wachat-conv-item {
+      display: flex; align-items: center; gap: 12px;
+      padding: 14px 16px; cursor: pointer; border-bottom: 1px solid rgba(255,255,255,.03);
+      transition: background .15s;
+    }
+    .adm-wachat-conv-item:hover { background: rgba(255,255,255,.03); }
+    .adm-wachat-conv-item.active { background: rgba(124,58,237,.12); }
+    .adm-user-avatar {
+      width: 42px; height: 42px; border-radius: 50%; flex-shrink: 0;
+      background: linear-gradient(135deg,#1d4ed8,#3b82f6);
+      display: flex; align-items: center; justify-content: center;
+      font-size: .95rem; font-weight: 700; color: #fff;
+    }
+    .adm-conv-item-body { flex: 1; min-width: 0; }
+    .adm-conv-item-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 2px; }
+    .adm-conv-item-email { font-size: .78rem; font-weight: 600; color: #e5e7eb; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 150px; }
+    .adm-conv-item-time { font-size: .68rem; color: #6b7280; flex-shrink: 0; }
+    .adm-conv-item-subject { font-size: .73rem; color: #a78bfa; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-bottom: 3px; }
+    .adm-conv-item-bottom { display: flex; justify-content: space-between; align-items: center; }
+    .adm-conv-item-preview { font-size: .72rem; color: #6b7280; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 175px; }
+    .adm-unread-dot { width: 8px; height: 8px; border-radius: 50%; background: #fbbf24; flex-shrink: 0; }
+    .adm-status-mini { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+    .adm-dot-open { background: #fbbf24; }
+    .adm-dot-answered { background: #34d399; }
+    .adm-dot-closed { background: #6b7280; }
+
+    /* Main panel */
+    .adm-wachat-main { flex: 1; display: flex; flex-direction: column; min-width: 0; background: #111118; position: relative; }
+    .adm-wachat-no-conv {
+      flex: 1; display: flex; align-items: center; justify-content: center;
+    }
+    .adm-wachat-no-conv-inner { text-align: center; color: #4b5563; }
+    .adm-wachat-no-conv-icon { font-size: 3rem; margin-bottom: 16px; opacity: .6; }
+    .adm-wachat-no-conv-inner h3 { font-size: 1rem; font-weight: 600; color: #6b7280; margin: 0 0 8px; }
+    .adm-wachat-no-conv-inner p { font-size: .8rem; max-width: 260px; line-height: 1.6; margin: 0 auto; }
+
+    /* Conversation header */
+    .adm-wachat-conv-view { display: flex; flex-direction: column; height: 100%; }
+    .adm-wachat-conv-header {
+      display: flex; align-items: center; gap: 10px; padding: 12px 18px;
+      background: var(--bg2); border-bottom: 1px solid rgba(255,255,255,.05);
+      flex-shrink: 0;
+    }
+    .adm-wachat-back-btn {
+      display: none; background: none; border: none; color: #9ca3af;
+      cursor: pointer; padding: 4px; border-radius: 6px;
+    }
+    .adm-conv-avatar-wrap { position: relative; flex-shrink: 0; }
+    .adm-conv-avatar {
+      width: 38px; height: 38px; border-radius: 50%;
+      background: linear-gradient(135deg,#1d4ed8,#3b82f6);
+      display: flex; align-items: center; justify-content: center;
+      font-size: .9rem; font-weight: 700; color: #fff;
+    }
+    .adm-conv-status-dot {
+      position: absolute; bottom: 1px; right: 1px;
+      width: 9px; height: 9px; border-radius: 50%;
+      border: 2px solid var(--bg2);
+    }
+    .adm-wachat-conv-meta { flex: 1; min-width: 0; }
+    .adm-wachat-conv-name { font-size: .88rem; font-weight: 700; color: #f0f0fa; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .adm-wachat-conv-email { font-size: .72rem; color: #6b7280; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .adm-conv-badge {
+      font-size: .68rem; font-weight: 700; padding: 3px 9px; border-radius: 12px;
+      white-space: nowrap;
+    }
+    .adm-conv-badge.open { background: rgba(251,191,36,.12); color: #fbbf24; border: 1px solid rgba(251,191,36,.25); }
+    .adm-conv-badge.answered { background: rgba(52,211,153,.1); color: #34d399; border: 1px solid rgba(52,211,153,.2); }
+    .adm-conv-badge.closed { background: rgba(107,114,128,.1); color: #9ca3af; border: 1px solid rgba(107,114,128,.2); }
+    .adm-close-btn {
+      display: flex; align-items: center; gap: 5px;
+      background: rgba(52,211,153,.1); border: 1px solid rgba(52,211,153,.2);
+      color: #34d399; border-radius: 8px; padding: 5px 12px;
+      font-size: .72rem; font-weight: 600; cursor: pointer; transition: all .15s; white-space: nowrap;
+    }
+    .adm-close-btn:hover { background: rgba(52,211,153,.2); }
+
+    /* Messages */
+    .adm-wachat-messages {
+      flex: 1; overflow-y: auto; padding: 18px 20px;
+      display: flex; flex-direction: column; gap: 4px;
+      scrollbar-width: thin; scrollbar-color: rgba(255,255,255,.06) transparent;
+      background: #111118;
+    }
+    .adm-date-sep {
+      text-align: center; font-size: .67rem; color: #4b5563;
+      background: rgba(255,255,255,.04); border-radius: 20px;
+      padding: 3px 12px; margin: 8px auto; display: inline-block; align-self: center;
+    }
+    .adm-msg-row { display: flex; flex-direction: column; margin-bottom: 6px; max-width: 72%; }
+    .adm-msg-row.admin { align-self: flex-start; align-items: flex-start; }
+    .adm-msg-row.user { align-self: flex-end; align-items: flex-end; }
+    .adm-msg-sender { font-size: .65rem; font-weight: 600; margin-bottom: 3px; }
+    .adm-msg-row.admin .adm-msg-sender { color: #a78bfa; }
+    .adm-msg-row.user .adm-msg-sender { color: #34d399; }
+    .adm-bubble {
+      padding: 9px 14px; border-radius: 12px; font-size: .82rem;
+      line-height: 1.5; color: #e5e7eb; word-break: break-word;
+    }
+    .adm-bubble.admin {
+      background: rgba(124,58,237,.15); border: 1px solid rgba(124,58,237,.2);
+      border-radius: 4px 12px 12px 12px;
+    }
+    .adm-bubble.user {
+      background: rgba(52,211,153,.08); border: 1px solid rgba(52,211,153,.15);
+      border-radius: 12px 4px 12px 12px;
+    }
+    .adm-msg-time { font-size: .63rem; color: #4b5563; margin-top: 3px; }
+
+    /* Input area */
+    .adm-wachat-input-area {
+      display: flex; align-items: flex-end; gap: 10px; padding: 12px 16px;
+      background: var(--bg2); border-top: 1px solid rgba(255,255,255,.05);
+      flex-shrink: 0;
+    }
+    .adm-input-agent-tag {
+      font-size: .68rem; font-weight: 700; color: #a78bfa;
+      background: rgba(124,58,237,.12); border: 1px solid rgba(124,58,237,.2);
+      padding: 4px 9px; border-radius: 8px; white-space: nowrap; flex-shrink: 0; margin-bottom: 2px; align-self: center;
+    }
+    .adm-wachat-textarea {
+      flex: 1; background: var(--bg3); border: 1px solid var(--border);
+      border-radius: 12px; padding: 10px 14px; color: var(--text);
+      font-family: inherit; font-size: .84rem; outline: none;
+      resize: none; max-height: 120px; min-height: 40px;
+      scrollbar-width: thin; line-height: 1.45;
+      transition: border-color .2s;
+    }
+    .adm-wachat-textarea:focus { border-color: rgba(124,58,237,.4); }
+    .adm-wachat-send-btn {
+      width: 40px; height: 40px; border-radius: 50%; border: none; flex-shrink: 0;
+      background: linear-gradient(135deg,#7c3aed,#a78bfa);
+      display: flex; align-items: center; justify-content: center;
+      cursor: pointer; transition: opacity .15s;
+    }
+    .adm-wachat-send-btn:hover { opacity: .85; }
+    .adm-wachat-send-btn:disabled { opacity: .4; cursor: not-allowed; }
+
+    /* Closed notice */
+    .adm-closed-notice {
+      display: flex; align-items: center; gap: 6px; justify-content: center;
+      padding: 10px 20px; font-size: .76rem; color: #6b7280;
+      background: rgba(107,114,128,.06); border-top: 1px solid rgba(255,255,255,.05);
+      flex-shrink: 0;
+    }
+
+    .hidden { display: none !important; }
+
+    /* Mobile responsive */
+    @media (max-width: 700px) {
+      .adm-wachat-shell { border-radius: 0; height: calc(100vh - 56px); }
+      .adm-wachat-sidebar { width: 100%; max-width: 100%; border-right: none; }
+      .adm-wachat-main { position: absolute; inset: 0; transform: translateX(100%); transition: transform .25s; z-index: 10; background: #111118; }
+      .adm-wachat-shell.show-chat .adm-wachat-main { transform: translateX(0); }
+      .adm-wachat-shell.show-chat .adm-wachat-sidebar { display: none; }
+      .adm-wachat-back-btn { display: flex !important; }
+    }
   </style>
 </head>
 <body>
@@ -894,23 +1117,97 @@
     </div>
 
     <!-- TICKETS SUPPORT -->
-    <div class="page" id="page-tickets">
-      <div class="card">
-        <div class="card-header">
-          <div>
-            <div class="card-title">🎫 Tickets Support</div>
-            <div class="card-sub">Répondez aux demandes d'assistance des utilisateurs</div>
+    <div class="page" id="page-tickets" style="padding:0;">
+      <div class="adm-wachat-shell">
+
+        <!-- LEFT: Conversation list -->
+        <div class="adm-wachat-sidebar" id="adm-wachat-sidebar">
+          <div class="adm-wachat-sidebar-header">
+            <div class="adm-wachat-sidebar-title">
+              <div class="adm-wachat-support-avatar">🎧</div>
+              <span>Support client</span>
+            </div>
+            <div id="adm-open-count" class="adm-open-badge" style="display:none;"></div>
           </div>
-          <div class="filter-row">
-            <input class="search-box" type="text" placeholder="🔍 Email ou sujet..." id="tick-search" oninput="renderAdminTickets()">
-            <button class="chip active" onclick="setTicketF(this,'all')">Tous</button>
-            <button class="chip" onclick="setTicketF(this,'open')">Ouverts</button>
-            <button class="chip" onclick="setTicketF(this,'answered')">Répondus</button>
-            <button class="chip" onclick="setTicketF(this,'closed')">Fermés</button>
+
+          <!-- Search -->
+          <div class="adm-wachat-search-wrap">
+            <svg class="adm-wachat-search-icon" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            <input id="adm-tick-search" class="adm-wachat-search" placeholder="Email ou sujet…" oninput="renderAdminTickets()">
+          </div>
+
+          <!-- Filter tabs -->
+          <div class="adm-wachat-filters">
+            <button class="adm-wachat-filter active" onclick="setAdmTicketF(this,'all')">Tous</button>
+            <button class="adm-wachat-filter" onclick="setAdmTicketF(this,'open')">Ouverts</button>
+            <button class="adm-wachat-filter" onclick="setAdmTicketF(this,'answered')">Répondus</button>
+            <button class="adm-wachat-filter" onclick="setAdmTicketF(this,'closed')">Fermés</button>
+          </div>
+
+          <!-- Conv list -->
+          <div class="adm-wachat-conv-list" id="adm-tickets-list">
+            <p style="text-align:center;color:var(--text3);padding:28px;font-size:.82rem;">Chargement…</p>
           </div>
         </div>
-        <div id="tickets-admin-list" style="min-height:100px;">
-          <p style="text-align:center;color:var(--text3);padding:28px;font-size:.85rem;">Chargement…</p>
+
+        <!-- RIGHT: Chat panel -->
+        <div class="adm-wachat-main" id="adm-wachat-main">
+
+          <!-- Empty state -->
+          <div class="adm-wachat-no-conv" id="adm-no-conv">
+            <div class="adm-wachat-no-conv-inner">
+              <div class="adm-wachat-no-conv-icon">🎧</div>
+              <h3>Messagerie Support</h3>
+              <p>Sélectionnez une conversation pour lire et répondre aux demandes de vos utilisateurs.</p>
+            </div>
+          </div>
+
+          <!-- Active conversation -->
+          <div class="adm-wachat-conv-view hidden" id="adm-conv-view">
+
+            <!-- Chat header -->
+            <div class="adm-wachat-conv-header">
+              <button class="adm-wachat-back-btn" onclick="admBackToList()" title="Retour">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="15 18 9 12 15 6"/></svg>
+              </button>
+              <div class="adm-conv-avatar-wrap">
+                <div class="adm-conv-avatar" id="adm-conv-avatar">U</div>
+                <div class="adm-conv-status-dot" id="adm-conv-dot"></div>
+              </div>
+              <div class="adm-wachat-conv-meta">
+                <div class="adm-wachat-conv-name" id="adm-conv-subject">—</div>
+                <div class="adm-wachat-conv-email" id="adm-conv-email">—</div>
+              </div>
+              <div style="display:flex;gap:8px;align-items:center;margin-left:auto;">
+                <div class="adm-conv-badge" id="adm-conv-badge"></div>
+                <button class="adm-close-btn" id="adm-close-ticket-btn" onclick="closeAdminTicket()" title="Clôturer la conversation">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>
+                  Clôturer
+                </button>
+              </div>
+            </div>
+
+            <!-- Messages feed -->
+            <div class="adm-wachat-messages" id="adm-wachat-messages"></div>
+
+            <!-- Closed notice -->
+            <div class="adm-closed-notice hidden" id="adm-closed-notice">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+              Cette conversation a été clôturée.
+              <button onclick="reopenAdminTicket()" style="margin-left:8px;background:rgba(167,139,250,.12);border:1px solid rgba(167,139,250,.25);color:#a78bfa;border-radius:8px;padding:3px 10px;font-size:.72rem;cursor:pointer;">Rouvrir</button>
+            </div>
+
+            <!-- Input area -->
+            <div class="adm-wachat-input-area" id="adm-input-area">
+              <div class="adm-input-agent-tag">🎧 Admin</div>
+              <textarea id="adm-reply-input" class="adm-wachat-textarea" placeholder="Répondez à l'utilisateur…" rows="1"
+                onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendAdminReply();}"
+                oninput="admAutoGrow(this)"></textarea>
+              <button class="adm-wachat-send-btn" onclick="sendAdminReply()" title="Envoyer">
+                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+              </button>
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -1310,80 +1607,213 @@
         'Actualisé à ' + new Date().toLocaleTimeString('fr-FR');
     }
 
-    // ── TICKETS SUPPORT ──
-    let allTickets = [], ticketFilter = 'all';
+    // ── TICKETS SUPPORT — Admin WhatsApp Interface ──
+    let allTickets = [], ticketFilter = 'all', admActiveTicketId = null;
 
     async function loadAdminTickets() {
       try {
         const r = await fetch('/api/admin/tickets');
-        if (r.ok) { allTickets = await r.json(); renderAdminTickets(); updateTicketBadge(); }
+        if (r.ok) {
+          allTickets = await r.json();
+          renderAdminTickets();
+          updateTicketBadge();
+          if (admActiveTicketId) {
+            const updated = allTickets.find(t => t.id === admActiveTicketId);
+            if (updated) admRenderConversation(updated);
+          }
+        }
       } catch {}
     }
+
     function updateTicketBadge() {
       const open = allTickets.filter(t => t.status === 'open').length;
       const nb = document.getElementById('nb-tick');
       if (nb) { nb.textContent = open || ''; nb.style.display = open ? 'inline-block' : 'none'; }
+      const badge = document.getElementById('adm-open-count');
+      if (badge) { badge.textContent = open + ' ouvert' + (open > 1 ? 's' : ''); badge.style.display = open ? 'flex' : 'none'; }
     }
-    function setTicketF(el, f) {
+
+    function setAdmTicketF(el, f) {
       ticketFilter = f;
-      document.querySelectorAll('#page-tickets .chip').forEach(b => b.classList.remove('active'));
+      document.querySelectorAll('.adm-wachat-filter').forEach(b => b.classList.remove('active'));
       el.classList.add('active');
       renderAdminTickets();
     }
+
     function renderAdminTickets() {
-      const q = (document.getElementById('tick-search')?.value || '').toLowerCase();
+      const q = (document.getElementById('adm-tick-search')?.value || '').toLowerCase();
       let list = ticketFilter === 'all' ? allTickets : allTickets.filter(t => t.status === ticketFilter);
-      if (q) list = list.filter(t => t.user_email.toLowerCase().includes(q) || t.subject.toLowerCase().includes(q));
-      const container = document.getElementById('tickets-admin-list');
-      if (!list.length) { container.innerHTML = '<p style="text-align:center;color:var(--text3);padding:28px;font-size:.85rem;">Aucun ticket trouvé</p>'; return; }
-      const statusColor = s => ({ open:'#fbbf24', answered:'#34d399', closed:'#6b7280' }[s] || '#6b7280');
-      const statusLabel = s => ({ open:'Ouvert', answered:'Répondu', closed:'Fermé' }[s] || s);
+      if (q) list = list.filter(t => (t.user_email||'').toLowerCase().includes(q) || t.subject.toLowerCase().includes(q));
+      const container = document.getElementById('adm-tickets-list');
+      if (!container) return;
+      if (!list.length) {
+        container.innerHTML = '<div style="padding:40px 20px;text-align:center;color:#4b5563;font-size:.82rem;">Aucune conversation trouvée</div>';
+        return;
+      }
+      const fmtTime = iso => {
+        const d = new Date(iso), now = new Date();
+        const diff = Math.floor((now - d) / 86400000);
+        if (diff === 0) return d.toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'});
+        if (diff === 1) return 'Hier';
+        if (diff < 7) return d.toLocaleDateString('fr-FR',{weekday:'short'});
+        return d.toLocaleDateString('fr-FR',{day:'2-digit',month:'2-digit'});
+      };
       container.innerHTML = list.map(t => {
-        const replies = (t.replies || []).map(rep => `
-          <div style="display:flex;flex-direction:column;align-items:${rep.sender==='admin'?'flex-start':'flex-end'};margin-top:6px;">
-            <div style="max-width:80%;background:${rep.sender==='admin'?'rgba(167,139,250,.1)':'rgba(52,211,153,.08)'};border:1px solid ${rep.sender==='admin'?'rgba(167,139,250,.15)':'rgba(52,211,153,.15)'};border-radius:${rep.sender==='admin'?'10px 10px 10px 2px':'10px 10px 2px 10px'};padding:7px 12px;font-size:.78rem;color:#d1d5db;line-height:1.5;">
-              <span style="font-size:.67rem;font-weight:700;color:${rep.sender==='admin'?'#a78bfa':'#34d399'};display:block;margin-bottom:2px;">${rep.sender==='admin'?'🎧 Admin':'👤 Utilisateur'}</span>
-              ${rep.message}
+        const lastReply = t.replies && t.replies.length ? t.replies[t.replies.length-1] : null;
+        const preview = lastReply ? lastReply.message : t.message;
+        const previewShort = preview.length > 45 ? preview.slice(0,45)+'…' : preview;
+        const ts = lastReply ? lastReply.created_at : t.created_at;
+        const isActive = t.id === admActiveTicketId;
+        const isOpen = t.status === 'open';
+        const initials = (t.user_email||'U').charAt(0).toUpperCase();
+        const dotClass = {open:'adm-dot-open',answered:'adm-dot-answered',closed:'adm-dot-closed'}[t.status]||'adm-dot-closed';
+        return `<div class="adm-wachat-conv-item${isActive?' active':''}" onclick="admOpenConversation(${t.id})" data-id="${t.id}">
+          <div class="adm-user-avatar">${initials}</div>
+          <div class="adm-conv-item-body">
+            <div class="adm-conv-item-top">
+              <div class="adm-conv-item-email">${escAdm(t.user_email||'—')}</div>
+              <div class="adm-conv-item-time">${fmtTime(ts)}</div>
             </div>
-            <span style="font-size:.64rem;color:#6b7280;margin-top:2px;">${fmtDatetime(rep.created_at)}</span>
-          </div>`).join('');
-        return `<div style="padding:18px 20px;border-bottom:1px solid rgba(255,255,255,.05);">
-          <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px;margin-bottom:8px;">
-            <div>
-              <div style="font-size:.88rem;font-weight:600;color:#f0f0fa;">${t.subject}</div>
-              <div style="font-size:.74rem;color:#6b7280;margin-top:3px;">${t.user_email} · ${fmtDatetime(t.created_at)}</div>
-            </div>
-            <div style="display:flex;gap:6px;align-items:center;flex-shrink:0;">
-              <span style="font-size:.7rem;font-weight:700;padding:3px 9px;border-radius:10px;background:rgba(255,255,255,.05);color:${statusColor(t.status)};">${statusLabel(t.status)}</span>
-              ${t.status!=='closed'?`<button onclick="closeAdminTicket(${t.id})" style="background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.08);color:#6b7280;border-radius:7px;padding:3px 9px;font-size:.7rem;cursor:pointer;">Fermer</button>`:''}
+            <div class="adm-conv-item-subject">${escAdm(t.subject)}</div>
+            <div class="adm-conv-item-bottom">
+              <div class="adm-conv-item-preview">${escAdm(previewShort)}</div>
+              ${isOpen ? `<div class="adm-unread-dot"></div>` : `<div class="adm-status-mini ${dotClass}"></div>`}
             </div>
           </div>
-          <div style="font-size:.82rem;color:#9ca3af;line-height:1.6;margin-bottom:${t.replies&&t.replies.length?'10px':'0'};">${t.message}</div>
-          ${replies}
-          ${t.status!=='closed'?`
-          <div style="display:flex;gap:8px;margin-top:12px;">
-            <textarea id="admin-reply-${t.id}" placeholder="Répondre à l'utilisateur…" rows="2" style="flex:1;background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:8px 12px;color:var(--text);font-family:inherit;font-size:.8rem;resize:vertical;outline:none;"></textarea>
-            <button onclick="replyAdminTicket(${t.id})" style="background:linear-gradient(135deg,#7c3aed,#a78bfa);border:none;border-radius:8px;color:#fff;padding:0 14px;cursor:pointer;font-size:.8rem;font-weight:600;white-space:nowrap;">Envoyer</button>
-          </div>`:''}
         </div>`;
       }).join('');
     }
-    async function replyAdminTicket(id) {
-      const ta = document.getElementById(`admin-reply-${id}`);
-      if (!ta || !ta.value.trim()) return;
-      try {
-        const r = await fetch(`/api/admin/tickets/${id}/reply`, {
-          method: 'POST', headers: {'Content-Type':'application/json'},
-          body: JSON.stringify({ message: ta.value.trim() })
-        });
-        if (r.ok) { showToast('Réponse envoyée !', 'success'); loadAdminTickets(); }
-        else showToast('Erreur', 'error');
-      } catch { showToast('Erreur réseau', 'error'); }
+
+    function admOpenConversation(id) {
+      admActiveTicketId = id;
+      const ticket = allTickets.find(t => t.id === id);
+      if (!ticket) return;
+      document.getElementById('adm-wachat-sidebar')?.closest('.adm-wachat-shell')?.classList.add('show-chat');
+      document.getElementById('adm-no-conv').classList.add('hidden');
+      document.getElementById('adm-conv-view').classList.remove('hidden');
+      document.querySelectorAll('.adm-wachat-conv-item').forEach(el => {
+        el.classList.toggle('active', parseInt(el.dataset.id) === id);
+      });
+      admRenderConversation(ticket);
     }
-    async function closeAdminTicket(id) {
-      if (!confirm('Fermer ce ticket ?')) return;
-      const r = await fetch(`/api/admin/tickets/${id}/close`, { method: 'POST' });
-      if (r.ok) { showToast('Ticket fermé', 'success'); loadAdminTickets(); }
+
+    function admRenderConversation(ticket) {
+      const statusLabels = {open:'Ouvert',answered:'Répondu',closed:'Fermé'};
+      const initials = (ticket.user_email||'U').charAt(0).toUpperCase();
+      document.getElementById('adm-conv-avatar').textContent = initials;
+      document.getElementById('adm-conv-subject').textContent = ticket.subject;
+      document.getElementById('adm-conv-email').textContent = ticket.user_email || '—';
+      const badge = document.getElementById('adm-conv-badge');
+      badge.textContent = statusLabels[ticket.status] || ticket.status;
+      badge.className = 'adm-conv-badge ' + ticket.status;
+      const dot = document.getElementById('adm-conv-dot');
+      dot.className = 'adm-conv-status-dot ' + ({open:'adm-dot-open',answered:'adm-dot-answered',closed:'adm-dot-closed'}[ticket.status]||'adm-dot-closed');
+      // Messages
+      const msgsEl = document.getElementById('adm-wachat-messages');
+      msgsEl.innerHTML = admBuildTimeline(ticket);
+      msgsEl.scrollTop = msgsEl.scrollHeight;
+      // Input vs closed
+      const inputArea = document.getElementById('adm-input-area');
+      const closedNotice = document.getElementById('adm-closed-notice');
+      const closeBtn = document.getElementById('adm-close-ticket-btn');
+      if (ticket.status === 'closed') {
+        inputArea.classList.add('hidden');
+        closedNotice.classList.remove('hidden');
+        if (closeBtn) closeBtn.classList.add('hidden');
+      } else {
+        inputArea.classList.remove('hidden');
+        closedNotice.classList.add('hidden');
+        if (closeBtn) closeBtn.classList.remove('hidden');
+        document.getElementById('adm-reply-input').focus();
+      }
+    }
+
+    function admBuildTimeline(ticket) {
+      const fmtDate = iso => {
+        const d = new Date(iso), now = new Date();
+        const diff = Math.floor((now-d)/86400000);
+        if (diff===0) return "Aujourd'hui";
+        if (diff===1) return 'Hier';
+        return d.toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long'});
+      };
+      const fmtHour = iso => new Date(iso).toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'});
+      let html = `<div class="adm-date-sep">${fmtDate(ticket.created_at)}</div>`;
+      // Original message = from user
+      html += `<div class="adm-msg-row user">
+        <div class="adm-msg-sender">👤 ${escAdm(ticket.user_email||'Utilisateur')}</div>
+        <div class="adm-bubble user">${escAdm(ticket.message)}</div>
+        <div class="adm-msg-time">${fmtHour(ticket.created_at)}</div>
+      </div>`;
+      let lastDate = fmtDate(ticket.created_at);
+      (ticket.replies||[]).forEach(rep => {
+        const thisDate = fmtDate(rep.created_at);
+        if (thisDate !== lastDate) { html += `<div class="adm-date-sep">${thisDate}</div>`; lastDate = thisDate; }
+        const isAdmin = rep.sender === 'admin';
+        html += `<div class="adm-msg-row ${isAdmin?'admin':'user'}">
+          <div class="adm-msg-sender">${isAdmin ? '🎧 Admin' : '👤 '+escAdm(ticket.user_email||'Utilisateur')}</div>
+          <div class="adm-bubble ${isAdmin?'admin':'user'}">${escAdm(rep.message)}</div>
+          <div class="adm-msg-time">${fmtHour(rep.created_at)}</div>
+        </div>`;
+      });
+      return html;
+    }
+
+    function admBackToList() {
+      document.getElementById('adm-wachat-sidebar')?.closest('.adm-wachat-shell')?.classList.remove('show-chat');
+    }
+
+    async function sendAdminReply() {
+      if (!admActiveTicketId) return;
+      const input = document.getElementById('adm-reply-input');
+      const msg = input?.value.trim();
+      if (!msg) return;
+      const btn = document.querySelector('.adm-wachat-send-btn');
+      if (btn) btn.disabled = true;
+      // Optimistic bubble
+      const msgsEl = document.getElementById('adm-wachat-messages');
+      const now = new Date().toISOString();
+      msgsEl.innerHTML += `<div class="adm-msg-row admin" id="adm-optimistic">
+        <div class="adm-msg-sender">🎧 Admin</div>
+        <div class="adm-bubble admin">${escAdm(msg)}</div>
+        <div class="adm-msg-time">${new Date(now).toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'})} <span style="opacity:.5">✓</span></div>
+      </div>`;
+      msgsEl.scrollTop = msgsEl.scrollHeight;
+      input.value = ''; input.style.height = 'auto';
+      try {
+        const r = await fetch(`/api/admin/tickets/${admActiveTicketId}/reply`, {
+          method: 'POST', headers: {'Content-Type':'application/json'},
+          body: JSON.stringify({ message: msg })
+        });
+        if (r.ok) { showToast('Réponse envoyée !', 'success'); await loadAdminTickets(); }
+        else { showToast('Erreur', 'error'); document.getElementById('adm-optimistic')?.remove(); input.value = msg; }
+      } catch { showToast('Erreur réseau', 'error'); document.getElementById('adm-optimistic')?.remove(); input.value = msg; }
+      finally { if (btn) btn.disabled = false; }
+    }
+
+    async function closeAdminTicket() {
+      if (!admActiveTicketId) return;
+      if (!confirm('Clôturer cette conversation ?')) return;
+      const r = await fetch(`/api/admin/tickets/${admActiveTicketId}/close`, { method: 'POST' });
+      if (r.ok) { showToast('Conversation clôturée', 'success'); await loadAdminTickets(); }
+    }
+
+    async function reopenAdminTicket() {
+      if (!admActiveTicketId) return;
+      // Reopen by patching status to open via a reply that reopens
+      const r = await fetch(`/api/admin/tickets/${admActiveTicketId}/reply`, {
+        method: 'POST', headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({ message: '— Conversation rouverte par l\'admin —' })
+      });
+      if (r.ok) { showToast('Conversation rouverte', 'success'); await loadAdminTickets(); }
+    }
+
+    function admAutoGrow(el) {
+      el.style.height = 'auto';
+      el.style.height = Math.min(el.scrollHeight, 120) + 'px';
+    }
+
+    function escAdm(str) {
+      return String(str||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
     }
 
     // ── MESSAGERIE ──
