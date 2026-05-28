@@ -2,6 +2,11 @@ let currentUser = null;
 let depositPollingInterval = null;
 const lastDepositStatuses = new Map();
 
+// ── Realtime support chat ──
+let _ticketPollingInterval = null;
+const _lastTicketSnapshot = new Map(); // ticketId → replyCount
+let _chatUnread = 0;
+
 document.addEventListener('DOMContentLoaded', () => {
   checkAuth();
   setupEventListeners();
@@ -149,7 +154,7 @@ function setupEventListeners() {
         }
       }
 
-      if (view === 'support') loadTickets();
+      if (view === 'support') { loadTickets(); startChatPolling(); _chatUnread = 0; _updateChatTabTitle(); }
       if (view === 'referral') loadReferrals();
     });
   });
@@ -476,6 +481,8 @@ function showDashboard() {
   initStarRating();
   startDepositPolling();
   loadTickets();
+  startChatPolling();
+  requestChatNotifPerm();
   loadReferrals();
 
   // Afficher le widget chat pour les utilisateurs connectés
@@ -1110,21 +1117,87 @@ async function loadTickets() {
   try {
     const r = await fetch('/api/tickets');
     if (!r.ok) return;
-    _allTickets = await r.json();
+    const fresh = await r.json();
 
-    // Badge nav notification
-    const unanswered = _allTickets.filter(t => t.status === 'answered').length;
+    // ── Detect new admin replies → notification ──
+    fresh.forEach(t => {
+      const prevCount = _lastTicketSnapshot.get(t.id);
+      const curCount = (t.replies || []).length;
+      if (prevCount !== undefined && curCount > prevCount) {
+        // Check if latest new reply is from admin
+        const newReplies = (t.replies || []).slice(prevCount);
+        const hasAdminReply = newReplies.some(rep => rep.sender === 'admin');
+        if (hasAdminReply) {
+          _chatUnread++;
+          _fireChatNotif(
+            '💬 Nouveau message support',
+            t.subject + ' — ' + newReplies[newReplies.length - 1].message.slice(0, 80)
+          );
+          // Flash item in sidebar
+          setTimeout(() => {
+            const el = document.querySelector(`.wachat-conv-item[data-id="${t.id}"]`);
+            if (el) { el.classList.add('chat-flash'); setTimeout(() => el.classList.remove('chat-flash'), 1400); }
+          }, 100);
+        }
+      }
+      _lastTicketSnapshot.set(t.id, curCount);
+    });
+    _updateChatTabTitle();
+
+    _allTickets = fresh;
+
+    // Badge nav
+    const answered = _allTickets.filter(t => t.status === 'answered' && t.id !== _activeTicketId).length;
     const badge = document.getElementById('support-badge');
-    if (badge) { badge.textContent = unanswered; badge.style.display = unanswered > 0 ? 'inline' : 'none'; }
+    if (badge) { badge.textContent = answered; badge.style.display = answered > 0 ? 'inline' : 'none'; }
 
     renderConvList(_allTickets);
 
-    // Refresh active conversation if open
     if (_activeTicketId) {
       const updated = _allTickets.find(t => t.id === _activeTicketId);
       if (updated) renderConversation(updated);
     }
   } catch {}
+}
+
+function startChatPolling() {
+  if (_ticketPollingInterval) return;
+  _ticketPollingInterval = setInterval(async () => {
+    await loadTickets();
+  }, 15000);
+}
+
+function stopChatPolling() {
+  if (_ticketPollingInterval) { clearInterval(_ticketPollingInterval); _ticketPollingInterval = null; }
+}
+
+function _updateChatTabTitle() {
+  if (_chatUnread > 0) {
+    document.title = `(${_chatUnread}) QuestInvest`;
+  } else {
+    document.title = 'QuestInvest';
+  }
+}
+
+function _fireChatNotif(title, body) {
+  if (!('Notification' in window) || Notification.permission !== 'granted') return;
+  try {
+    const n = new Notification(title, {
+      body,
+      icon: '/favicon.ico',
+      tag: 'questinvest-support',
+      renotify: true,
+      silent: false
+    });
+    n.onclick = () => { window.focus(); n.close(); };
+  } catch {}
+}
+
+async function requestChatNotifPerm() {
+  if (!('Notification' in window)) return;
+  if (Notification.permission === 'default') {
+    await Notification.requestPermission();
+  }
 }
 
 function renderConvList(tickets) {
@@ -1172,6 +1245,10 @@ function openConversation(id) {
   _activeTicketId = id;
   const ticket = _allTickets.find(t => t.id === id);
   if (!ticket) return;
+
+  // Reset unread when opening a conversation
+  _chatUnread = Math.max(0, _chatUnread - 1);
+  _updateChatTabTitle();
 
   // Mobile: show chat panel
   document.getElementById('wachat-sidebar')?.closest('.wachat-shell')?.classList.add('show-chat');

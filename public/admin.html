@@ -1552,6 +1552,8 @@
           document.getElementById('admin-login-overlay').classList.add('hidden');
           refreshAll();
           setInterval(refreshAll, 30000);
+          _startAdmTicketPolling();
+          _requestAdmNotifPerm();
         } else {
           document.getElementById('admin-login-overlay').classList.remove('hidden');
           document.getElementById('admin-code-input').focus();
@@ -1580,6 +1582,8 @@
           document.getElementById('admin-login-overlay').classList.add('hidden');
           refreshAll();
           setInterval(refreshAll, 30000);
+          _startAdmTicketPolling();
+          _requestAdmNotifPerm();
         } else {
           errEl.textContent = j.error || 'Code incorrect.';
           document.getElementById('admin-code-input').value = '';
@@ -1609,12 +1613,48 @@
 
     // ── TICKETS SUPPORT — Admin WhatsApp Interface ──
     let allTickets = [], ticketFilter = 'all', admActiveTicketId = null;
+    const _admLastSnapshot = new Map(); // ticketId → replyCount
+    let _admUnread = 0;
+    let _admTicketPollingInterval = null;
 
     async function loadAdminTickets() {
       try {
         const r = await fetch('/api/admin/tickets');
         if (r.ok) {
-          allTickets = await r.json();
+          const fresh = await r.json();
+
+          // ── Detect new tickets or new user replies → notification ──
+          fresh.forEach(t => {
+            const prevCount = _admLastSnapshot.get(t.id);
+            const curCount = (t.replies || []).length;
+            const isNew = prevCount === undefined;
+            if (isNew) {
+              // Brand new ticket
+              if (_admLastSnapshot.size > 0) {
+                _admUnread++;
+                _admFireNotif('🆕 Nouveau ticket support', t.user_email + ' — ' + t.subject);
+                setTimeout(() => {
+                  const el = document.querySelector(`.adm-wachat-conv-item[data-id="${t.id}"]`);
+                  if (el) { el.classList.add('adm-chat-flash'); setTimeout(() => el.classList.remove('adm-chat-flash'), 1400); }
+                }, 100);
+              }
+            } else if (curCount > prevCount) {
+              const newReplies = (t.replies || []).slice(prevCount);
+              const hasUserReply = newReplies.some(rep => rep.sender !== 'admin');
+              if (hasUserReply && t.id !== admActiveTicketId) {
+                _admUnread++;
+                _admFireNotif('💬 Réponse utilisateur', t.user_email + ' — ' + newReplies[newReplies.length - 1].message.slice(0, 80));
+                setTimeout(() => {
+                  const el = document.querySelector(`.adm-wachat-conv-item[data-id="${t.id}"]`);
+                  if (el) { el.classList.add('adm-chat-flash'); setTimeout(() => el.classList.remove('adm-chat-flash'), 1400); }
+                }, 100);
+              }
+            }
+            _admLastSnapshot.set(t.id, curCount);
+          });
+          _admUpdateTabTitle();
+
+          allTickets = fresh;
           renderAdminTickets();
           updateTicketBadge();
           if (admActiveTicketId) {
@@ -1623,6 +1663,36 @@
           }
         }
       } catch {}
+    }
+
+    function _admFireNotif(title, body) {
+      if (!('Notification' in window) || Notification.permission !== 'granted') return;
+      try {
+        const n = new Notification(title, {
+          body,
+          icon: '/favicon.ico',
+          tag: 'questinvest-admin-support',
+          renotify: true,
+          silent: false
+        });
+        n.onclick = () => { window.focus(); n.close(); };
+      } catch {}
+    }
+
+    function _admUpdateTabTitle() {
+      document.title = _admUnread > 0 ? `(${_admUnread}) Admin — QuestInvest` : 'Admin — QuestInvest';
+    }
+
+    function _startAdmTicketPolling() {
+      if (_admTicketPollingInterval) return;
+      _admTicketPollingInterval = setInterval(loadAdminTickets, 15000);
+    }
+
+    async function _requestAdmNotifPerm() {
+      if (!('Notification' in window)) return;
+      if (Notification.permission === 'default') {
+        await Notification.requestPermission();
+      }
     }
 
     function updateTicketBadge() {
@@ -1686,6 +1756,8 @@
 
     function admOpenConversation(id) {
       admActiveTicketId = id;
+      _admUnread = Math.max(0, _admUnread - 1);
+      _admUpdateTabTitle();
       const ticket = allTickets.find(t => t.id === id);
       if (!ticket) return;
       document.getElementById('adm-wachat-sidebar')?.closest('.adm-wachat-shell')?.classList.add('show-chat');

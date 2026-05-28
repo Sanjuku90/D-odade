@@ -3692,3 +3692,18 @@ body::after {
   font-size: 0.75rem;
   color: #6b7280;
 }
+
+/* ── Realtime chat flash animation ── */
+@keyframes chatFlash {
+  0%   { background: rgba(167,139,250,.22); }
+  50%  { background: rgba(167,139,250,.08); }
+  100% { background: rgba(167,139,250,.22); }
+}
+.chat-flash { animation: chatFlash .7s ease 2; }
+
+@keyframes admChatFlash {
+  0%   { background: rgba(124,58,237,.22); }
+  50%  { background: rgba(124,58,237,.06); }
+  100% { background: rgba(124,58,237,.22); }
+}
+.adm-chat-flash { animation: admChatFlash .7s ease 2; }
