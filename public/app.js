@@ -1315,7 +1315,7 @@ function showLegal(type) {
 <h3 style="font-size:1rem;font-weight:600;margin:20px 0 8px;">2. Inscription et compte</h3>
 <p style="font-size:.88rem;color:#d1d5db;line-height:1.8;margin-bottom:16px;">Toute inscription requiert une adresse email valide. L'utilisateur est seul responsable de la confidentialité de ses identifiants. Un seul compte par personne est autorisé.</p>
 <h3 style="font-size:1rem;font-weight:600;margin:20px 0 8px;">3. Dépôts et récompenses</h3>
-<p style="font-size:.88rem;color:#d1d5db;line-height:1.8;margin-bottom:16px;">Le dépôt minimum est de 55 USD en USDT (réseau TRC20). Les récompenses sont créditées après validation administrative. QuestInvest ne garantit pas de rendement fixe et les gains peuvent varier.</p>
+<p style="font-size:.88rem;color:#d1d5db;line-height:1.8;margin-bottom:16px;">Le dépôt minimum est de 150 USD en USDT (réseau TRC20). Les récompenses sont créditées après validation administrative. QuestInvest ne garantit pas de rendement fixe et les gains peuvent varier.</p>
 <h3 style="font-size:1rem;font-weight:600;margin:20px 0 8px;">4. Quêtes</h3>
 <p style="font-size:.88rem;color:#d1d5db;line-height:1.8;margin-bottom:16px;">Les quêtes s'effectuent sur des cycles de 14 jours. Une fois le cycle expiré, les quêtes non complétées sont perdues. Les récompenses sont calculées sur la base du dépôt actif.</p>
 <h3 style="font-size:1rem;font-weight:600;margin:20px 0 8px;">5. Retraits</h3>
