@@ -2172,7 +2172,7 @@ async function sendInactiveAccountReminders() {
         `<p>Bonjour,</p>
          <p>Cela fait plus de 30 jours que vous ne vous êtes pas connecté à QuestInvest.</p>
          <p>Vos quêtes vous attendent et de nouvelles opportunités de gains sont disponibles !</p>
-         <p style="margin-top:20px;"><a href="${process.env.RENDER_EXTERNAL_URL || ''}" style="background:#7c3aed;color:#fff;padding:12px 28px;border-radius:8px;text-decoration:none;font-weight:600;">Revenir sur QuestInvest →</a></p>`,
+         <p style="margin-top:20px;"><a href="${process.env.RENDER_EXTERNAL_URL || process.env.APP_URL || (process.env.REPLIT_DEV_DOMAIN ? `https://${process.env.REPLIT_DEV_DOMAIN}` : '')}" style="background:#7c3aed;color:#fff;padding:12px 28px;border-radius:8px;text-decoration:none;font-weight:600;">Revenir sur QuestInvest →</a></p>`,
         '👋 On vous attend'
       );
     }
@@ -2202,7 +2202,8 @@ function scheduleDailyReminder() {
 
 // ── AUTO-PING (empêche Render de mettre le serveur en veille) ─────────────────
 function startAutoPing() {
-  const selfUrl = process.env.RENDER_EXTERNAL_URL || process.env.APP_URL;
+  const selfUrl = process.env.RENDER_EXTERNAL_URL || process.env.APP_URL ||
+    (process.env.REPLIT_DEV_DOMAIN ? `https://${process.env.REPLIT_DEV_DOMAIN}` : null);
   if (!selfUrl) {
     console.log('[ping] Pas de RENDER_EXTERNAL_URL ni APP_URL — auto-ping désactivé');
     return;

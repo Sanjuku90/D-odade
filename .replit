@@ -1,5 +1,5 @@
 entrypoint = "main.py"
-modules = ["web", "nodejs-20", "postgresql-16"]
+modules = ["web", "nodejs-20"]
 
 [nix]
 channel = "stable-25_05"
@@ -49,4 +49,3 @@ externalPort = 80
 [userenv]
 
 [userenv.shared]
-APP_URL = "https://05c37cbc-6ade-4655-b8d1-7a3a97aa5eb7-00-3hxmqkl5v8evf.spock.replit.dev"
