@@ -366,6 +366,9 @@ async function initDB() {
   // Migration: add bonus columns to existing referrals table
   try { await db.run('ALTER TABLE referrals ADD COLUMN bonus_paid INTEGER DEFAULT 0'); } catch {}
   try { await db.run('ALTER TABLE referrals ADD COLUMN bonus_amount REAL DEFAULT 0'); } catch {}
+  // Migration: bonus Plan Indépendance pour parrain
+  try { await db.run('ALTER TABLE referrals ADD COLUMN plan_bonus_paid INTEGER DEFAULT 0'); } catch {}
+  try { await db.run('ALTER TABLE referrals ADD COLUMN plan_bonus_amount REAL DEFAULT 0'); } catch {}
 
   // Anti-fraude : IP par utilisateur
   try { await db.run('ALTER TABLE users ADD COLUMN registration_ip TEXT'); } catch {}
@@ -1064,12 +1067,31 @@ app.post('/api/plan/independence/claim', requireAuth, async (req, res) => {
     }
 
     const gain = parseFloat((depositAmount * INDEPENDENCE_PLAN_GAIN_PCT / 100).toFixed(2));
+    const PLAN_REFERRAL_BONUS = 20;
+
+    // Chercher un parrain éligible au bonus plan (filleul a le dépôt min + parrain pas encore payé)
+    let planReferralBonus = null;
+    if (depositAmount >= MIN_DEPOSIT) {
+      const referral = await db.get(
+        'SELECT * FROM referrals WHERE referred_id = ? AND plan_bonus_paid = 0',
+        [req.session.userId]
+      );
+      if (referral) {
+        planReferralBonus = { referral, bonusAmount: PLAN_REFERRAL_BONUS };
+      }
+    }
 
     await db.transaction(async (tx) => {
       await tx.run(
         'UPDATE users SET independence_plan_claimed = 1, independence_plan_gain = ?, independence_plan_instant_withdraw = 1, balance = balance + ? WHERE id = ?',
         [gain, gain, req.session.userId]
       );
+      if (planReferralBonus) {
+        await tx.run('UPDATE users SET balance = balance + ? WHERE id = ?',
+          [planReferralBonus.bonusAmount, planReferralBonus.referral.referrer_id]);
+        await tx.run('UPDATE referrals SET plan_bonus_paid = 1, plan_bonus_amount = ? WHERE id = ?',
+          [planReferralBonus.bonusAmount, planReferralBonus.referral.id]);
+      }
     });
 
     const updatedUser = await db.get('SELECT email, balance FROM users WHERE id = ?', [req.session.userId]);
@@ -1084,6 +1106,22 @@ app.post('/api/plan/independence/claim', requireAuth, async (req, res) => {
        <p>Vous pouvez effectuer un retrait <strong>immédiatement</strong>, sans délai de cycle.</p>`,
       '🎉 Plan Indépendance activé'
     );
+
+    // Email parrain — bonus plan
+    if (planReferralBonus) {
+      const referrer = await db.get('SELECT email FROM users WHERE id = ?', [planReferralBonus.referral.referrer_id]);
+      if (referrer) {
+        sendEmailIfEnabled('deposit_confirmed', referrer.email, '🎁 Bonus parrainage Plan Indépendance — +$20 crédité !',
+          `<p>Bonne nouvelle !</p>
+           <p>Un de vos filleuls vient d'activer le <strong>Plan Indépendance</strong>. En récompense, un bonus de parrainage vous a été crédité immédiatement :</p>
+           <div class="amount" style="color:#a78bfa;">+$${planReferralBonus.bonusAmount.toFixed(2)}</div>
+           <p><span class="badge">🎁 Bonus Plan Indépendance</span></p>
+           <hr class="divider">
+           <p style="font-size:.85rem;color:#9ca3af;">Ce bonus est valable uniquement si votre filleul a effectué son dépôt minimum et activé le plan avant le 5 juin 2026.</p>`,
+          '🎁 Bonus parrainage Plan'
+        );
+      }
+    }
 
     res.json({ success: true, gain, newBalance: parseFloat(updatedUser.balance) });
   } catch (err) {
@@ -2253,13 +2291,18 @@ app.get('/api/referrals', requireAuth, async (req, res) => {
   try {
     const user = await db.get('SELECT referral_code FROM users WHERE id = ?', [req.session.userId]);
     const referrals = await db.all(`
-      SELECT u.email, u.deposit_amount, u.created_at, r.bonus_paid, r.bonus_amount
+      SELECT u.email, u.deposit_amount, u.created_at, u.independence_plan_claimed,
+             r.bonus_paid, r.bonus_amount, r.plan_bonus_paid, r.plan_bonus_amount
       FROM referrals r
       JOIN users u ON u.id = r.referred_id
       WHERE r.referrer_id = ?
       ORDER BY r.created_at DESC
     `, [req.session.userId]);
-    const totalBonus = referrals.reduce((sum, r) => sum + (r.bonus_paid ? parseFloat(r.bonus_amount) : 0), 0);
+    const totalBonus = referrals.reduce((sum, r) => {
+      const b1 = r.bonus_paid ? parseFloat(r.bonus_amount || 0) : 0;
+      const b2 = r.plan_bonus_paid ? parseFloat(r.plan_bonus_amount || 0) : 0;
+      return sum + b1 + b2;
+    }, 0);
     res.json({ referral_code: user.referral_code, referrals, total_bonus: parseFloat(totalBonus.toFixed(2)) });
   } catch { res.status(500).json({ error: 'Erreur serveur' }); }
 });

@@ -1107,19 +1107,33 @@ async function loadReferrals() {
     }
     listEl.innerHTML = `<div style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;">
       <thead><tr style="border-bottom:1px solid rgba(255,255,255,.06);">
-        <th style="text-align:left;padding:10px 20px;font-size:.75rem;color:#6b7280;font-weight:600;">Email</th>
-        <th style="text-align:left;padding:10px 20px;font-size:.75rem;color:#6b7280;font-weight:600;">1er dépôt</th>
-        <th style="text-align:left;padding:10px 20px;font-size:.75rem;color:#6b7280;font-weight:600;">Bonus reçu</th>
-        <th style="text-align:left;padding:10px 20px;font-size:.75rem;color:#6b7280;font-weight:600;">Date</th>
+        <th style="text-align:left;padding:10px 16px;font-size:.75rem;color:#6b7280;font-weight:600;">Email</th>
+        <th style="text-align:left;padding:10px 16px;font-size:.75rem;color:#6b7280;font-weight:600;">Dépôt</th>
+        <th style="text-align:left;padding:10px 16px;font-size:.75rem;color:#6b7280;font-weight:600;">Bonus dépôt</th>
+        <th style="text-align:left;padding:10px 16px;font-size:.75rem;color:#a78bfa;font-weight:600;">⚡ Bonus plan</th>
+        <th style="text-align:left;padding:10px 16px;font-size:.75rem;color:#6b7280;font-weight:600;">Date</th>
       </tr></thead>
       <tbody>${referrals.map(u => {
-        const hasPaid = u.bonus_paid;
-        const bonusAmt = hasPaid ? `<span style="color:#a78bfa;font-weight:600;">+$${parseFloat(u.bonus_amount).toFixed(2)}</span>` : `<span style="color:#6b7280;font-size:.75rem;">En attente</span>`;
+        const bonusDepot = u.bonus_paid
+          ? `<span style="color:#a78bfa;font-weight:600;">+$${parseFloat(u.bonus_amount).toFixed(2)}</span>`
+          : `<span style="color:#6b7280;font-size:.75rem;">En attente</span>`;
+        let bonusPlan;
+        if (u.plan_bonus_paid) {
+          bonusPlan = `<span style="color:#22d3a8;font-weight:600;">+$${parseFloat(u.plan_bonus_amount).toFixed(2)}</span>`;
+        } else if (u.independence_plan_claimed) {
+          bonusPlan = `<span style="color:#fbbf24;font-size:.75rem;">Vérification…</span>`;
+        } else {
+          const hasMinDeposit = parseFloat(u.deposit_amount) >= 150;
+          bonusPlan = hasMinDeposit
+            ? `<span style="color:#6b7280;font-size:.75rem;" title="En attente de l'activation du plan par votre filleul">Plan non activé</span>`
+            : `<span style="color:#ef4444;font-size:.75rem;" title="Dépôt minimum ($150) non atteint">Dépôt insuffisant</span>`;
+        }
         return `<tr style="border-bottom:1px solid rgba(255,255,255,.04);">
-          <td style="padding:10px 20px;font-size:.83rem;color:#d1d5db;">${u.email.replace(/(.{2}).+(@.+)/, '$1***$2')}</td>
-          <td style="padding:10px 20px;font-size:.83rem;color:${u.deposit_amount > 0 ? '#34d399' : '#6b7280'};">${u.deposit_amount > 0 ? '$' + parseFloat(u.deposit_amount).toFixed(2) : '—'}</td>
-          <td style="padding:10px 20px;">${bonusAmt}</td>
-          <td style="padding:10px 20px;font-size:.8rem;color:#6b7280;">${new Date(u.created_at).toLocaleDateString('fr-FR')}</td>
+          <td style="padding:10px 16px;font-size:.83rem;color:#d1d5db;">${u.email.replace(/(.{2}).+(@.+)/, '$1***$2')}</td>
+          <td style="padding:10px 16px;font-size:.83rem;color:${u.deposit_amount > 0 ? '#34d399' : '#6b7280'};">${u.deposit_amount > 0 ? '$' + parseFloat(u.deposit_amount).toFixed(2) : '—'}</td>
+          <td style="padding:10px 16px;">${bonusDepot}</td>
+          <td style="padding:10px 16px;">${bonusPlan}</td>
+          <td style="padding:10px 16px;font-size:.8rem;color:#6b7280;">${new Date(u.created_at).toLocaleDateString('fr-FR')}</td>
         </tr>`;
       }).join('')}</tbody>
     </table></div>`;
@@ -1702,6 +1716,7 @@ function _planConditionsHtml() {
         <div>💰 <strong style="color:#f0f0fa;">Capital requis : $350 à $10 000</strong> en dépôts confirmés</div>
         <div>🔁 <strong style="color:#f0f0fa;">Activation unique</strong> — une seule fois par compte, sans délai de retrait</div>
         <div>🏦 <strong style="color:#f0f0fa;">Exemple :</strong> $350 de dépôt → +$700 de gain → $1 050 disponible pour retrait immédiat</div>
+        <div style="border-top:1px solid rgba(255,255,255,.06);padding-top:10px;margin-top:2px;">🎁 <strong style="color:#a78bfa;">Bonus parrainage +$20</strong> — si vous avez été invité par quelqu'un, votre parrain reçoit <strong style="color:#a78bfa;">$20</strong> automatiquement dès que vous activez ce plan (dépôt min. $150 requis)</div>
       </div>
     </div>`;
 }
