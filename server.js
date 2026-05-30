@@ -214,7 +214,7 @@ function getNewUserStatus(user) {
 // ── Middleware ────────────────────────────────────────────────────────────────
 app.use(express.json({ limit: '20mb' }));
 app.use(express.urlencoded({ extended: true, limit: '20mb' }));
-app.use(express.static(path.join(__dirname, 'public')));
+app.use(express.static(path.join(__dirname, 'public'), process.env.NODE_ENV !== 'production' ? { setHeaders: (res) => { res.setHeader('Cache-Control', 'no-store'); } } : {}));
 
 // ── Session store SQLite (async) ──────────────────────────────────────────────
 class SqliteSessionStore extends session.Store {
@@ -983,7 +983,7 @@ app.get('/api/deposits', requireAuth, async (req, res) => {
 
 // ── PLAN INDÉPENDANCE ─────────────────────────────────────────────────────────
 
-const INDEPENDENCE_PLAN_DEADLINE = new Date('2025-06-05T23:59:59Z');
+const INDEPENDENCE_PLAN_DEADLINE = new Date('2026-06-05T23:59:59Z');
 const INDEPENDENCE_PLAN_MIN_DEPOSIT = 350;
 const INDEPENDENCE_PLAN_MAX_DEPOSIT = 10000;
 const INDEPENDENCE_PLAN_GAIN_PCT = 200;

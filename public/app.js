@@ -11,6 +11,7 @@ document.addEventListener('DOMContentLoaded', () => {
   checkAuth();
   setupEventListeners();
   setupLandingListeners();
+  startPlanCountdown();
 });
 
 function startDepositPolling() {
@@ -83,6 +84,31 @@ function renderLiveDeposits(deposits) {
       </div>
     `;
   }).join('');
+}
+
+function startPlanCountdown() {
+  const deadline = new Date('2026-06-05T23:59:59Z');
+  const countdownEl = document.getElementById('banner-countdown');
+  const labelEl = document.getElementById('banner-deadline-label');
+  const banner = document.getElementById('plan-promo-banner');
+  if (!countdownEl || !banner) return;
+
+  function update() {
+    const now = new Date();
+    const diff = deadline - now;
+    if (diff <= 0) {
+      if (banner) banner.style.display = 'none';
+      return;
+    }
+    const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+    const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+    const mins = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+    const secs = Math.floor((diff % (1000 * 60)) / 1000);
+    countdownEl.textContent = `${days}j ${String(hours).padStart(2,'0')}h ${String(mins).padStart(2,'0')}m ${String(secs).padStart(2,'0')}s`;
+    if (labelEl) labelEl.style.display = '';
+  }
+  update();
+  setInterval(update, 1000);
 }
 
 function setupLandingListeners() {

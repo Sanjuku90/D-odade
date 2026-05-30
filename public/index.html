@@ -68,6 +68,7 @@
     }
     .splash-text { color: rgba(255,255,255,0.4); font-size: 0.8rem; letter-spacing: 0.4px; }
     @keyframes spin { to { transform: rotate(360deg); } }
+    @keyframes shimmer { 0%{background-position:200% center} 100%{background-position:-200% center} }
   </style>
   <script>
     (function () {
@@ -98,6 +99,25 @@
     <span style="font-size:1rem;">⚠️</span>
     <span><strong style="color:#a78bfa;">Mise à jour importante :</strong> Suite à une refonte complète de la plateforme, certains mots de passe ont été réinitialisés. Si vous ne pouvez plus vous connecter, utilisez la <a href="#" onclick="event.preventDefault();showRecovery()" style="color:#22d3ee;text-decoration:underline;">procédure de récupération de compte</a>.</span>
     <button onclick="document.getElementById('update-banner').style.display='none'" style="margin-left:auto;background:none;border:none;color:#64748b;font-size:1.1rem;cursor:pointer;flex-shrink:0;line-height:1;">×</button>
+  </div>
+
+  <!-- PLAN INDÉPENDANCE PROMO BANNER -->
+  <div id="plan-promo-banner" style="position:relative;z-index:9997;background:linear-gradient(90deg,#4c1d95 0%,#5b21b6 50%,#3b0764 100%);border-bottom:2px solid #7c3aed;overflow:hidden;">
+    <div style="max-width:1100px;margin:0 auto;padding:11px 20px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;">
+      <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
+        <span style="background:linear-gradient(135deg,#f59e0b,#ef4444);color:#fff;font-size:.65rem;font-weight:800;padding:3px 10px;border-radius:20px;text-transform:uppercase;letter-spacing:.5px;white-space:nowrap;box-shadow:0 2px 8px rgba(239,68,68,0.4);">⚡ Offre limitée</span>
+        <span style="color:#f0f0fa;font-size:.88rem;font-weight:600;">Plan Indépendance — Gagnez <strong style="color:#c4b5fd;">+200%</strong> en une seule activation</span>
+        <span style="color:#c4b5fd;font-size:.78rem;" id="banner-deadline-label">Expire dans :</span>
+        <span id="banner-countdown" style="font-family:monospace;font-size:.82rem;font-weight:700;color:#fbbf24;background:rgba(251,191,36,0.15);border:1px solid rgba(251,191,36,0.4);padding:3px 10px;border-radius:6px;letter-spacing:.5px;"></span>
+      </div>
+      <div style="display:flex;align-items:center;gap:10px;flex-shrink:0;">
+        <button onclick="document.getElementById('get-started-btn') ? document.getElementById('get-started-btn').click() : null" style="background:linear-gradient(135deg,#7c3aed,#a78bfa);color:#fff;border:none;border-radius:8px;padding:7px 18px;font-size:.82rem;font-weight:700;cursor:pointer;white-space:nowrap;box-shadow:0 2px 12px rgba(124,58,237,0.5);" onmouseover="this.style.opacity='.85'" onmouseout="this.style.opacity='1'">
+          Activer maintenant →
+        </button>
+        <button onclick="document.getElementById('plan-promo-banner').style.display='none'" style="background:none;border:none;color:#9ca3af;font-size:1.2rem;cursor:pointer;line-height:1;padding:2px 4px;" title="Fermer">×</button>
+      </div>
+    </div>
+    <div style="height:2px;background:linear-gradient(90deg,#7c3aed,#a78bfa,#38bdf8,#a78bfa,#7c3aed);background-size:200%;animation:shimmer 3s linear infinite;"></div>
   </div>
 
   <div id="splash-screen">
