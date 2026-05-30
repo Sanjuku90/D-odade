@@ -214,7 +214,17 @@ function getNewUserStatus(user) {
 // ── Middleware ────────────────────────────────────────────────────────────────
 app.use(express.json({ limit: '20mb' }));
 app.use(express.urlencoded({ extended: true, limit: '20mb' }));
-app.use(express.static(path.join(__dirname, 'public'), process.env.NODE_ENV !== 'production' ? { setHeaders: (res) => { res.setHeader('Cache-Control', 'no-store'); } } : {}));
+app.use(express.static(path.join(__dirname, 'public'), {
+  setHeaders: (res, filePath) => {
+    if (filePath.endsWith('.html')) {
+      res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+      res.setHeader('Pragma', 'no-cache');
+      res.setHeader('Expires', '0');
+    } else if (filePath.match(/\.(js|css)$/)) {
+      res.setHeader('Cache-Control', 'no-cache, must-revalidate');
+    }
+  }
+}));
 
 // ── Session store SQLite (async) ──────────────────────────────────────────────
 class SqliteSessionStore extends session.Store {
