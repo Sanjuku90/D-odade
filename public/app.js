@@ -484,6 +484,7 @@ function showDashboard() {
   startChatPolling();
   requestChatNotifPerm();
   loadReferrals();
+  loadIndependencePlan();
 
   // Afficher le widget chat pour les utilisateurs connectés
   const widget = document.getElementById('chat-widget');
@@ -1522,6 +1523,172 @@ function showLegal(type) {
   if (!modal || !contentEl) return;
   contentEl.innerHTML = content[type] || '';
   modal.style.display = 'flex';
+}
+
+// ── PLAN INDÉPENDANCE ──────────────────────────────────────────────────────────
+
+async function loadIndependencePlan() {
+  try {
+    const res = await fetch('/api/plan/independence');
+    if (!res.ok) return;
+    const data = await res.json();
+
+    const tab = document.getElementById('sidebar-plan-tab');
+    const badge = document.getElementById('plan-nav-badge');
+    const container = document.getElementById('plan-content');
+
+    if (!container) return;
+
+    const deadline = new Date(data.deadline);
+    const now = new Date();
+    const daysLeft = Math.max(0, Math.ceil((deadline - now) / (1000 * 60 * 60 * 24)));
+
+    if (data.isActive || data.status === 'claimed') {
+      if (tab) tab.style.display = '';
+    }
+    if (data.status === 'eligible' && badge) {
+      badge.style.display = '';
+    }
+
+    let html = '';
+
+    if (data.status === 'claimed') {
+      html = `
+        <div style="background:linear-gradient(135deg,rgba(34,211,168,0.10),rgba(34,211,168,0.04));border:1px solid rgba(34,211,168,0.25);border-radius:18px;padding:28px 28px 24px;margin-bottom:20px;">
+          <div style="display:flex;align-items:center;gap:14px;margin-bottom:18px;">
+            <div style="width:48px;height:48px;background:linear-gradient(135deg,#22d3a8,#059669);border-radius:14px;display:flex;align-items:center;justify-content:center;font-size:1.5rem;flex-shrink:0;">✅</div>
+            <div>
+              <div style="font-weight:700;font-size:1.05rem;color:#22d3a8;">Plan activé avec succès !</div>
+              <div style="color:#6b7280;font-size:.82rem;margin-top:2px;">Ce plan a déjà été utilisé — gain unique.</div>
+            </div>
+          </div>
+          <div style="background:rgba(0,0,0,0.25);border-radius:12px;padding:18px 20px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;">
+            <div>
+              <div style="color:#9ca3af;font-size:.78rem;margin-bottom:4px;">Gain reçu</div>
+              <div style="font-size:1.8rem;font-weight:800;color:#22d3a8;">+$${parseFloat(data.gainAmount).toFixed(2)}</div>
+            </div>
+            <button class="btn-primary" onclick="document.querySelector('[data-view=withdraw]').click()" style="background:linear-gradient(135deg,#059669,#22d3a8);">
+              Retirer mes gains →
+            </button>
+          </div>
+        </div>`;
+    } else if (!data.isActive) {
+      html = `
+        <div style="background:rgba(248,113,113,0.07);border:1px solid rgba(248,113,113,0.2);border-radius:18px;padding:28px;text-align:center;">
+          <div style="font-size:2rem;margin-bottom:12px;">⏰</div>
+          <div style="font-weight:700;font-size:1.1rem;color:#f87171;margin-bottom:8px;">Plan expiré</div>
+          <div style="color:#9ca3af;font-size:.88rem;">Le Plan Indépendance était disponible jusqu'au 5 juin 2025.<br>Le dépôt minimum est revenu à $150 et les retraits suivent le système normal.</div>
+        </div>`;
+    } else if (data.status === 'eligible') {
+      html = `
+        <div style="background:linear-gradient(135deg,rgba(167,139,250,0.12),rgba(124,58,237,0.06));border:1px solid rgba(167,139,250,0.25);border-radius:18px;padding:28px;margin-bottom:20px;">
+          <div style="display:flex;align-items:center;gap:14px;margin-bottom:20px;">
+            <div style="width:48px;height:48px;background:linear-gradient(135deg,#7c3aed,#a78bfa);border-radius:14px;display:flex;align-items:center;justify-content:center;font-size:1.5rem;flex-shrink:0;">⚡</div>
+            <div>
+              <div style="font-weight:700;font-size:1.1rem;color:#a78bfa;">Vous êtes éligible !</div>
+              <div style="color:#6b7280;font-size:.82rem;margin-top:2px;">Activez votre gain unique maintenant.</div>
+            </div>
+            <div style="margin-left:auto;background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.25);border-radius:10px;padding:6px 14px;text-align:center;flex-shrink:0;">
+              <div style="font-size:.65rem;color:#f87171;font-weight:600;text-transform:uppercase;letter-spacing:.5px;">Expire dans</div>
+              <div style="font-size:1.1rem;font-weight:800;color:#f87171;">${daysLeft}j</div>
+            </div>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:20px;">
+            <div style="background:rgba(0,0,0,0.25);border-radius:12px;padding:16px;">
+              <div style="color:#9ca3af;font-size:.75rem;margin-bottom:4px;">Votre capital de dépôt</div>
+              <div style="font-size:1.4rem;font-weight:700;color:#f0f0fa;">$${parseFloat(data.depositAmount).toFixed(2)}</div>
+              <div style="color:#6b7280;font-size:.72rem;margin-top:3px;">Hors gains de quêtes</div>
+            </div>
+            <div style="background:rgba(0,0,0,0.25);border-radius:12px;padding:16px;">
+              <div style="color:#9ca3af;font-size:.75rem;margin-bottom:4px;">Gain à recevoir</div>
+              <div style="font-size:1.4rem;font-weight:700;color:#22d3a8;">+$${parseFloat(data.projectedGain).toFixed(2)}</div>
+              <div style="color:#22d3a8;font-size:.72rem;margin-top:3px;">200% de votre dépôt</div>
+            </div>
+          </div>
+          <div style="background:rgba(34,211,168,0.05);border:1px solid rgba(34,211,168,0.15);border-radius:10px;padding:12px 16px;margin-bottom:20px;font-size:.82rem;color:#9ca3af;line-height:1.6;">
+            ✅ <strong style="color:#f0f0fa;">Gain crédité immédiatement</strong> sur votre solde<br>
+            ✅ <strong style="color:#f0f0fa;">Retrait immédiat</strong> — aucun délai de cycle<br>
+            ✅ <strong style="color:#f0f0fa;">Une seule activation</strong> possible par compte
+          </div>
+          <button id="claim-plan-btn" onclick="claimIndependencePlan()" style="width:100%;padding:14px;background:linear-gradient(135deg,#7c3aed,#a78bfa);color:#fff;font-weight:700;font-size:.95rem;border:none;border-radius:12px;cursor:pointer;transition:opacity .2s;letter-spacing:.3px;">
+            ⚡ Activer le Plan Indépendance — +$${parseFloat(data.projectedGain).toFixed(2)}
+          </button>
+        </div>
+        ${_planConditionsHtml()}`;
+    } else if (data.status === 'need_more') {
+      html = `
+        <div style="background:rgba(251,191,36,0.07);border:1px solid rgba(251,191,36,0.22);border-radius:18px;padding:28px;margin-bottom:20px;">
+          <div style="display:flex;align-items:center;gap:14px;margin-bottom:18px;">
+            <div style="width:48px;height:48px;background:rgba(251,191,36,0.15);border:1px solid rgba(251,191,36,0.3);border-radius:14px;display:flex;align-items:center;justify-content:center;font-size:1.5rem;flex-shrink:0;">📊</div>
+            <div>
+              <div style="font-weight:700;font-size:1.05rem;color:#fbbf24;">Dépôt insuffisant</div>
+              <div style="color:#6b7280;font-size:.82rem;margin-top:2px;">Il vous manque $${parseFloat(data.missingAmount).toFixed(2)} pour être éligible.</div>
+            </div>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:18px;">
+            <div style="background:rgba(0,0,0,0.25);border-radius:10px;padding:14px;text-align:center;">
+              <div style="color:#9ca3af;font-size:.72rem;margin-bottom:4px;">Votre dépôt</div>
+              <div style="font-size:1.2rem;font-weight:700;color:#fbbf24;">$${parseFloat(data.depositAmount).toFixed(2)}</div>
+            </div>
+            <div style="background:rgba(0,0,0,0.25);border-radius:10px;padding:14px;text-align:center;">
+              <div style="color:#9ca3af;font-size:.72rem;margin-bottom:4px;">Seuil requis</div>
+              <div style="font-size:1.2rem;font-weight:700;color:#f0f0fa;">$${data.minDeposit}</div>
+            </div>
+            <div style="background:rgba(0,0,0,0.25);border-radius:10px;padding:14px;text-align:center;">
+              <div style="color:#9ca3af;font-size:.72rem;margin-bottom:4px;">Manque</div>
+              <div style="font-size:1.2rem;font-weight:700;color:#f87171;">-$${parseFloat(data.missingAmount).toFixed(2)}</div>
+            </div>
+          </div>
+          <button onclick="document.querySelector('[data-view=deposit]').click()" style="width:100%;padding:13px;background:linear-gradient(135deg,#d97706,#fbbf24);color:#fff;font-weight:700;font-size:.9rem;border:none;border-radius:12px;cursor:pointer;">
+            ↓ Déposer $${parseFloat(data.missingAmount).toFixed(2)} maintenant →
+          </button>
+        </div>
+        ${_planConditionsHtml()}`;
+    } else {
+      html = `
+        <div style="background:rgba(107,114,128,0.07);border:1px solid rgba(107,114,128,0.2);border-radius:18px;padding:28px;text-align:center;">
+          <div style="font-size:2rem;margin-bottom:12px;">🔒</div>
+          <div style="font-weight:700;font-size:1rem;color:#9ca3af;margin-bottom:8px;">Non éligible</div>
+          <div style="color:#6b7280;font-size:.85rem;">Ce plan est réservé aux dépôts entre $${data.minDeposit} et $${data.maxDeposit}.</div>
+        </div>`;
+    }
+
+    container.innerHTML = html;
+  } catch (err) {}
+}
+
+function _planConditionsHtml() {
+  return `
+    <div class="card" style="margin-top:8px;">
+      <div class="card-head"><h3>📋 Conditions du plan</h3></div>
+      <div style="padding:4px 0 8px;display:flex;flex-direction:column;gap:10px;font-size:.85rem;color:#9ca3af;line-height:1.6;">
+        <div>⚡ <strong style="color:#f0f0fa;">Gain unique de 200%</strong> calculé sur votre solde de dépôt (hors gains de quêtes)</div>
+        <div>📅 <strong style="color:#f0f0fa;">Disponible jusqu'au 5 juin 2025</strong> — après cette date, le système redevient normal</div>
+        <div>💰 <strong style="color:#f0f0fa;">Capital requis : $350 à $10 000</strong> en dépôts confirmés</div>
+        <div>🔁 <strong style="color:#f0f0fa;">Activation unique</strong> — une seule fois par compte, sans délai de retrait</div>
+        <div>🏦 <strong style="color:#f0f0fa;">Exemple :</strong> $350 de dépôt → +$700 de gain → $1 050 disponible pour retrait immédiat</div>
+      </div>
+    </div>`;
+}
+
+async function claimIndependencePlan() {
+  const btn = document.getElementById('claim-plan-btn');
+  if (btn) { btn.disabled = true; btn.textContent = 'Activation en cours…'; }
+  try {
+    const res = await fetch('/api/plan/independence/claim', { method: 'POST' });
+    const data = await res.json();
+    if (res.ok) {
+      showToast(`🎉 Plan activé ! +$${parseFloat(data.gain).toFixed(2)} crédité sur votre solde.`, 'success');
+      loadUserData();
+      loadIndependencePlan();
+    } else {
+      showToast(data.error || 'Erreur lors de l\'activation', 'error');
+      if (btn) { btn.disabled = false; btn.textContent = `⚡ Activer le Plan Indépendance`; }
+    }
+  } catch (err) {
+    showToast('Erreur réseau. Réessayez.', 'error');
+    if (btn) { btn.disabled = false; btn.textContent = `⚡ Activer le Plan Indépendance`; }
+  }
 }
 
 function closeLegal() {

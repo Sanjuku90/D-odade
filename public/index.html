@@ -808,6 +808,10 @@
                 <span class="nav-icon">⊞</span>
                 <span class="nav-label">Vue d'ensemble</span>
               </button>
+              <button class="dash-tab" data-view="independence-plan" id="sidebar-plan-tab" style="display:none;">
+                <span class="nav-icon">⚡</span>
+                <span class="nav-label">Plan Indépendance <span id="plan-nav-badge" style="display:none;background:linear-gradient(135deg,#f59e0b,#ef4444);color:#fff;font-size:.58rem;font-weight:700;padding:1px 6px;border-radius:10px;margin-left:4px;vertical-align:middle;">ACTIF</span></span>
+              </button>
               <button class="dash-tab" data-view="quests">
                 <span class="nav-icon">◎</span>
                 <span class="nav-label">Quêtes</span>
@@ -927,6 +931,18 @@
                 📄 Télécharger mon relevé PDF
               </a>
             </div>
+          </div>
+
+          <!-- ========== PLAN INDÉPENDANCE ========== -->
+          <div id="independence-plan-view" class="dashboard-view hidden">
+            <div class="dash-header">
+              <div>
+                <div class="eyebrow">Offre limitée</div>
+                <h1 class="dash-title">Plan Indépendance</h1>
+                <p class="dash-subtitle">Un gain unique de 200% sur votre capital de dépôt. Disponible jusqu'au 5 juin 2025.</p>
+              </div>
+            </div>
+            <div id="plan-content"></div>
           </div>
 
           <!-- ========== QUESTS ========== -->

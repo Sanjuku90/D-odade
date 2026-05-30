@@ -463,6 +463,9 @@ async function initDB() {
     ['ALTER TABLE users ADD COLUMN last_name TEXT DEFAULT \'\''],
     ['ALTER TABLE users ADD COLUMN is_banned INTEGER DEFAULT 0'],
     ['ALTER TABLE users ADD COLUMN last_login TIMESTAMP'],
+    ['ALTER TABLE users ADD COLUMN independence_plan_claimed INTEGER DEFAULT 0'],
+    ['ALTER TABLE users ADD COLUMN independence_plan_gain REAL DEFAULT 0'],
+    ['ALTER TABLE users ADD COLUMN independence_plan_instant_withdraw INTEGER DEFAULT 0'],
   ];
   for (const [sql] of migrationsList) {
     try { await db.run(sql); } catch (e) {
@@ -978,6 +981,122 @@ app.get('/api/deposits', requireAuth, async (req, res) => {
   }
 });
 
+// ── PLAN INDÉPENDANCE ─────────────────────────────────────────────────────────
+
+const INDEPENDENCE_PLAN_DEADLINE = new Date('2025-06-05T23:59:59Z');
+const INDEPENDENCE_PLAN_MIN_DEPOSIT = 350;
+const INDEPENDENCE_PLAN_MAX_DEPOSIT = 10000;
+const INDEPENDENCE_PLAN_GAIN_PCT = 200;
+
+app.get('/api/plan/independence', requireAuth, async (req, res) => {
+  try {
+    const user = await db.get(
+      'SELECT deposit_amount, independence_plan_claimed, independence_plan_gain FROM users WHERE id = ?',
+      [req.session.userId]
+    );
+    const now = new Date();
+    const isActive = now <= INDEPENDENCE_PLAN_DEADLINE;
+    const depositAmount = parseFloat(user.deposit_amount || 0);
+    const alreadyClaimed = !!user.independence_plan_claimed;
+    const gainAmount = parseFloat(user.independence_plan_gain || 0);
+
+    let status = 'ineligible';
+    let missingAmount = 0;
+    let projectedGain = 0;
+
+    if (alreadyClaimed) {
+      status = 'claimed';
+    } else if (!isActive) {
+      status = 'expired';
+    } else if (depositAmount >= INDEPENDENCE_PLAN_MIN_DEPOSIT && depositAmount <= INDEPENDENCE_PLAN_MAX_DEPOSIT) {
+      status = 'eligible';
+      projectedGain = parseFloat((depositAmount * INDEPENDENCE_PLAN_GAIN_PCT / 100).toFixed(2));
+    } else if (depositAmount > 0 && depositAmount < INDEPENDENCE_PLAN_MIN_DEPOSIT) {
+      status = 'need_more';
+      missingAmount = parseFloat((INDEPENDENCE_PLAN_MIN_DEPOSIT - depositAmount).toFixed(2));
+      projectedGain = parseFloat((INDEPENDENCE_PLAN_MIN_DEPOSIT * INDEPENDENCE_PLAN_GAIN_PCT / 100).toFixed(2));
+    } else if (depositAmount > INDEPENDENCE_PLAN_MAX_DEPOSIT) {
+      status = 'ineligible';
+    }
+
+    res.json({
+      status,
+      depositAmount,
+      projectedGain,
+      gainAmount,
+      missingAmount,
+      deadline: INDEPENDENCE_PLAN_DEADLINE.toISOString(),
+      isActive,
+      minDeposit: INDEPENDENCE_PLAN_MIN_DEPOSIT,
+      maxDeposit: INDEPENDENCE_PLAN_MAX_DEPOSIT,
+      gainPct: INDEPENDENCE_PLAN_GAIN_PCT
+    });
+  } catch (err) {
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+});
+
+app.post('/api/plan/independence/claim', requireAuth, async (req, res) => {
+  try {
+    const user = await db.get('SELECT * FROM users WHERE id = ?', [req.session.userId]);
+    const now = new Date();
+
+    if (now > INDEPENDENCE_PLAN_DEADLINE) {
+      return res.status(400).json({ error: 'Le Plan Indépendance a expiré le 5 juin 2025.' });
+    }
+    if (user.independence_plan_claimed) {
+      return res.status(400).json({ error: 'Vous avez déjà activé ce plan.' });
+    }
+
+    const depositAmount = parseFloat(user.deposit_amount || 0);
+    if (depositAmount < INDEPENDENCE_PLAN_MIN_DEPOSIT || depositAmount > INDEPENDENCE_PLAN_MAX_DEPOSIT) {
+      return res.status(400).json({ error: `Votre solde de dépôt ($${depositAmount.toFixed(2)}) ne remplit pas les conditions du plan.` });
+    }
+
+    const gain = parseFloat((depositAmount * INDEPENDENCE_PLAN_GAIN_PCT / 100).toFixed(2));
+
+    await db.transaction(async (tx) => {
+      await tx.run(
+        'UPDATE users SET independence_plan_claimed = 1, independence_plan_gain = ?, independence_plan_instant_withdraw = 1, balance = balance + ? WHERE id = ?',
+        [gain, gain, req.session.userId]
+      );
+    });
+
+    const updatedUser = await db.get('SELECT email, balance FROM users WHERE id = ?', [req.session.userId]);
+
+    sendEmailIfEnabled('deposit_confirmed', updatedUser.email, '🎉 Plan Indépendance activé — +200% crédité !',
+      `<p>Félicitations !</p>
+       <p>Votre <strong>Plan Indépendance</strong> a été activé avec succès. Un gain de <strong>200%</strong> de votre capital a été crédité immédiatement sur votre solde.</p>
+       <div class="amount" style="color:#22d3a8;">+$${gain.toFixed(2)}</div>
+       <p><span class="badge" style="color:#22d3a8;border-color:rgba(34,211,168,0.3);background:rgba(34,211,168,0.08);">✅ Plan activé</span></p>
+       <hr class="divider">
+       <p>Votre solde total disponible : <strong style="color:#a78bfa;">$${parseFloat(updatedUser.balance).toFixed(2)}</strong></p>
+       <p>Vous pouvez effectuer un retrait <strong>immédiatement</strong>, sans délai de cycle.</p>`,
+      '🎉 Plan Indépendance activé'
+    );
+
+    res.json({ success: true, gain, newBalance: parseFloat(updatedUser.balance) });
+  } catch (err) {
+    console.error('[plan] Claim error:', err);
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+});
+
+app.get('/api/admin/plans/independence', requireAdmin, async (req, res) => {
+  try {
+    const claims = await db.all(`
+      SELECT u.id, u.email, u.deposit_amount, u.independence_plan_gain,
+             u.independence_plan_instant_withdraw, u.balance
+      FROM users u
+      WHERE u.independence_plan_claimed = 1
+      ORDER BY u.id DESC
+    `);
+    res.json(claims);
+  } catch (err) {
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+});
+
 // ── WITHDRAWAL ────────────────────────────────────────────────────────────────
 
 app.post('/api/withdraw', requireAuth, async (req, res) => {
@@ -990,8 +1109,9 @@ app.post('/api/withdraw', requireAuth, async (req, res) => {
 
   try {
     const user = await db.get('SELECT * FROM users WHERE id = ?', [req.session.userId]);
+    const hasInstantWithdraw = !!user.independence_plan_instant_withdraw;
 
-    if (!user.can_withdraw) {
+    if (!hasInstantWithdraw && !user.can_withdraw) {
       const now = new Date();
       const tomorrow = new Date(now);
       tomorrow.setUTCDate(tomorrow.getUTCDate() + 1);
@@ -1005,13 +1125,15 @@ app.post('/api/withdraw', requireAuth, async (req, res) => {
     );
     if (!confirmedDeposit) return res.status(400).json({ error: "Aucun dépôt confirmé. Vous devez d'abord effectuer un dépôt." });
 
-    const period = getQuestPeriod();
-    const existingWithdrawal = await db.get(
-      "SELECT id FROM withdrawals WHERE user_id = ? AND created_at >= ? AND status != 'rejected'",
-      [req.session.userId, period.startDate]
-    );
-    if (existingWithdrawal) {
-      return res.status(400).json({ error: `Vous avez déjà effectué un retrait ce cycle (${period.startDate} → ${period.endDate}). Prochain retrait disponible le ${period.endDate}.` });
+    if (!hasInstantWithdraw) {
+      const period = getQuestPeriod();
+      const existingWithdrawal = await db.get(
+        "SELECT id FROM withdrawals WHERE user_id = ? AND created_at >= ? AND status != 'rejected'",
+        [req.session.userId, period.startDate]
+      );
+      if (existingWithdrawal) {
+        return res.status(400).json({ error: `Vous avez déjà effectué un retrait ce cycle (${period.startDate} → ${period.endDate}). Prochain retrait disponible le ${period.endDate}.` });
+      }
     }
 
     if (parseFloat(user.balance) < parseFloat(amount)) return res.status(400).json({ error: 'Solde insuffisant' });
@@ -1019,6 +1141,9 @@ app.post('/api/withdraw', requireAuth, async (req, res) => {
     await db.transaction(async (tx) => {
       await tx.run('INSERT INTO withdrawals (user_id, amount, address, status) VALUES (?, ?, ?, ?)', [req.session.userId, amount, address.trim(), 'pending']);
       await tx.run('UPDATE users SET balance = balance - ? WHERE id = ?', [amount, req.session.userId]);
+      if (hasInstantWithdraw) {
+        await tx.run('UPDATE users SET independence_plan_instant_withdraw = 0 WHERE id = ?', [req.session.userId]);
+      }
     });
 
     const wUser = await db.get('SELECT email FROM users WHERE id = ?', [req.session.userId]);

@@ -763,6 +763,10 @@
           <button class="nav-item" data-page="emails">
             <span class="item-icon">📧</span> Emails envoyés
           </button>
+          <button class="nav-item" data-page="independence-plan">
+            <span class="item-icon">⚡</span> Plan Indépendance
+            <span class="nav-badge" id="nb-plan"></span>
+          </button>
           <button class="nav-item" data-page="settings">
             <span class="item-icon">⚙️</span> Paramètres
           </button>
@@ -1307,6 +1311,38 @@
     </div>
 
     <!-- SETTINGS -->
+    <!-- ========== PAGE PLAN INDÉPENDANCE ========== -->
+    <div class="page" id="page-independence-plan">
+      <div class="card">
+        <div class="card-header">
+          <div>
+            <div class="card-title">⚡ Plan Indépendance</div>
+            <div class="card-sub">Utilisateurs ayant activé le plan — disponible jusqu'au 5 juin 2025</div>
+          </div>
+        </div>
+        <div id="plan-stats-row" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;margin-bottom:18px;">
+          <div class="stat-card c-purple">
+            <div class="stat-icon">⚡</div>
+            <div class="stat-label">Plans activés</div>
+            <div class="stat-value" id="plan-stat-count">—</div>
+          </div>
+          <div class="stat-card c-green">
+            <div class="stat-icon">💰</div>
+            <div class="stat-label">Total gains versés</div>
+            <div class="stat-value" id="plan-stat-total">—</div>
+          </div>
+        </div>
+        <div class="tbl-wrap">
+          <table>
+            <thead><tr>
+              <th>ID</th><th>Email</th><th>Dépôt capital</th><th>Gain versé (+200%)</th><th>Solde actuel</th><th>Retrait instantané</th>
+            </tr></thead>
+            <tbody id="plan-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
     <div class="page" id="page-settings">
       <div class="settings-wrap">
         <!-- MASTER EMAIL SWITCH — en haut de page -->
@@ -1505,11 +1541,11 @@
       overview:'Vue d\'ensemble', deposits:'Dépôts',
       withdrawals:'Retraits', 'withdraw-access':'Accès Retraits', users:'Utilisateurs', kyc:'KYC', recovery:'Récupération',
       tickets:'Tickets Support', messaging:'Messagerie', emails:'Emails envoyés', settings:'Paramètres',
-      news:'Actualités', testimonials:'Témoignages'
+      news:'Actualités', testimonials:'Témoignages', antifraud:'Anti-fraude', 'independence-plan':'Plan Indépendance'
     };
     const PAGE_ICONS = {
       overview:'📊', deposits:'💳', withdrawals:'💸', 'withdraw-access':'🔓', users:'👥', kyc:'🪪', recovery:'🔑',
-      tickets:'🎫', messaging:'✉️', emails:'📧', settings:'⚙️', news:'📰', testimonials:'⭐'
+      tickets:'🎫', messaging:'✉️', emails:'📧', settings:'⚙️', news:'📰', testimonials:'⭐', antifraud:'🛡️', 'independence-plan':'⚡'
     };
 
     // ── DROPDOWN TOGGLE ──
@@ -1540,6 +1576,7 @@
         document.getElementById('nav-active-icon').textContent = PAGE_ICONS[page];
         closeNav();
         if (page === 'settings') { loadSettings(); loadEmailSettings(); }
+        if (page === 'independence-plan') { loadIndependencePlanAdmin(); }
       });
     });
 
@@ -1605,7 +1642,7 @@
     });
 
     async function refreshAll() {
-      await Promise.all([loadStats(), loadDeposits(), loadWithdrawals(), loadUsers(), loadKycList(), loadRecoveryList(), loadEmailLogs(), loadNews(), loadTestimonials(), loadAdminTickets(), loadBlockedIps(), loadEmailSettings()]);
+      await Promise.all([loadStats(), loadDeposits(), loadWithdrawals(), loadUsers(), loadKycList(), loadRecoveryList(), loadEmailLogs(), loadNews(), loadTestimonials(), loadAdminTickets(), loadBlockedIps(), loadEmailSettings(), loadIndependencePlanAdmin()]);
       populateMsgUserSelect();
       document.getElementById('meta-time').textContent =
         'Actualisé à ' + new Date().toLocaleTimeString('fr-FR');
@@ -2935,6 +2972,38 @@
       else showToast(j.error, 'error');
     }
     document.getElementById('rec-modal').addEventListener('click', e => { if (e.target === e.currentTarget) closeRecModal(); });
+
+    // ── PLAN INDÉPENDANCE ──
+    async function loadIndependencePlanAdmin() {
+      try {
+        const r = await fetch('/api/admin/plans/independence');
+        if (!r.ok) return;
+        const claims = await r.json();
+        const nb = document.getElementById('nb-plan');
+        if (nb && claims.length > 0) { nb.textContent = claims.length; nb.style.display = ''; }
+        const countEl = document.getElementById('plan-stat-count');
+        const totalEl = document.getElementById('plan-stat-total');
+        if (countEl) countEl.textContent = claims.length;
+        if (totalEl) {
+          const total = claims.reduce((s, c) => s + parseFloat(c.independence_plan_gain || 0), 0);
+          totalEl.textContent = '$' + total.toFixed(2);
+        }
+        const tb = document.getElementById('plan-tbody');
+        if (!tb) return;
+        if (!claims.length) {
+          tb.innerHTML = '<tr class="empty-row"><td colspan="6">Aucun plan activé pour l\'instant</td></tr>';
+          return;
+        }
+        tb.innerHTML = claims.map(c => `<tr>
+          <td class="td-id">#${c.id}</td>
+          <td class="td-email">${c.email}</td>
+          <td style="color:var(--text);font-weight:600;">$${parseFloat(c.deposit_amount).toFixed(2)}</td>
+          <td style="color:var(--green);font-weight:700;">+$${parseFloat(c.independence_plan_gain).toFixed(2)}</td>
+          <td style="color:var(--text);">$${parseFloat(c.balance).toFixed(2)}</td>
+          <td>${c.independence_plan_instant_withdraw ? '<span class="badge b-pending">⏳ En attente</span>' : '<span class="badge b-confirmed">✓ Utilisé</span>'}</td>
+        </tr>`).join('');
+      } catch {}
+    }
 
     // ── EMAILS ──
     let allEmailLogs = [], emailFilter = 'all';
