@@ -102,33 +102,43 @@ const MIN_DEPOSIT = parseFloat(process.env.MIN_DEPOSIT || '150');
 
 app.set('trust proxy', 1);
 
-// ── Secrets persistants ───────────────────────────────────────────────────────
-function getPersistentConfigPath(name) {
-  const baseDir = process.env.TURSO_DATABASE_URL
-    ? '/tmp'
-    : path.join(__dirname, '.data');
-  fs.mkdirSync(baseDir, { recursive: true });
-  return path.join(baseDir, `${name}.txt`);
-}
-
-function getOrCreatePersistentSecret(name, generator) {
-  if (process.env[name]) return process.env[name];
-  const secretPath = getPersistentConfigPath(name);
-  if (fs.existsSync(secretPath)) {
-    return fs.readFileSync(secretPath, 'utf8').trim();
+// ── Secrets persistants (stockés en DB pour survivre aux redémarrages) ─────────
+async function loadOrCreateDbSecret(key, generator) {
+  if (process.env[key]) return process.env[key];
+  // Fallback fichier (mode local sans DB)
+  const localDir = path.join(__dirname, '.data');
+  const localPath = path.join(localDir, `${key}.txt`);
+  try {
+    const row = await db.get('SELECT value FROM settings WHERE key = ?', [`_secret_${key}`]);
+    if (row && row.value) {
+      console.log(`[secrets] ${key} chargé depuis la base de données`);
+      return row.value;
+    }
+  } catch {}
+  // Pas encore en DB — chercher fichier local ou générer
+  let value = null;
+  try {
+    if (fs.existsSync(localPath)) value = fs.readFileSync(localPath, 'utf8').trim();
+  } catch {}
+  if (!value) {
+    value = generator();
+    console.warn(`[secrets] ${key} généré — stocké en base de données`);
   }
-  const value = generator();
-  try { fs.writeFileSync(secretPath, value, { mode: 0o600 }); } catch (_) {}
-  console.warn(`${name} was not provided; generated a persistent value`);
+  try {
+    await db.run(
+      'INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value',
+      [`_secret_${key}`, value]
+    );
+  } catch {}
+  // Écrire aussi en local pour compatibilité
+  try { fs.mkdirSync(localDir, { recursive: true }); fs.writeFileSync(localPath, value, { mode: 0o600 }); } catch {}
   return value;
 }
 
-const SESSION_SECRET  = getOrCreatePersistentSecret('SESSION_SECRET',  () => crypto.randomBytes(32).toString('hex'));
+let SESSION_SECRET  = null; // initialisé après DB dans startApp()
+let ADMIN_PASSWORD  = isProduction ? null : 'admin123'; // initialisé après DB en prod
 const DEFAULT_DEPOSIT_ADDRESS = process.env.DEPOSIT_ADDRESS || 'TYyUwQELkUW957jE7Svt42LSaeQWneWtQG';
 const ADMIN_EMAIL     = process.env.ADMIN_EMAIL    || 'admin@questinvest.com';
-const ADMIN_PASSWORD  = process.env.ADMIN_PASSWORD || (isProduction
-  ? getOrCreatePersistentSecret('ADMIN_PASSWORD', () => crypto.randomBytes(24).toString('base64url'))
-  : 'admin123');
 const ADMIN_ACCESS_CODE = '1289';
 
 // ── Settings cache (lecture sync, écriture async) ────────────────────────────
@@ -261,19 +271,12 @@ class SqliteSessionStore extends session.Store {
   }
 }
 
-app.use(session({
-  store: new SqliteSessionStore(),
-  secret: SESSION_SECRET,
-  resave: false,
-  saveUninitialized: false,
-  proxy: true,
-  cookie: {
-    maxAge: 30 * 24 * 60 * 60 * 1000,
-    httpOnly: true,
-    secure: isProduction,
-    sameSite: 'lax'
-  }
-}));
+// Proxy lazy — la vraie instance session est créée après chargement DB des secrets
+let _sessionHandler = null;
+app.use((req, res, next) => {
+  if (_sessionHandler) return _sessionHandler(req, res, next);
+  next();
+});
 
 app.use((req, res, next) => {
   res.set('Cache-Control', 'no-store, no-cache, must-revalidate, private');
@@ -2489,7 +2492,28 @@ function startAutoPing() {
 
 // ── DÉMARRAGE ─────────────────────────────────────────────────────────────────
 
-initDB().then(() => {
+initDB().then(async () => {
+  // Charger les secrets persistants depuis la DB (survivent aux redémarrages Render/Turso)
+  SESSION_SECRET = await loadOrCreateDbSecret('SESSION_SECRET', () => crypto.randomBytes(32).toString('hex'));
+  if (isProduction || !ADMIN_PASSWORD) {
+    ADMIN_PASSWORD = await loadOrCreateDbSecret('ADMIN_PASSWORD', () => crypto.randomBytes(24).toString('base64url'));
+  }
+
+  // Initialiser le middleware session avec le secret chargé depuis la DB
+  _sessionHandler = session({
+    store: new SqliteSessionStore(),
+    secret: SESSION_SECRET,
+    resave: false,
+    saveUninitialized: false,
+    proxy: true,
+    cookie: {
+      maxAge: 30 * 24 * 60 * 60 * 1000,
+      httpOnly: true,
+      secure: isProduction,
+      sameSite: 'lax'
+    }
+  });
+
   (function logEmailConfig() {
     const vars = { MAIL_USER, GMAIL_CLIENT_ID: process.env.GMAIL_CLIENT_ID, GMAIL_CLIENT_SECRET: process.env.GMAIL_CLIENT_SECRET, GMAIL_REFRESH_TOKEN: process.env.GMAIL_REFRESH_TOKEN };
     const missing = Object.entries(vars).filter(([, v]) => !v).map(([k]) => k);

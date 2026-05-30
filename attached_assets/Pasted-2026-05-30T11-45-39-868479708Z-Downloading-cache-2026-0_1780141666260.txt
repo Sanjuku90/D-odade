@@ -1,0 +1,54 @@
+2026-05-30T11:45:39.868479708Z ==> Downloading cache...
+2026-05-30T11:45:39.907617897Z ==> Cloning from https://github.com/Sanjuku90/D-odade
+2026-05-30T11:45:40.672005392Z ==> Checking out commit 13b732a3f9e3458aa86fa69dca64f032ec56728c in branch main
+2026-05-30T11:45:41.233476062Z ==> Downloaded 35MB in 1s. Extraction took 1s.
+2026-05-30T11:45:41.959300299Z ==> Using Python version 3.14.3 (default)
+2026-05-30T11:45:41.959314391Z ==> Docs on specifying a Python version: https://render.com/docs/python-version
+2026-05-30T11:45:41.959436159Z ==> Installing Python version 3.14.3...
+2026-05-30T11:45:50.846891757Z ==> Using Poetry version 2.1.3 (default)
+2026-05-30T11:45:50.893251118Z ==> Docs on specifying a Poetry version: https://render.com/docs/poetry-version
+2026-05-30T11:45:50.961547424Z ==> Running build command 'npm install'...
+2026-05-30T11:45:51.053184847Z ==> Requesting Node.js version 20.x
+2026-05-30T11:45:51.169856839Z ==> Using Node.js version 20.20.2 via /opt/render/project/src/package.json
+2026-05-30T11:45:51.16987751Z ==> Docs on specifying a Node.js version: https://render.com/docs/node-version
+2026-05-30T11:45:51.170020081Z ==> Installing Node.js version 20.20.2...
+2026-05-30T11:45:53.521013196Z 
+2026-05-30T11:45:53.521041058Z added 139 packages, and audited 140 packages in 1s
+2026-05-30T11:45:53.521048038Z 
+2026-05-30T11:45:53.52107281Z 22 packages are looking for funding
+2026-05-30T11:45:53.521088971Z   run `npm fund` for details
+2026-05-30T11:45:53.531464831Z 
+2026-05-30T11:45:53.531488123Z 5 vulnerabilities (4 moderate, 1 high)
+2026-05-30T11:45:53.531494963Z 
+2026-05-30T11:45:53.531502054Z To address all issues, run:
+2026-05-30T11:45:53.531506234Z   npm audit fix
+2026-05-30T11:45:53.531510074Z 
+2026-05-30T11:45:53.531513944Z Run `npm audit` for details.
+2026-05-30T11:45:53.649374693Z ==> Requesting Node.js version 20.x
+2026-05-30T11:45:53.762773678Z ==> Using Node.js version 20.20.2 via /opt/render/project/src/package.json
+2026-05-30T11:45:53.76279297Z ==> Docs on specifying a Node.js version: https://render.com/docs/node-version
+2026-05-30T11:45:57.972726458Z ==> Uploading build...
+2026-05-30T11:46:04.15093529Z ==> Uploaded in 3.4s. Compression took 2.8s
+2026-05-30T11:46:04.258561899Z ==> Build successful 🎉
+2026-05-30T11:46:09.051776743Z ==> Deploying...
+2026-05-30T11:46:09.166704242Z ==> Setting WEB_CONCURRENCY=1 by default, based on available CPUs in the instance
+2026-05-30T11:46:27.184351147Z ==> Running 'npm start'
+2026-05-30T11:46:29.764280177Z 
+2026-05-30T11:46:29.764305407Z > quest-invest@1.0.0 start
+2026-05-30T11:46:29.764312408Z > NODE_ENV=production node server.js
+2026-05-30T11:46:29.764316138Z 
+2026-05-30T11:46:30.776370822Z SESSION_SECRET was not provided; generated a persistent value
+2026-05-30T11:46:30.800271691Z ADMIN_PASSWORD was not provided; generated a persistent value
+2026-05-30T11:46:31.47574909Z [db] Mode cloud Turso — données persistantes entre chaque redémarrage Render
+2026-05-30T11:46:37.352806943Z Database initialized successfully
+2026-05-30T11:46:37.353164192Z [mail] OAuth2 config OK — toutes les variables sont définies
+2026-05-30T11:46:37.353439829Z [reminder] Rappels quêtes programmés à 09:00 UTC (dans 1273 min)
+2026-05-30T11:46:37.354842565Z Server running on http://0.0.0.0:10000
+2026-05-30T11:46:37.355078351Z [ping] Auto-ping activé — cible : https://questquest-urjv.onrender.com/health (toutes les 9 min)
+2026-05-30T11:46:40.092722805Z ==> Your service is live 🎉
+2026-05-30T11:46:40.203640972Z ==> 
+2026-05-30T11:46:40.206394103Z ==> ///////////////////////////////////////////////////////////
+2026-05-30T11:46:40.209319438Z ==> 
+2026-05-30T11:46:40.212361306Z ==> Available at your primary URL https://questquest-urjv.onrender.com
+2026-05-30T11:46:40.214976964Z ==> 
+2026-05-30T11:46:40.217819727Z ==> ///////////////////////////////////////////////////////////
