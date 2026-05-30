@@ -1432,6 +1432,17 @@
             <span id="maintenance-status" style="font-size:.78rem;color:var(--text3);">—</span>
           </div>
         </div>
+        <div class="s-card" style="border:1px solid rgba(251,191,36,.25);">
+          <div class="s-title">🔄 Forcer le rechargement du cache</div>
+          <div class="s-desc">Force tous les navigateurs à recharger les fichiers CSS et JS lors de leur prochaine visite. Utile après un déploiement si les utilisateurs voient encore l'ancienne version.</div>
+          <div style="display:flex;align-items:center;gap:14px;margin-top:16px;flex-wrap:wrap;">
+            <button class="btn-save" id="cache-bust-btn" onclick="forceCacheBust()" style="background:linear-gradient(135deg,#d97706,#fbbf24);margin-bottom:0;">
+              ⚡ Invalider le cache maintenant
+            </button>
+            <span id="cache-bust-status" style="font-size:.8rem;color:var(--text3);"></span>
+          </div>
+          <div class="f-ok" id="cache-bust-ok" style="display:none;margin-top:12px;">✓ Cache invalidé — les utilisateurs verront la nouvelle version dès leur prochain chargement.</div>
+        </div>
         <div class="s-card">
           <div class="s-title">🔑 Paramètres de la plateforme</div>
           <div class="s-desc">Informations de configuration de QuestInvest.</div>
@@ -2118,6 +2129,32 @@
           j.maintenance ? '🔴 Mode maintenance ACTIF' : '🟢 Site en ligne';
         showToast(j.maintenance ? '🔧 Maintenance activée' : '✅ Site remis en ligne', j.maintenance ? 'error' : 'success');
       } catch (e) { showToast('Erreur : ' + e.message, 'error'); cb.checked = !cb.checked; }
+    }
+
+    async function forceCacheBust() {
+      const btn = document.getElementById('cache-bust-btn');
+      const status = document.getElementById('cache-bust-status');
+      const ok = document.getElementById('cache-bust-ok');
+      btn.disabled = true;
+      btn.textContent = '⏳ Invalidation…';
+      status.textContent = '';
+      ok.style.display = 'none';
+      try {
+        const r = await fetch('/api/admin/cache-bust', { method: 'POST' });
+        const j = await r.json();
+        if (r.ok) {
+          status.textContent = `Build ID : ${j.buildId}`;
+          ok.style.display = 'block';
+          showToast('✅ Cache invalidé — les utilisateurs verront la nouvelle version.', 'success');
+        } else {
+          showToast('Erreur : ' + (j.error || 'inconnue'), 'error');
+        }
+      } catch (e) {
+        showToast('Erreur réseau : ' + e.message, 'error');
+      } finally {
+        btn.disabled = false;
+        btn.textContent = '⚡ Invalider le cache maintenant';
+      }
     }
 
     // ── BAN ──

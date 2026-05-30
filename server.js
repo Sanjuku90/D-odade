@@ -99,7 +99,7 @@ const PORT = process.env.PORT || 5000;
 const isProduction = process.env.NODE_ENV === 'production';
 const MAIL_USER = process.env.MAIL_USER || '';
 const MIN_DEPOSIT = parseFloat(process.env.MIN_DEPOSIT || '150');
-const BUILD_ID = Date.now().toString();
+let BUILD_ID = Date.now().toString();
 
 app.set('trust proxy', 1);
 
@@ -2186,6 +2186,12 @@ app.post('/api/admin/settings', requireAdmin, async (req, res) => {
   } catch (err) {
     res.status(500).json({ error: 'Erreur serveur' });
   }
+});
+
+app.post('/api/admin/cache-bust', requireAdmin, (req, res) => {
+  BUILD_ID = Date.now().toString();
+  console.log(`[cache] Cache invalidé — nouveau BUILD_ID : ${BUILD_ID}`);
+  res.json({ success: true, buildId: BUILD_ID });
 });
 
 // ── SUPPORT TICKETS ───────────────────────────────────────────────────────────
