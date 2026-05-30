@@ -94,6 +94,14 @@
   </script>
 </head>
 <body>
+  <!-- BANNIÈRE NOUVELLE VERSION -->
+  <div id="update-available-banner" style="display:none;position:relative;z-index:9999;background:linear-gradient(90deg,rgba(34,211,168,0.18),rgba(34,211,168,0.08));border-bottom:1px solid rgba(34,211,168,0.35);padding:9px 20px;display:none;align-items:center;gap:12px;font-size:0.82rem;color:#d1d5db;flex-wrap:wrap;">
+    <span style="font-size:1rem;">🔄</span>
+    <span><strong style="color:#22d3a8;">Mise à jour disponible</strong> — Une nouvelle version du site est prête. Rechargez pour en profiter.</span>
+    <button onclick="location.reload(true)" style="margin-left:auto;background:linear-gradient(135deg,#059669,#22d3a8);border:none;color:#fff;font-size:.78rem;font-weight:700;padding:5px 16px;border-radius:20px;cursor:pointer;white-space:nowrap;flex-shrink:0;">Recharger maintenant</button>
+    <button onclick="document.getElementById('update-available-banner').style.display='none'" style="background:none;border:none;color:#64748b;font-size:1.1rem;cursor:pointer;flex-shrink:0;line-height:1;padding:0 4px;">×</button>
+  </div>
+
   <!-- PLAN INDÉPENDANCE PROMO BANNER -->
   <div id="plan-promo-banner" style="position:relative;z-index:9997;background:linear-gradient(90deg,#4c1d95 0%,#5b21b6 50%,#3b0764 100%);border-bottom:2px solid #7c3aed;overflow:hidden;">
     <div style="max-width:1100px;margin:0 auto;padding:11px 20px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;">

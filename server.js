@@ -99,6 +99,7 @@ const PORT = process.env.PORT || 5000;
 const isProduction = process.env.NODE_ENV === 'production';
 const MAIL_USER = process.env.MAIL_USER || '';
 const MIN_DEPOSIT = parseFloat(process.env.MIN_DEPOSIT || '150');
+const BUILD_ID = Date.now().toString();
 
 app.set('trust proxy', 1);
 
@@ -2340,6 +2341,10 @@ app.get('/admin', (req, res) => {
 
 app.get('/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
+});
+
+app.get('/api/version', (req, res) => {
+  res.json({ buildId: BUILD_ID });
 });
 
 app.get('*', (req, res) => {

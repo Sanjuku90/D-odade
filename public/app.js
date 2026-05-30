@@ -12,7 +12,27 @@ document.addEventListener('DOMContentLoaded', () => {
   setupEventListeners();
   setupLandingListeners();
   startPlanCountdown();
+  startVersionPolling();
 });
+
+let _knownBuildId = null;
+function startVersionPolling() {
+  async function checkVersion() {
+    try {
+      const r = await fetch('/api/version');
+      if (!r.ok) return;
+      const { buildId } = await r.json();
+      if (!_knownBuildId) { _knownBuildId = buildId; return; }
+      if (_knownBuildId !== buildId) {
+        const banner = document.getElementById('update-available-banner');
+        if (banner) banner.style.display = 'flex';
+        clearInterval(_versionInterval);
+      }
+    } catch {}
+  }
+  checkVersion();
+  const _versionInterval = setInterval(checkVersion, 3 * 60 * 1000);
+}
 
 function startDepositPolling() {
   stopDepositPolling();
