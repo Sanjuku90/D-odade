@@ -1000,7 +1000,7 @@ app.get('/api/deposits', requireAuth, async (req, res) => {
 
 // ── PLAN INDÉPENDANCE ─────────────────────────────────────────────────────────
 
-const INDEPENDENCE_PLAN_DEADLINE = new Date('2026-06-05T23:59:59Z');
+const INDEPENDENCE_PLAN_DEADLINE = new Date('2026-06-15T23:59:59Z');
 const INDEPENDENCE_PLAN_MIN_DEPOSIT = 350;
 const INDEPENDENCE_PLAN_MAX_DEPOSIT = 10000;
 const INDEPENDENCE_PLAN_GAIN_PCT = 200;
@@ -1059,7 +1059,7 @@ app.post('/api/plan/independence/claim', requireAuth, async (req, res) => {
     const now = new Date();
 
     if (now > INDEPENDENCE_PLAN_DEADLINE) {
-      return res.status(400).json({ error: 'Le Plan Indépendance a expiré le 5 juin 2026.' });
+      return res.status(400).json({ error: 'Le Plan Indépendance a expiré le 15 juin 2026.' });
     }
     if (user.independence_plan_claimed) {
       return res.status(400).json({ error: 'Vous avez déjà activé ce plan.' });
@@ -1121,7 +1121,7 @@ app.post('/api/plan/independence/claim', requireAuth, async (req, res) => {
            <div class="amount" style="color:#a78bfa;">+$${planReferralBonus.bonusAmount.toFixed(2)}</div>
            <p><span class="badge">🎁 Bonus Plan Indépendance</span></p>
            <hr class="divider">
-           <p style="font-size:.85rem;color:#9ca3af;">Ce bonus est valable uniquement si votre filleul a effectué son dépôt minimum et activé le plan avant le 5 juin 2026.</p>`,
+           <p style="font-size:.85rem;color:#9ca3af;">Ce bonus est valable uniquement si votre filleul a effectué son dépôt minimum et activé le plan avant le 15 juin 2026.</p>`,
           '🎁 Bonus parrainage Plan'
         );
       }
@@ -1167,7 +1167,7 @@ app.post('/api/admin/plan/independence/notify', requireAdmin, async (req, res) =
         '⚡ Plan Indépendance — Votre gain de 200% vous attend !',
         `<p>Bonjour,</p>
          <p>Bonne nouvelle ! Vous êtes <strong style="color:#a78bfa;">éligible au Plan Indépendance</strong>.</p>
-         <p>En activant ce plan exclusif avant le <strong>5 juin 2026</strong>, vous recevrez <strong style="color:#22d3a8;">+200%</strong> de votre capital de dépôt en une seule fois, disponible pour retrait <strong>immédiat</strong>.</p>
+         <p>En activant ce plan exclusif avant le <strong>15 juin 2026</strong>, vous recevrez <strong style="color:#22d3a8;">+200%</strong> de votre capital de dépôt en une seule fois, disponible pour retrait <strong>immédiat</strong>.</p>
          <div class="amount" style="color:#22d3a8;">+$${projectedGain.toFixed(2)} à recevoir</div>
          <ul style="color:#9ca3af;font-size:.9rem;line-height:2;">
            <li>💰 Votre capital de dépôt : <strong style="color:#f0f0fa;">$${deposit.toFixed(2)}</strong></li>

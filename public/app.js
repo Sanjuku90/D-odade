@@ -107,7 +107,7 @@ function renderLiveDeposits(deposits) {
 }
 
 function startPlanCountdown() {
-  const deadline = new Date('2026-06-05T23:59:59Z');
+  const deadline = new Date('2026-06-15T23:59:59Z');
   const countdownEl = document.getElementById('banner-countdown');
   const labelEl = document.getElementById('banner-deadline-label');
   const banner = document.getElementById('plan-promo-banner');
@@ -1634,7 +1634,7 @@ async function loadIndependencePlan() {
         <div style="background:rgba(248,113,113,0.07);border:1px solid rgba(248,113,113,0.2);border-radius:18px;padding:28px;text-align:center;">
           <div style="font-size:2rem;margin-bottom:12px;">⏰</div>
           <div style="font-weight:700;font-size:1.1rem;color:#f87171;margin-bottom:8px;">Plan expiré</div>
-          <div style="color:#9ca3af;font-size:.88rem;line-height:1.7;">Le Plan Indépendance était disponible jusqu'au <strong style="color:#f87171;">5 juin 2026</strong>.<br>Le dépôt minimum est revenu à <strong style="color:#f0f0fa;">$150</strong> et le système de retrait est redevenu normal.</div>
+          <div style="color:#9ca3af;font-size:.88rem;line-height:1.7;">Le Plan Indépendance était disponible jusqu'au <strong style="color:#f87171;">15 juin 2026</strong>.<br>Le dépôt minimum est revenu à <strong style="color:#f0f0fa;">$150</strong> et le système de retrait est redevenu normal.</div>
         </div>`;
     } else if (data.status === 'eligible') {
       html = `
@@ -1729,7 +1729,7 @@ function _planConditionsHtml() {
       <div class="card-head"><h3>📋 Conditions du plan</h3></div>
       <div style="padding:4px 0 8px;display:flex;flex-direction:column;gap:10px;font-size:.85rem;color:#9ca3af;line-height:1.6;">
         <div>⚡ <strong style="color:#f0f0fa;">Gain unique de 200%</strong> calculé sur votre solde de dépôt (hors gains de quêtes)</div>
-        <div>📅 <strong style="color:#f0f0fa;">Disponible jusqu'au 5 juin 2026</strong> — après cette date, dépôt min. $150 et retraits normaux</div>
+        <div>📅 <strong style="color:#f0f0fa;">Disponible jusqu'au 15 juin 2026</strong> — après cette date, dépôt min. $150 et retraits normaux</div>
         <div>💰 <strong style="color:#f0f0fa;">Capital requis : $350 à $10 000</strong> en dépôts confirmés</div>
         <div>🔁 <strong style="color:#f0f0fa;">Activation unique</strong> — une seule fois par compte, sans délai de retrait</div>
         <div>🏦 <strong style="color:#f0f0fa;">Exemple :</strong> $350 de dépôt → +$700 de gain → $1 050 disponible pour retrait immédiat</div>
