@@ -1042,7 +1042,7 @@ app.post('/api/plan/independence/claim', requireAuth, async (req, res) => {
     const now = new Date();
 
     if (now > INDEPENDENCE_PLAN_DEADLINE) {
-      return res.status(400).json({ error: 'Le Plan Indépendance a expiré le 5 juin 2025.' });
+      return res.status(400).json({ error: 'Le Plan Indépendance a expiré le 5 juin 2026.' });
     }
     if (user.independence_plan_claimed) {
       return res.status(400).json({ error: 'Vous avez déjà activé ce plan.' });

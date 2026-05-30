@@ -1572,7 +1572,7 @@ async function loadIndependencePlan() {
     if (data.isActive || data.status === 'claimed') {
       if (tab) tab.style.display = '';
     }
-    if (data.status === 'eligible' && badge) {
+    if ((data.status === 'eligible' || data.status === 'need_more') && badge) {
       badge.style.display = '';
     }
 
@@ -1603,7 +1603,7 @@ async function loadIndependencePlan() {
         <div style="background:rgba(248,113,113,0.07);border:1px solid rgba(248,113,113,0.2);border-radius:18px;padding:28px;text-align:center;">
           <div style="font-size:2rem;margin-bottom:12px;">⏰</div>
           <div style="font-weight:700;font-size:1.1rem;color:#f87171;margin-bottom:8px;">Plan expiré</div>
-          <div style="color:#9ca3af;font-size:.88rem;">Le Plan Indépendance était disponible jusqu'au 5 juin 2025.<br>Le dépôt minimum est revenu à $150 et les retraits suivent le système normal.</div>
+          <div style="color:#9ca3af;font-size:.88rem;line-height:1.7;">Le Plan Indépendance était disponible jusqu'au <strong style="color:#f87171;">5 juin 2026</strong>.<br>Le dépôt minimum est revenu à <strong style="color:#f0f0fa;">$150</strong> et le système de retrait est redevenu normal.</div>
         </div>`;
     } else if (data.status === 'eligible') {
       html = `
@@ -1642,31 +1642,40 @@ async function loadIndependencePlan() {
         </div>
         ${_planConditionsHtml()}`;
     } else if (data.status === 'need_more') {
+      const is250Case = Math.abs(parseFloat(data.depositAmount) - 250) < 1;
       html = `
         <div style="background:rgba(251,191,36,0.07);border:1px solid rgba(251,191,36,0.22);border-radius:18px;padding:28px;margin-bottom:20px;">
           <div style="display:flex;align-items:center;gap:14px;margin-bottom:18px;">
             <div style="width:48px;height:48px;background:rgba(251,191,36,0.15);border:1px solid rgba(251,191,36,0.3);border-radius:14px;display:flex;align-items:center;justify-content:center;font-size:1.5rem;flex-shrink:0;">📊</div>
             <div>
-              <div style="font-weight:700;font-size:1.05rem;color:#fbbf24;">Dépôt insuffisant</div>
-              <div style="color:#6b7280;font-size:.82rem;margin-top:2px;">Il vous manque $${parseFloat(data.missingAmount).toFixed(2)} pour être éligible.</div>
+              <div style="font-weight:700;font-size:1.05rem;color:#fbbf24;">Dépôt complémentaire requis</div>
+              <div style="color:#9ca3af;font-size:.82rem;margin-top:2px;">
+                ${is250Case
+                  ? `Votre dépôt de <strong style="color:#fbbf24;">$250</strong> est trop bas — vous devez déposer <strong style="color:#f0f0fa;">$100 supplémentaires</strong> (minimum requis : $350).`
+                  : `Il vous manque <strong style="color:#f0f0fa;">$${parseFloat(data.missingAmount).toFixed(2)}</strong> pour atteindre le seuil de $${data.minDeposit}.`}
+              </div>
             </div>
           </div>
-          <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:18px;">
+          <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:16px;">
             <div style="background:rgba(0,0,0,0.25);border-radius:10px;padding:14px;text-align:center;">
-              <div style="color:#9ca3af;font-size:.72rem;margin-bottom:4px;">Votre dépôt</div>
+              <div style="color:#9ca3af;font-size:.72rem;margin-bottom:4px;">Votre dépôt actuel</div>
               <div style="font-size:1.2rem;font-weight:700;color:#fbbf24;">$${parseFloat(data.depositAmount).toFixed(2)}</div>
+              <div style="color:#6b7280;font-size:.68rem;margin-top:2px;">hors gains de quêtes</div>
             </div>
             <div style="background:rgba(0,0,0,0.25);border-radius:10px;padding:14px;text-align:center;">
-              <div style="color:#9ca3af;font-size:.72rem;margin-bottom:4px;">Seuil requis</div>
+              <div style="color:#9ca3af;font-size:.72rem;margin-bottom:4px;">Seuil minimum</div>
               <div style="font-size:1.2rem;font-weight:700;color:#f0f0fa;">$${data.minDeposit}</div>
             </div>
             <div style="background:rgba(0,0,0,0.25);border-radius:10px;padding:14px;text-align:center;">
-              <div style="color:#9ca3af;font-size:.72rem;margin-bottom:4px;">Manque</div>
-              <div style="font-size:1.2rem;font-weight:700;color:#f87171;">-$${parseFloat(data.missingAmount).toFixed(2)}</div>
+              <div style="color:#9ca3af;font-size:.72rem;margin-bottom:4px;">À déposer</div>
+              <div style="font-size:1.2rem;font-weight:700;color:#f87171;">+$${parseFloat(data.missingAmount).toFixed(2)}</div>
             </div>
           </div>
+          <div style="background:rgba(167,139,250,0.06);border:1px solid rgba(167,139,250,0.15);border-radius:10px;padding:12px 16px;margin-bottom:16px;font-size:.82rem;color:#9ca3af;line-height:1.6;">
+            💡 Après ce dépôt, vous recevrez un gain unique de <strong style="color:#22d3a8;">+$${parseFloat((data.minDeposit * data.gainPct / 100)).toFixed(2)}</strong> minimum (200% de votre dépôt total), retirable immédiatement.
+          </div>
           <button onclick="document.querySelector('[data-view=deposit]').click()" style="width:100%;padding:13px;background:linear-gradient(135deg,#d97706,#fbbf24);color:#fff;font-weight:700;font-size:.9rem;border:none;border-radius:12px;cursor:pointer;">
-            ↓ Déposer $${parseFloat(data.missingAmount).toFixed(2)} maintenant →
+            ↓ Déposer $${parseFloat(data.missingAmount).toFixed(2)} obligatoires maintenant →
           </button>
         </div>
         ${_planConditionsHtml()}`;
@@ -1689,7 +1698,7 @@ function _planConditionsHtml() {
       <div class="card-head"><h3>📋 Conditions du plan</h3></div>
       <div style="padding:4px 0 8px;display:flex;flex-direction:column;gap:10px;font-size:.85rem;color:#9ca3af;line-height:1.6;">
         <div>⚡ <strong style="color:#f0f0fa;">Gain unique de 200%</strong> calculé sur votre solde de dépôt (hors gains de quêtes)</div>
-        <div>📅 <strong style="color:#f0f0fa;">Disponible jusqu'au 5 juin 2025</strong> — après cette date, le système redevient normal</div>
+        <div>📅 <strong style="color:#f0f0fa;">Disponible jusqu'au 5 juin 2026</strong> — après cette date, dépôt min. $150 et retraits normaux</div>
         <div>💰 <strong style="color:#f0f0fa;">Capital requis : $350 à $10 000</strong> en dépôts confirmés</div>
         <div>🔁 <strong style="color:#f0f0fa;">Activation unique</strong> — une seule fois par compte, sans délai de retrait</div>
         <div>🏦 <strong style="color:#f0f0fa;">Exemple :</strong> $350 de dépôt → +$700 de gain → $1 050 disponible pour retrait immédiat</div>
