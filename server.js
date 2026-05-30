@@ -1222,9 +1222,6 @@ app.post('/api/withdraw', requireAuth, async (req, res) => {
     await db.transaction(async (tx) => {
       await tx.run('INSERT INTO withdrawals (user_id, amount, address, status) VALUES (?, ?, ?, ?)', [req.session.userId, amount, address.trim(), 'pending']);
       await tx.run('UPDATE users SET balance = balance - ? WHERE id = ?', [amount, req.session.userId]);
-      if (hasInstantWithdraw) {
-        await tx.run('UPDATE users SET independence_plan_instant_withdraw = 0 WHERE id = ?', [req.session.userId]);
-      }
     });
 
     const wUser = await db.get('SELECT email FROM users WHERE id = ?', [req.session.userId]);
