@@ -1603,9 +1603,6 @@ async function loadIndependencePlan() {
     const now = new Date();
     const daysLeft = Math.max(0, Math.ceil((deadline - now) / (1000 * 60 * 60 * 24)));
 
-    if (data.isActive || data.status === 'claimed') {
-      if (tab) tab.style.display = '';
-    }
     if ((data.status === 'eligible' || data.status === 'need_more') && badge) {
       badge.style.display = '';
     }
