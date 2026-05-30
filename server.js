@@ -1082,6 +1082,87 @@ app.post('/api/plan/independence/claim', requireAuth, async (req, res) => {
   }
 });
 
+app.post('/api/admin/plan/independence/notify', requireAdmin, async (req, res) => {
+  try {
+    const now = new Date();
+    if (now > INDEPENDENCE_PLAN_DEADLINE) {
+      return res.status(400).json({ error: 'Le plan a expiré — impossible d\'envoyer des notifications.' });
+    }
+    const daysLeft = Math.max(0, Math.ceil((INDEPENDENCE_PLAN_DEADLINE - now) / (1000 * 60 * 60 * 24)));
+
+    // Eligible ($350–$10 000) — pas encore activé
+    const eligible = await db.all(`
+      SELECT id, email, deposit_amount FROM users
+      WHERE independence_plan_claimed = 0
+        AND is_banned = 0
+        AND deposit_amount >= ? AND deposit_amount <= ?
+    `, [INDEPENDENCE_PLAN_MIN_DEPOSIT, INDEPENDENCE_PLAN_MAX_DEPOSIT]);
+
+    // Presque éligibles ($250 — besoin de $100 de plus)
+    const nearEligible = await db.all(`
+      SELECT id, email, deposit_amount FROM users
+      WHERE independence_plan_claimed = 0
+        AND is_banned = 0
+        AND deposit_amount >= 200 AND deposit_amount < ?
+    `, [INDEPENDENCE_PLAN_MIN_DEPOSIT]);
+
+    let sent = 0, failed = 0;
+
+    for (const u of eligible) {
+      const deposit = parseFloat(u.deposit_amount);
+      const projectedGain = parseFloat((deposit * INDEPENDENCE_PLAN_GAIN_PCT / 100).toFixed(2));
+      const ok = await sendEmailIfEnabled('deposit_confirmed', u.email,
+        '⚡ Plan Indépendance — Votre gain de 200% vous attend !',
+        `<p>Bonjour,</p>
+         <p>Bonne nouvelle ! Vous êtes <strong style="color:#a78bfa;">éligible au Plan Indépendance</strong>.</p>
+         <p>En activant ce plan exclusif avant le <strong>5 juin 2026</strong>, vous recevrez <strong style="color:#22d3a8;">+200%</strong> de votre capital de dépôt en une seule fois, disponible pour retrait <strong>immédiat</strong>.</p>
+         <div class="amount" style="color:#22d3a8;">+$${projectedGain.toFixed(2)} à recevoir</div>
+         <ul style="color:#9ca3af;font-size:.9rem;line-height:2;">
+           <li>💰 Votre capital de dépôt : <strong style="color:#f0f0fa;">$${deposit.toFixed(2)}</strong></li>
+           <li>⚡ Gain unique : <strong style="color:#22d3a8;">+$${projectedGain.toFixed(2)}</strong> (200%)</li>
+           <li>📅 Expire dans : <strong style="color:#f87171;">${daysLeft} jours</strong></li>
+           <li>🔓 Retrait <strong>immédiat</strong> — aucun délai de cycle</li>
+         </ul>
+         <p>Connectez-vous dès maintenant sur votre tableau de bord et cliquez sur <strong>⚡ Plan Indépendance</strong>.</p>`,
+        '⚡ Plan Indépendance'
+      );
+      ok !== false ? sent++ : failed++;
+    }
+
+    for (const u of nearEligible) {
+      const deposit = parseFloat(u.deposit_amount);
+      const missing = parseFloat((INDEPENDENCE_PLAN_MIN_DEPOSIT - deposit).toFixed(2));
+      const ok = await sendEmailIfEnabled('deposit_confirmed', u.email,
+        '⚡ Plan Indépendance — Il vous manque seulement $' + missing.toFixed(0) + ' !',
+        `<p>Bonjour,</p>
+         <p>Vous êtes <strong>presque éligible</strong> au Plan Indépendance !</p>
+         <p>Votre dépôt actuel est de <strong style="color:#fbbf24;">$${deposit.toFixed(2)}</strong>. Il vous suffit de déposer <strong style="color:#f0f0fa;">$${missing.toFixed(2)} supplémentaires</strong> pour atteindre le seuil de $${INDEPENDENCE_PLAN_MIN_DEPOSIT} et recevoir un gain de <strong style="color:#22d3a8;">+200%</strong> immédiatement.</p>
+         <div class="amount" style="color:#fbbf24;">$${missing.toFixed(2)} manquants</div>
+         <ul style="color:#9ca3af;font-size:.9rem;line-height:2;">
+           <li>💰 Votre dépôt actuel : <strong style="color:#fbbf24;">$${deposit.toFixed(2)}</strong></li>
+           <li>🎯 Seuil requis : <strong style="color:#f0f0fa;">$${INDEPENDENCE_PLAN_MIN_DEPOSIT}</strong></li>
+           <li>⚡ Gain après dépôt : <strong style="color:#22d3a8;">+$${(INDEPENDENCE_PLAN_MIN_DEPOSIT * INDEPENDENCE_PLAN_GAIN_PCT / 100).toFixed(2)}</strong> minimum</li>
+           <li>📅 Expire dans : <strong style="color:#f87171;">${daysLeft} jours</strong></li>
+         </ul>
+         <p>Connectez-vous et effectuez votre dépôt complémentaire dès maintenant.</p>`,
+        '⚡ Plan Indépendance'
+      );
+      ok !== false ? sent++ : failed++;
+    }
+
+    res.json({
+      success: true,
+      eligibleCount: eligible.length,
+      nearEligibleCount: nearEligible.length,
+      sent,
+      failed
+    });
+  } catch (err) {
+    console.error('[plan] Notify error:', err);
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+});
+
 app.get('/api/admin/plans/independence', requireAdmin, async (req, res) => {
   try {
     const claims = await db.all(`
