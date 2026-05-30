@@ -202,6 +202,7 @@ function setupEventListeners() {
 
       if (view === 'support') { loadTickets(); startChatPolling(); _chatUnread = 0; _updateChatTabTitle(); }
       if (view === 'referral') loadReferrals();
+      if (view === 'independence-plan') loadIndependencePlan();
     });
   });
 
