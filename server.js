@@ -226,6 +226,7 @@ function getNewUserStatus(user) {
 app.use(express.json({ limit: '20mb' }));
 app.use(express.urlencoded({ extended: true, limit: '20mb' }));
 app.use(express.static(path.join(__dirname, 'public'), {
+  index: false,
   setHeaders: (res, filePath) => {
     if (filePath.endsWith('.html')) {
       res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
@@ -2335,8 +2336,24 @@ app.post('/api/push/unsubscribe', requireAuth, async (req, res) => {
 
 // ── STATIC ROUTES ─────────────────────────────────────────────────────────────
 
+function serveHtmlWithVersion(filePath, res) {
+  try {
+    let html = fs.readFileSync(filePath, 'utf8');
+    html = html
+      .replace(/(href="styles\.css)(")/g, `$1?v=${BUILD_ID}$2`)
+      .replace(/(src="app\.js)(")/g, `$1?v=${BUILD_ID}$2`);
+    res.setHeader('Content-Type', 'text/html; charset=UTF-8');
+    res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+    res.setHeader('Pragma', 'no-cache');
+    res.setHeader('Expires', '0');
+    res.send(html);
+  } catch (e) {
+    res.status(500).send('Erreur serveur');
+  }
+}
+
 app.get('/admin', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'admin.html'));
+  serveHtmlWithVersion(path.join(__dirname, 'public', 'admin.html'), res);
 });
 
 app.get('/health', (req, res) => {
@@ -2348,7 +2365,7 @@ app.get('/api/version', (req, res) => {
 });
 
 app.get('*', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'index.html'));
+  serveHtmlWithVersion(path.join(__dirname, 'public', 'index.html'), res);
 });
 
 // ── QUEST REMINDERS ───────────────────────────────────────────────────────────

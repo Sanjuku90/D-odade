@@ -2,9 +2,10 @@ services:
   - type: web
     name: questinvest
     runtime: node
-    buildCommand: npm install
+    buildCommand: npm install --production=false
     startCommand: node server.js
     healthCheckPath: /health
+    autoDeploy: true
     disk:
       name: questinvest-data
       mountPath: /var/data
@@ -14,6 +15,8 @@ services:
         value: production
       - key: DATABASE_PATH
         value: /var/data/questinvest.db
+      - key: MIN_DEPOSIT
+        value: "150"
       - key: SESSION_SECRET
         generateValue: true
       - key: ADMIN_EMAIL
