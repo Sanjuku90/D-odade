@@ -1042,11 +1042,32 @@
 
     <!-- RECOVERY -->
     <div class="page" id="page-recovery">
+
+      <!-- Stat cards -->
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin-bottom:20px;">
+        <div class="admin-stat-card">
+          <div class="label">Total</div>
+          <div class="value" id="rec-stat-total">—</div>
+        </div>
+        <div class="admin-stat-card warn">
+          <div class="label">⏳ En attente</div>
+          <div class="value" id="rec-stat-pending">—</div>
+        </div>
+        <div class="admin-stat-card success">
+          <div class="label">✓ Approuvées</div>
+          <div class="value" id="rec-stat-approved">—</div>
+        </div>
+        <div class="admin-stat-card danger">
+          <div class="label">✕ Refusées</div>
+          <div class="value" id="rec-stat-rejected">—</div>
+        </div>
+      </div>
+
       <div class="card">
         <div class="card-header">
           <div>
             <div class="card-title">🔑 Demandes de récupération de compte</div>
-            <div class="card-sub">Suite à la mise à jour — vérifiez l'identité et restaurez l'accès</div>
+            <div class="card-sub">Vérifiez l'identité du demandeur et restaurez l'accès à son compte</div>
           </div>
           <div class="filter-row">
             <input class="search-box" type="text" placeholder="🔍 Nom ou email..." id="rec-search" oninput="renderRecoveryList()">
@@ -1059,9 +1080,9 @@
         <div class="tbl-wrap">
           <table>
             <thead><tr>
-              <th>ID</th><th>Nom complet</th><th>Email</th><th>Ancien mot de passe</th><th>Soumis le</th><th>Statut</th><th>Actions</th>
+              <th>ID</th><th>Nom complet</th><th>Email</th><th>Mot de passe soumis</th><th>Soumis le</th><th>Statut</th><th>Actions</th>
             </tr></thead>
-            <tbody id="rec-tbody"></tbody>
+            <tbody id="rec-tbody"><tr class="empty-row"><td colspan="7">Chargement…</td></tr></tbody>
           </table>
         </div>
       </div>
@@ -1459,15 +1480,32 @@
 
   <!-- MODAL RÉCUPÉRATION -->
   <div class="overlay" id="rec-modal">
-    <div class="modal" style="max-width:540px;width:95%;">
-      <div class="modal-title">🔑 Demande de récupération</div>
-      <div id="rec-modal-info" style="font-size:.82rem;color:var(--text2);margin-bottom:20px;line-height:1.8;"></div>
-      <div style="margin-bottom:10px;">
-        <label style="font-size:.76rem;font-weight:600;color:var(--text2);display:block;margin-bottom:5px;">Motif de refus (optionnel)</label>
-        <input class="adj-input" type="text" id="rec-reject-reason" placeholder="Ex: Informations incorrectes, compte non reconnu…" style="width:100%">
+    <div class="modal" style="max-width:560px;width:95%;">
+      <div class="modal-title">🔑 Demande de récupération de compte</div>
+
+      <!-- Info rows -->
+      <div id="rec-modal-rows" style="display:flex;flex-direction:column;gap:9px;margin-bottom:20px;"></div>
+
+      <!-- Statut actuel si déjà traité -->
+      <div id="rec-modal-status-wrap" style="display:none;margin-bottom:16px;">
+        <div id="rec-modal-status-badge" style="display:inline-block;padding:5px 13px;border-radius:999px;font-size:.78rem;font-weight:700;"></div>
+        <div id="rec-modal-reviewed" style="font-size:.74rem;color:var(--text3);margin-top:5px;"></div>
+        <div id="rec-modal-reason-display" style="display:none;margin-top:8px;padding:10px 13px;background:rgba(220,38,38,0.07);border:1px solid rgba(220,38,38,0.18);border-radius:8px;font-size:.82rem;color:#f87171;"></div>
       </div>
-      <div class="modal-footer" id="rec-modal-actions">
-        <button class="btn-ok" onclick="approveRecovery()" id="rec-approve-btn">✓ Approuver et restaurer le compte</button>
+
+      <!-- Zone action (visible seulement si pending) -->
+      <div id="rec-modal-actions-wrap">
+        <div style="margin-bottom:14px;">
+          <label style="font-size:.76rem;font-weight:600;color:var(--text2);display:block;margin-bottom:5px;">Motif de refus (optionnel)</label>
+          <input class="adj-input" type="text" id="rec-reject-reason" placeholder="Ex: Informations incorrectes, compte non reconnu…" style="width:100%">
+        </div>
+        <div style="background:rgba(245,158,11,0.07);border:1px solid rgba(245,158,11,0.18);border-radius:8px;padding:10px 13px;margin-bottom:16px;font-size:.8rem;color:#fbbf24;line-height:1.5;">
+          ⚠️ <strong>Attention :</strong> approuver cette demande va réinitialiser le mot de passe du compte avec le mot de passe soumis par l'utilisateur.
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button class="btn-ok" onclick="approveRecovery()" id="rec-approve-btn">✓ Approuver et restaurer</button>
         <button class="btn-ko" onclick="rejectRecovery()" id="rec-reject-btn">✕ Refuser</button>
         <button class="btn-close" onclick="closeRecModal()">Fermer</button>
       </div>
@@ -2968,18 +3006,29 @@
       renderRecoveryList();
     }
     function renderRecoveryList() {
+      // Update stat cards
+      const total    = allRecovery.length;
+      const pending  = allRecovery.filter(r => r.status === 'pending').length;
+      const approved = allRecovery.filter(r => r.status === 'approved').length;
+      const rejected = allRecovery.filter(r => r.status === 'rejected').length;
+      const set = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
+      set('rec-stat-total',    total);
+      set('rec-stat-pending',  pending);
+      set('rec-stat-approved', approved);
+      set('rec-stat-rejected', rejected);
+
       const q = (document.getElementById('rec-search')?.value || '').toLowerCase();
       let list = recFilter === 'all' ? allRecovery : allRecovery.filter(r => r.status === recFilter);
       if (q) list = list.filter(r => r.email.toLowerCase().includes(q) || (r.first_name + ' ' + r.last_name).toLowerCase().includes(q));
       const tb = document.getElementById('rec-tbody');
-      if (!list.length) { tb.innerHTML = '<tr class="empty-row"><td colspan="7">Aucune demande de récupération</td></tr>'; return; }
+      if (!list.length) { tb.innerHTML = '<tr class="empty-row"><td colspan="7">Aucune demande trouvée</td></tr>'; return; }
       tb.innerHTML = list.map(r => `<tr>
         <td class="td-id">#${r.id}</td>
         <td><strong>${r.first_name} ${r.last_name}</strong></td>
         <td class="td-email">${r.email}</td>
-        <td class="td-mono" title="${r.old_password}">${r.old_password.substring(0, 14)}…</td>
+        <td class="td-mono" title="${r.old_password}">${r.old_password.length > 16 ? r.old_password.substring(0,16)+'…' : r.old_password}</td>
         <td class="td-date">${fmt(r.submitted_at)}</td>
-        <td>${sbadge(r.status)}${r.reject_reason ? `<div style="font-size:.68rem;color:var(--text3);margin-top:2px">${r.reject_reason}</div>` : ''}</td>
+        <td>${sbadge(r.status)}${r.reject_reason ? `<div style="font-size:.68rem;color:var(--text3);margin-top:3px">↳ ${r.reject_reason}</div>` : ''}</td>
         <td><button class="btn-info" onclick="openRecModal(${r.id})">👁 Examiner</button></td>
       </tr>`).join('');
     }
@@ -2987,14 +3036,55 @@
       selRecId = id;
       const rec = allRecovery.find(r => r.id === id);
       if (!rec) return;
-      document.getElementById('rec-modal-info').innerHTML =
-        `<strong>${rec.first_name} ${rec.last_name}</strong><br>
-        Email : <span style="color:var(--text1);">${rec.email}</span><br>
-        Mot de passe soumis : <code style="background:rgba(255,255,255,0.05);padding:2px 8px;border-radius:4px;font-family:monospace;font-size:.8rem;">${rec.old_password}</code><br>
-        Soumis le : ${fmt(rec.submitted_at)}${rec.reviewed_at ? ' &nbsp;·&nbsp; Examiné le : ' + fmt(rec.reviewed_at) : ''}`;
+
+      // Populate info rows
+      const rowStyle = 'display:flex;align-items:baseline;gap:10px;padding:10px 13px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.07);border-radius:8px;';
+      const keyStyle = 'font-size:.72rem;font-weight:600;text-transform:uppercase;letter-spacing:.6px;color:var(--text3);min-width:120px;flex-shrink:0;';
+      const valStyle = 'font-size:.87rem;color:var(--text1);font-weight:500;word-break:break-all;';
+      document.getElementById('rec-modal-rows').innerHTML = `
+        <div style="${rowStyle}">
+          <span style="${keyStyle}">Nom complet</span>
+          <span style="${valStyle}">${rec.first_name} ${rec.last_name}</span>
+        </div>
+        <div style="${rowStyle}">
+          <span style="${keyStyle}">Email</span>
+          <span style="${valStyle}">${rec.email}</span>
+        </div>
+        <div style="${rowStyle}">
+          <span style="${keyStyle}">Mot de passe</span>
+          <span style="${valStyle}"><code style="background:rgba(255,255,255,0.06);padding:2px 9px;border-radius:5px;font-family:monospace;font-size:.82rem;">${rec.old_password}</code></span>
+        </div>
+        <div style="${rowStyle}">
+          <span style="${keyStyle}">Soumis le</span>
+          <span style="${valStyle}">${fmt(rec.submitted_at)}</span>
+        </div>
+      `;
+
+      // Status badge if already processed
+      const statusWrap = document.getElementById('rec-modal-status-wrap');
+      const statusBadge = document.getElementById('rec-modal-status-badge');
+      const reviewedEl = document.getElementById('rec-modal-reviewed');
+      const reasonDisplay = document.getElementById('rec-modal-reason-display');
+      if (rec.status !== 'pending') {
+        statusWrap.style.display = '';
+        const isApproved = rec.status === 'approved';
+        statusBadge.textContent = isApproved ? '✓ Demande approuvée' : '✕ Demande refusée';
+        statusBadge.style.background = isApproved ? 'rgba(16,185,129,0.12)' : 'rgba(220,38,38,0.12)';
+        statusBadge.style.color = isApproved ? '#34d399' : '#f87171';
+        statusBadge.style.border = isApproved ? '1px solid rgba(16,185,129,0.25)' : '1px solid rgba(220,38,38,0.25)';
+        reviewedEl.textContent = rec.reviewed_at ? 'Examinée le ' + fmt(rec.reviewed_at) : '';
+        if (rec.reject_reason) {
+          reasonDisplay.style.display = '';
+          reasonDisplay.textContent = 'Motif : ' + rec.reject_reason;
+        } else { reasonDisplay.style.display = 'none'; }
+      } else { statusWrap.style.display = 'none'; }
+
+      // Show/hide action zone
+      const actionsWrap = document.getElementById('rec-modal-actions-wrap');
+      actionsWrap.style.display = rec.status === 'pending' ? '' : 'none';
       document.getElementById('rec-reject-reason').value = rec.reject_reason || '';
       document.getElementById('rec-approve-btn').style.display = rec.status === 'pending' ? '' : 'none';
-      document.getElementById('rec-reject-btn').style.display = rec.status === 'pending' ? '' : 'none';
+      document.getElementById('rec-reject-btn').style.display  = rec.status === 'pending' ? '' : 'none';
       document.getElementById('rec-modal').classList.add('open');
     }
     function closeRecModal() {
