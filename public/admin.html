@@ -14,8 +14,8 @@
       --text: #f0f0fa;
       --text2: #9898b8;
       --text3: #5a5a7a;
-      --accent: #a78bfa;
-      --accent2: #7c3aed;
+      --accent: #67e8ff;
+      --accent2: #00d4ff;
       --green: #22d3a8;
       --red: #f87171;
       --yellow: #fbbf24;
@@ -81,7 +81,7 @@
       transition: all 0.15s;
       white-space: nowrap;
     }
-    .nav-trigger:hover { border-color: rgba(167,139,250,0.4); }
+    .nav-trigger:hover { border-color: rgba(0,212,255,0.4); }
     .nav-trigger .chevron {
       font-size: 0.6rem;
       color: var(--text3);
@@ -124,7 +124,7 @@
       position: relative;
     }
     .nav-item:hover { background: var(--bg3); color: var(--text); }
-    .nav-item.active { background: rgba(167,139,250,0.12); color: var(--accent); }
+    .nav-item.active { background: rgba(0,212,255,0.12); color: var(--accent); }
     .nav-item .item-icon { font-size: 1rem; width: 20px; text-align: center; flex-shrink: 0; }
     .nav-badge {
       margin-left: auto;
@@ -153,7 +153,7 @@
       cursor: pointer; font-size: 0.78rem; font-weight: 500;
       transition: all 0.15s;
     }
-    .btn-refresh:hover { background: rgba(167,139,250,0.1); color: var(--accent); border-color: rgba(167,139,250,0.3); }
+    .btn-refresh:hover { background: rgba(0,212,255,0.1); color: var(--accent); border-color: rgba(0,212,255,0.3); }
     .back-link {
       display: flex; align-items: center; gap: 5px;
       color: var(--text3); font-size: 0.78rem; text-decoration: none;
@@ -269,14 +269,14 @@
       transition: all 0.15s;
     }
     .chip:hover { border-color: var(--accent); color: var(--accent); }
-    .chip.active { background: rgba(167,139,250,0.15); border-color: var(--accent); color: var(--accent); }
+    .chip.active { background: rgba(0,212,255,0.15); border-color: var(--accent); color: var(--accent); }
     .search-box {
       background: var(--bg3); border: 1px solid var(--border);
       border-radius: 8px; padding: 5px 12px;
       color: var(--text); font-size: 0.8rem; outline: none;
       transition: border-color 0.15s; min-width: 160px;
     }
-    .search-box:focus { border-color: rgba(167,139,250,0.5); }
+    .search-box:focus { border-color: rgba(0,212,255,0.5); }
     .search-box::placeholder { color: var(--text3); }
 
     /* ── TABLE ── */
@@ -321,8 +321,8 @@
     .btn-ok:hover { background: rgba(34,211,168,.2); }
     .btn-ko { background: rgba(248,113,113,.08); color: var(--red); border-color: rgba(248,113,113,.2); }
     .btn-ko:hover { background: rgba(248,113,113,.18); }
-    .btn-info { background: rgba(167,139,250,.1); color: var(--accent); border-color: rgba(167,139,250,.2); }
-    .btn-info:hover { background: rgba(167,139,250,.2); }
+    .btn-info { background: rgba(0,212,255,.1); color: var(--accent); border-color: rgba(0,212,255,.2); }
+    .btn-info:hover { background: rgba(0,212,255,.2); }
 
     /* ── USER AVATAR ── */
     .u-cell { display: flex; align-items: center; gap: 8px; }
@@ -354,7 +354,7 @@
       color: var(--text); font-size: 0.85rem; outline: none;
       transition: border-color 0.15s; margin-bottom: 12px;
     }
-    .f-input:focus { border-color: rgba(167,139,250,.5); }
+    .f-input:focus { border-color: rgba(0,212,255,.5); }
     .f-input::placeholder { color: var(--text3); }
     .btn-save {
       padding: 9px 20px;
@@ -400,7 +400,7 @@
       border-radius: 8px; padding: 7px 11px;
       color: var(--text); font-size: 0.82rem; outline: none;
     }
-    .adj-input:focus { border-color: rgba(167,139,250,.5); }
+    .adj-input:focus { border-color: rgba(0,212,255,.5); }
     .modal-footer { display: flex; gap: 8px; margin-top: 16px; }
     .btn-close { background: var(--bg3); border: 1px solid var(--border); color: var(--text2); padding: 7px 16px; border-radius: 8px; cursor: pointer; font-size: 0.8rem; }
     .btn-close:hover { color: var(--text); }
@@ -428,7 +428,7 @@
     #admin-login-overlay.hidden { display: none; }
     .login-card {
       background: var(--bg2);
-      border: 1px solid rgba(167,139,250,0.2);
+      border: 1px solid rgba(0,212,255,0.2);
       border-radius: 20px;
       padding: 44px 40px 36px;
       width: 100%; max-width: 380px;
@@ -438,7 +438,7 @@
     .login-logo {
       display: inline-flex; align-items: center; justify-content: center;
       width: 56px; height: 56px; border-radius: 16px;
-      background: linear-gradient(135deg,#7c3aed,#a78bfa);
+      background: linear-gradient(135deg,#00d4ff,#67e8ff);
       font-size: 1.6rem; margin-bottom: 20px;
     }
     .login-title { font-size: 1.25rem; font-weight: 700; color: var(--text); margin-bottom: 6px; }
@@ -450,10 +450,10 @@
       margin-bottom: 14px; letter-spacing: 4px; text-align: center;
       transition: border-color .2s;
     }
-    .login-input:focus { border-color: rgba(167,139,250,.5); }
+    .login-input:focus { border-color: rgba(0,212,255,.5); }
     .login-btn {
       width: 100%; padding: 13px;
-      background: linear-gradient(135deg,#7c3aed,#a78bfa);
+      background: linear-gradient(135deg,#00d4ff,#67e8ff);
       color: #fff; font-weight: 700; font-size: 0.95rem;
       border: none; border-radius: 10px; cursor: pointer;
       transition: opacity .2s;
@@ -485,7 +485,7 @@
     }
     .adm-wachat-support-avatar {
       width: 36px; height: 36px; border-radius: 50%;
-      background: linear-gradient(135deg,#7c3aed,#a78bfa);
+      background: linear-gradient(135deg,#00d4ff,#67e8ff);
       display: flex; align-items: center; justify-content: center;
       font-size: 1rem;
     }
@@ -520,8 +520,8 @@
       color: #9ca3af; font-size: .74rem; cursor: pointer; transition: all .15s;
     }
     .adm-wachat-filter.active {
-      background: rgba(124,58,237,.2); border-color: rgba(124,58,237,.4);
-      color: #a78bfa; font-weight: 600;
+      background: rgba(0,212,255,.2); border-color: rgba(0,212,255,.4);
+      color: #67e8ff; font-weight: 600;
     }
     .adm-wachat-conv-list { flex: 1; overflow-y: auto; scrollbar-width: thin; scrollbar-color: rgba(255,255,255,.06) transparent; }
 
@@ -532,7 +532,7 @@
       transition: background .15s;
     }
     .adm-wachat-conv-item:hover { background: rgba(255,255,255,.03); }
-    .adm-wachat-conv-item.active { background: rgba(124,58,237,.12); }
+    .adm-wachat-conv-item.active { background: rgba(0,212,255,.12); }
     .adm-user-avatar {
       width: 42px; height: 42px; border-radius: 50%; flex-shrink: 0;
       background: linear-gradient(135deg,#1d4ed8,#3b82f6);
@@ -543,7 +543,7 @@
     .adm-conv-item-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 2px; }
     .adm-conv-item-email { font-size: .78rem; font-weight: 600; color: #e5e7eb; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 150px; }
     .adm-conv-item-time { font-size: .68rem; color: #6b7280; flex-shrink: 0; }
-    .adm-conv-item-subject { font-size: .73rem; color: #a78bfa; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-bottom: 3px; }
+    .adm-conv-item-subject { font-size: .73rem; color: #67e8ff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-bottom: 3px; }
     .adm-conv-item-bottom { display: flex; justify-content: space-between; align-items: center; }
     .adm-conv-item-preview { font-size: .72rem; color: #6b7280; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 175px; }
     .adm-unread-dot { width: 8px; height: 8px; border-radius: 50%; background: #fbbf24; flex-shrink: 0; }
@@ -619,14 +619,14 @@
     .adm-msg-row.admin { align-self: flex-start; align-items: flex-start; }
     .adm-msg-row.user { align-self: flex-end; align-items: flex-end; }
     .adm-msg-sender { font-size: .65rem; font-weight: 600; margin-bottom: 3px; }
-    .adm-msg-row.admin .adm-msg-sender { color: #a78bfa; }
+    .adm-msg-row.admin .adm-msg-sender { color: #67e8ff; }
     .adm-msg-row.user .adm-msg-sender { color: #34d399; }
     .adm-bubble {
       padding: 9px 14px; border-radius: 12px; font-size: .82rem;
       line-height: 1.5; color: #e5e7eb; word-break: break-word;
     }
     .adm-bubble.admin {
-      background: rgba(124,58,237,.15); border: 1px solid rgba(124,58,237,.2);
+      background: rgba(0,212,255,.15); border: 1px solid rgba(0,212,255,.2);
       border-radius: 4px 12px 12px 12px;
     }
     .adm-bubble.user {
@@ -642,8 +642,8 @@
       flex-shrink: 0;
     }
     .adm-input-agent-tag {
-      font-size: .68rem; font-weight: 700; color: #a78bfa;
-      background: rgba(124,58,237,.12); border: 1px solid rgba(124,58,237,.2);
+      font-size: .68rem; font-weight: 700; color: #67e8ff;
+      background: rgba(0,212,255,.12); border: 1px solid rgba(0,212,255,.2);
       padding: 4px 9px; border-radius: 8px; white-space: nowrap; flex-shrink: 0; margin-bottom: 2px; align-self: center;
     }
     .adm-wachat-textarea {
@@ -654,10 +654,10 @@
       scrollbar-width: thin; line-height: 1.45;
       transition: border-color .2s;
     }
-    .adm-wachat-textarea:focus { border-color: rgba(124,58,237,.4); }
+    .adm-wachat-textarea:focus { border-color: rgba(0,212,255,.4); }
     .adm-wachat-send-btn {
       width: 40px; height: 40px; border-radius: 50%; border: none; flex-shrink: 0;
-      background: linear-gradient(135deg,#7c3aed,#a78bfa);
+      background: linear-gradient(135deg,#00d4ff,#67e8ff);
       display: flex; align-items: center; justify-content: center;
       cursor: pointer; transition: opacity .15s;
     }
@@ -1219,7 +1219,7 @@
             <div class="adm-closed-notice hidden" id="adm-closed-notice">
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
               Cette conversation a été clôturée.
-              <button onclick="reopenAdminTicket()" style="margin-left:8px;background:rgba(167,139,250,.12);border:1px solid rgba(167,139,250,.25);color:#a78bfa;border-radius:8px;padding:3px 10px;font-size:.72rem;cursor:pointer;">Rouvrir</button>
+              <button onclick="reopenAdminTicket()" style="margin-left:8px;background:rgba(0,212,255,.12);border:1px solid rgba(0,212,255,.25);color:#67e8ff;border-radius:8px;padding:3px 10px;font-size:.72rem;cursor:pointer;">Rouvrir</button>
             </div>
 
             <!-- Input area -->
@@ -1335,7 +1335,7 @@
     <!-- ========== PAGE PLAN INDÉPENDANCE ========== -->
     <div class="page" id="page-independence-plan">
       <!-- Notification campaign card -->
-      <div class="card" style="margin-bottom:18px;border:1px solid rgba(167,139,250,0.25);">
+      <div class="card" style="margin-bottom:18px;border:1px solid rgba(0,212,255,0.25);">
         <div class="card-header">
           <div>
             <div class="card-title">📧 Campagne de notification</div>
@@ -1343,7 +1343,7 @@
           </div>
         </div>
         <div id="plan-notify-result" style="display:none;padding:12px 16px;border-radius:10px;margin-bottom:14px;font-size:.85rem;line-height:1.7;"></div>
-        <button id="plan-notify-btn" onclick="sendPlanNotifications()" style="background:linear-gradient(135deg,#7c3aed,#a78bfa);color:#fff;border:none;border-radius:10px;padding:11px 24px;font-size:.88rem;font-weight:700;cursor:pointer;transition:opacity .2s;">
+        <button id="plan-notify-btn" onclick="sendPlanNotifications()" style="background:linear-gradient(135deg,#00d4ff,#67e8ff);color:#fff;border:none;border-radius:10px;padding:11px 24px;font-size:.88rem;font-weight:700;cursor:pointer;transition:opacity .2s;">
           ⚡ Envoyer les emails de notification
         </button>
       </div>
@@ -1381,10 +1381,10 @@
     <div class="page" id="page-settings">
       <div class="settings-wrap">
         <!-- MASTER EMAIL SWITCH — en haut de page -->
-        <div class="s-card" id="email-master-card" style="border:1px solid rgba(167,139,250,.3);">
+        <div class="s-card" id="email-master-card" style="border:1px solid rgba(0,212,255,.3);">
           <div class="s-title">📧 Envoi d'emails</div>
           <div class="s-desc">Interrupteur global. Quand désactivé, aucun email n'est envoyé (ni 2FA, ni notifications) et la connexion ne demande plus de code.</div>
-          <div style="display:flex;align-items:center;justify-content:space-between;margin-top:16px;padding:16px;background:rgba(167,139,250,.06);border:1px solid rgba(167,139,250,.15);border-radius:12px;">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-top:16px;padding:16px;background:rgba(0,212,255,.06);border:1px solid rgba(0,212,255,.15);border-radius:12px;">
             <div>
               <div id="email-master-status-label" style="font-size:1rem;font-weight:700;">⏳ Chargement…</div>
               <div style="font-size:.78rem;color:var(--text3);margin-top:3px;">Cliquez sur le bouton pour changer l'état</div>
