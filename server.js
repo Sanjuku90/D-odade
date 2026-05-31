@@ -1746,6 +1746,29 @@ app.post('/api/admin/recovery/:id/approve', requireAdmin, async (req, res) => {
       );
     });
 
+    sendEmailIfEnabled('recovery_approved', recovery.email, '✅ Votre compte QuestInvest a été récupéré',
+      `<div style="font-family:sans-serif;max-width:520px;margin:auto;background:#0f0f1a;color:#f5f5fa;border-radius:16px;overflow:hidden;">
+        <div style="background:linear-gradient(135deg,#22c55e,#16a34a);padding:32px 32px 24px;text-align:center;">
+          <div style="font-size:2.5rem;margin-bottom:8px;">✅</div>
+          <h1 style="margin:0;font-size:1.4rem;font-weight:700;color:#fff;">Compte récupéré avec succès</h1>
+        </div>
+        <div style="padding:28px 32px;">
+          <p style="margin:0 0 16px;color:#d1d5db;line-height:1.6;">Bonjour <strong style="color:#f5f5fa;">${recovery.first_name}</strong>,</p>
+          <p style="margin:0 0 20px;color:#d1d5db;line-height:1.6;">Votre demande de récupération de compte a été <strong style="color:#22c55e;">approuvée</strong> par notre équipe. Vous pouvez maintenant vous connecter à QuestInvest avec le mot de passe que vous aviez fourni lors de votre demande.</p>
+          <div style="background:rgba(34,197,94,0.08);border:1px solid rgba(34,197,94,0.25);border-radius:10px;padding:16px 20px;margin-bottom:24px;">
+            <p style="margin:0;font-size:0.85rem;color:#86efac;line-height:1.5;">💡 <strong>Conseil :</strong> Une fois connecté, nous vous recommandons de mettre à jour votre mot de passe depuis votre profil pour sécuriser votre compte.</p>
+          </div>
+          <div style="text-align:center;">
+            <a href="${process.env.APP_URL || 'https://questinvest.onrender.com'}" style="display:inline-block;background:linear-gradient(135deg,#22c55e,#16a34a);color:#fff;text-decoration:none;padding:13px 32px;border-radius:10px;font-weight:700;font-size:0.95rem;">Se connecter →</a>
+          </div>
+        </div>
+        <div style="padding:16px 32px 24px;text-align:center;border-top:1px solid rgba(255,255,255,0.06);">
+          <p style="margin:0;font-size:0.75rem;color:#4b5563;">QuestInvest — Si vous n'avez pas fait cette demande, contactez notre support.</p>
+        </div>
+      </div>`,
+      'Compte récupéré'
+    );
+
     res.json({ success: true, message: 'Compte créé/restauré avec succès' });
   } catch (err) {
     res.status(500).json({ error: 'Erreur serveur' });
@@ -1762,6 +1785,32 @@ app.post('/api/admin/recovery/:id/reject', requireAdmin, async (req, res) => {
       "UPDATE recovery_requests SET status = 'rejected', reject_reason = ?, reviewed_at = CURRENT_TIMESTAMP WHERE id = ?",
       [reason || null, req.params.id]
     );
+
+    sendEmailIfEnabled('recovery_rejected', recovery.email, '❌ Demande de récupération de compte refusée',
+      `<div style="font-family:sans-serif;max-width:520px;margin:auto;background:#0f0f1a;color:#f5f5fa;border-radius:16px;overflow:hidden;">
+        <div style="background:linear-gradient(135deg,#ef4444,#b91c1c);padding:32px 32px 24px;text-align:center;">
+          <div style="font-size:2.5rem;margin-bottom:8px;">❌</div>
+          <h1 style="margin:0;font-size:1.4rem;font-weight:700;color:#fff;">Demande non approuvée</h1>
+        </div>
+        <div style="padding:28px 32px;">
+          <p style="margin:0 0 16px;color:#d1d5db;line-height:1.6;">Bonjour <strong style="color:#f5f5fa;">${recovery.first_name}</strong>,</p>
+          <p style="margin:0 0 20px;color:#d1d5db;line-height:1.6;">Après examen, votre demande de récupération de compte n'a pas pu être approuvée.</p>
+          ${reason ? `<div style="background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.25);border-radius:10px;padding:16px 20px;margin-bottom:20px;">
+            <p style="margin:0 0 4px;font-size:0.78rem;color:#f87171;font-weight:600;text-transform:uppercase;letter-spacing:.5px;">Motif</p>
+            <p style="margin:0;color:#fca5a5;line-height:1.5;font-size:0.9rem;">${reason}</p>
+          </div>` : ''}
+          <p style="margin:0 0 24px;color:#d1d5db;line-height:1.6;font-size:0.88rem;">Si vous pensez qu'il s'agit d'une erreur ou si vous avez des questions, contactez notre support depuis l'application.</p>
+          <div style="text-align:center;">
+            <a href="${process.env.APP_URL || 'https://questinvest.onrender.com'}" style="display:inline-block;background:rgba(167,139,250,0.15);border:1px solid rgba(167,139,250,0.3);color:#a78bfa;text-decoration:none;padding:13px 32px;border-radius:10px;font-weight:700;font-size:0.95rem;">Retour à l'application →</a>
+          </div>
+        </div>
+        <div style="padding:16px 32px 24px;text-align:center;border-top:1px solid rgba(255,255,255,0.06);">
+          <p style="margin:0;font-size:0.75rem;color:#4b5563;">QuestInvest — Support disponible via le chat intégré.</p>
+        </div>
+      </div>`,
+      'Demande de récupération refusée'
+    );
+
     res.json({ success: true });
   } catch (err) {
     res.status(500).json({ error: 'Erreur serveur' });
