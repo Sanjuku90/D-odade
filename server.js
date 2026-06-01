@@ -2345,6 +2345,16 @@ app.post('/api/admin/tickets/:id/close', requireAdmin, async (req, res) => {
   } catch { res.status(500).json({ error: 'Erreur serveur' }); }
 });
 
+app.delete('/api/admin/tickets/replies/:replyId', requireAdmin, async (req, res) => {
+  try {
+    const reply = await db.get('SELECT * FROM ticket_replies WHERE id = ?', [req.params.replyId]);
+    if (!reply) return res.status(404).json({ error: 'Message introuvable' });
+    if (reply.sender !== 'admin') return res.status(403).json({ error: 'Seuls les messages admin peuvent être supprimés' });
+    await db.run('DELETE FROM ticket_replies WHERE id = ?', [req.params.replyId]);
+    res.json({ success: true });
+  } catch { res.status(500).json({ error: 'Erreur serveur' }); }
+});
+
 // ── PARRAINAGE ────────────────────────────────────────────────────────────────
 
 app.get('/api/referrals', requireAuth, async (req, res) => {
