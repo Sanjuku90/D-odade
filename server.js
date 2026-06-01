@@ -2355,6 +2355,18 @@ app.delete('/api/admin/tickets/replies/:replyId', requireAdmin, async (req, res)
   } catch { res.status(500).json({ error: 'Erreur serveur' }); }
 });
 
+app.patch('/api/admin/tickets/replies/:replyId', requireAdmin, async (req, res) => {
+  const { message } = req.body;
+  if (!message || !message.trim()) return res.status(400).json({ error: 'Message requis' });
+  try {
+    const reply = await db.get('SELECT * FROM ticket_replies WHERE id = ?', [req.params.replyId]);
+    if (!reply) return res.status(404).json({ error: 'Message introuvable' });
+    if (reply.sender !== 'admin') return res.status(403).json({ error: 'Seuls les messages admin peuvent être modifiés' });
+    await db.run('UPDATE ticket_replies SET message = ? WHERE id = ?', [message.trim(), req.params.replyId]);
+    res.json({ success: true });
+  } catch { res.status(500).json({ error: 'Erreur serveur' }); }
+});
+
 // ── PARRAINAGE ────────────────────────────────────────────────────────────────
 
 app.get('/api/referrals', requireAuth, async (req, res) => {

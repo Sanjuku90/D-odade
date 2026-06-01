@@ -1942,13 +1942,13 @@
         const thisDate = fmtDate(rep.created_at);
         if (thisDate !== lastDate) { html += `<div class="adm-date-sep">${thisDate}</div>`; lastDate = thisDate; }
         const isAdmin = rep.sender === 'admin';
-        const deleteBtn = isAdmin
-          ? `<button onclick="deleteAdminReply(${rep.id})" title="Supprimer ce message" style="background:none;border:none;cursor:pointer;color:rgba(255,80,80,.45);font-size:.75rem;padding:0 2px;line-height:1;opacity:0;transition:opacity .15s;" class="adm-del-reply-btn">🗑</button>`
+        const adminActions = isAdmin
+          ? `<button onclick="editAdminReply(${rep.id})" title="Modifier ce message" style="background:none;border:none;cursor:pointer;color:rgba(0,212,255,.45);font-size:.75rem;padding:0 2px;line-height:1;opacity:0;transition:opacity .15s;" class="adm-action-reply-btn">✏️</button><button onclick="deleteAdminReply(${rep.id})" title="Supprimer ce message" style="background:none;border:none;cursor:pointer;color:rgba(255,80,80,.45);font-size:.75rem;padding:0 2px;line-height:1;opacity:0;transition:opacity .15s;" class="adm-action-reply-btn">🗑</button>`
           : '';
-        html += `<div class="adm-msg-row ${isAdmin?'admin':'user'}" style="position:relative;" onmouseenter="this.querySelector('.adm-del-reply-btn')&&(this.querySelector('.adm-del-reply-btn').style.opacity='1')" onmouseleave="this.querySelector('.adm-del-reply-btn')&&(this.querySelector('.adm-del-reply-btn').style.opacity='0')">
+        html += `<div class="adm-msg-row ${isAdmin?'admin':'user'}" style="position:relative;" onmouseenter="this.querySelectorAll('.adm-action-reply-btn').forEach(b=>b.style.opacity='1')" onmouseleave="this.querySelectorAll('.adm-action-reply-btn').forEach(b=>b.style.opacity='0')">
           <div class="adm-msg-sender">${isAdmin ? '🎧 Admin' : '👤 '+escAdm(ticket.user_email||'Utilisateur')}</div>
-          <div class="adm-bubble ${isAdmin?'admin':'user'}">${escAdm(rep.message)}</div>
-          <div class="adm-msg-time" style="display:flex;align-items:center;gap:6px;">${fmtHour(rep.created_at)}${deleteBtn}</div>
+          <div class="adm-bubble ${isAdmin?'admin':'user'}" id="adm-bubble-${rep.id}">${escAdm(rep.message)}</div>
+          <div class="adm-msg-time" style="display:flex;align-items:center;gap:4px;">${fmtHour(rep.created_at)}${adminActions}</div>
         </div>`;
       });
       return html;
@@ -2009,6 +2009,45 @@
         const r = await fetch(`/api/admin/tickets/replies/${replyId}`, { method: 'DELETE' });
         if (r.ok) {
           showToast('Message supprimé', 'success');
+          await loadAdminTickets();
+        } else {
+          const d = await r.json().catch(() => ({}));
+          showToast(d.error || 'Erreur', 'error');
+        }
+      } catch { showToast('Erreur réseau', 'error'); }
+    }
+
+    function editAdminReply(replyId) {
+      const bubble = document.getElementById(`adm-bubble-${replyId}`);
+      if (!bubble || bubble.querySelector('textarea')) return;
+      const original = bubble.textContent;
+      bubble.innerHTML = `
+        <textarea id="adm-edit-ta-${replyId}" style="width:100%;min-height:64px;background:rgba(0,0,0,.35);border:1px solid rgba(0,212,255,.4);border-radius:8px;color:#f0f0fa;font-size:.85rem;padding:8px 10px;resize:vertical;font-family:inherit;box-sizing:border-box;">${escAdm(original)}</textarea>
+        <div style="display:flex;gap:8px;margin-top:8px;justify-content:flex-end;">
+          <button onclick="cancelEditAdminReply(${replyId},${JSON.stringify(escAdm(original))})" style="background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.12);color:#9ca3af;border-radius:8px;padding:5px 14px;font-size:.78rem;cursor:pointer;">Annuler</button>
+          <button onclick="saveAdminReply(${replyId})" style="background:linear-gradient(135deg,#00d4ff,#67e8ff);border:none;color:#020a12;border-radius:8px;padding:5px 14px;font-size:.78rem;font-weight:700;cursor:pointer;">Enregistrer</button>
+        </div>`;
+      const ta = document.getElementById(`adm-edit-ta-${replyId}`);
+      if (ta) { ta.focus(); ta.setSelectionRange(ta.value.length, ta.value.length); }
+    }
+
+    function cancelEditAdminReply(replyId, originalHtml) {
+      const bubble = document.getElementById(`adm-bubble-${replyId}`);
+      if (bubble) bubble.innerHTML = originalHtml;
+    }
+
+    async function saveAdminReply(replyId) {
+      const ta = document.getElementById(`adm-edit-ta-${replyId}`);
+      const newMsg = ta ? ta.value.trim() : '';
+      if (!newMsg) { showToast('Le message ne peut pas être vide', 'error'); return; }
+      try {
+        const r = await fetch(`/api/admin/tickets/replies/${replyId}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ message: newMsg })
+        });
+        if (r.ok) {
+          showToast('Message modifié', 'success');
           await loadAdminTickets();
         } else {
           const d = await r.json().catch(() => ({}));
