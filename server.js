@@ -1235,7 +1235,7 @@ app.get('/api/admin/plans/independence', requireAdmin, async (req, res) => {
 
 app.post('/api/withdraw', requireAuth, async (req, res) => {
   const { amount, address } = req.body;
-  const minWithdraw = 50, maxWithdraw = 300;
+  const minWithdraw = 1000, maxWithdraw = 300;
 
   if (!amount || parseFloat(amount) < minWithdraw) return res.status(400).json({ error: `Le retrait minimum est de ${minWithdraw}$` });
   if (parseFloat(amount) > maxWithdraw) return res.status(400).json({ error: `Le retrait maximum est de ${maxWithdraw}$` });
