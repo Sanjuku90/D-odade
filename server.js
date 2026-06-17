@@ -98,7 +98,8 @@ const app = express();
 const PORT = process.env.PORT || 5000;
 const isProduction = process.env.NODE_ENV === 'production';
 const MAIL_USER = process.env.MAIL_USER || '';
-const MIN_DEPOSIT = parseFloat(process.env.MIN_DEPOSIT || '150');
+const MIN_DEPOSIT = parseFloat(process.env.MIN_DEPOSIT || '50');
+const MIN_QUEST_DEPOSIT = 150;
 let BUILD_ID = Date.now().toString();
 
 app.set('trust proxy', 1);
@@ -897,8 +898,8 @@ app.post('/api/quests/:id/complete', requireAuth, async (req, res) => {
   const questId = parseInt(req.params.id);
   try {
     const user = await db.get('SELECT deposit_amount, created_at FROM users WHERE id = ?', [req.session.userId]);
-    if (parseFloat(user.deposit_amount) < MIN_DEPOSIT) {
-      return res.status(400).json({ error: `Vous devez avoir un dépôt minimum de ${MIN_DEPOSIT}$ pour compléter les quêtes` });
+    if (parseFloat(user.deposit_amount) < MIN_QUEST_DEPOSIT) {
+      return res.status(400).json({ error: `Vous devez avoir un dépôt minimum de ${MIN_QUEST_DEPOSIT}$ pour compléter les quêtes` });
     }
 
     const quest = await db.get('SELECT * FROM quests WHERE id = ?', [questId]);
@@ -2460,7 +2461,7 @@ async function sendQuestReminders() {
         ) as completed_regular
       FROM users u
       WHERE u.deposit_amount >= ?
-    `, [period.startDate, period.endDate, MIN_DEPOSIT]);
+    `, [period.startDate, period.endDate, MIN_QUEST_DEPOSIT]);
 
     for (const u of users) {
       const remaining = u.total_regular - u.completed_regular;
