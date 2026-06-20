@@ -1443,6 +1443,17 @@
         </div>
 
         <div class="s-card">
+          <div class="s-title">💸 Retraits multiples</div>
+          <div class="s-desc">Lorsqu'actif, les utilisateurs peuvent effectuer plusieurs retraits par cycle de 14 jours (la limite d'un retrait par cycle est levée).</div>
+          <div style="display:flex;align-items:center;gap:16px;margin-top:14px;">
+            <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:.9rem;color:var(--text2);">
+              <input type="checkbox" id="multiple-withdrawals-toggle" style="width:18px;height:18px;accent-color:var(--accent);cursor:pointer;" onchange="toggleMultipleWithdrawals(this)">
+              Autoriser les retraits multiples
+            </label>
+            <span id="multiple-withdrawals-status" style="font-size:.78rem;color:var(--text3);">—</span>
+          </div>
+        </div>
+        <div class="s-card">
           <div class="s-title">🔧 Mode maintenance</div>
           <div class="s-desc">Lorsqu'actif, les utilisateurs ne peuvent plus accéder aux API (dépôts, retraits, quêtes). L'administration reste accessible.</div>
           <div style="display:flex;align-items:center;gap:16px;margin-top:14px;">
@@ -2202,6 +2213,12 @@
           document.getElementById('maintenance-status').textContent =
             s.maintenanceMode ? '🔴 Mode maintenance ACTIF' : '🟢 Site en ligne';
         }
+        const mw = document.getElementById('multiple-withdrawals-toggle');
+        if (mw) {
+          mw.checked = !!s.allowMultipleWithdrawals;
+          document.getElementById('multiple-withdrawals-status').textContent =
+            s.allowMultipleWithdrawals ? '🟢 Retraits multiples ACTIVÉS' : '🔴 Limité à 1 retrait / cycle';
+        }
       } catch {}
     }
     function badge(id, n) {
@@ -2212,6 +2229,19 @@
     }
 
     // ── MAINTENANCE ──
+    async function toggleMultipleWithdrawals(cb) {
+      try {
+        const r = await fetch('/api/admin/multiple-withdrawals', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ enabled: cb.checked })
+        });
+        const j = await r.json();
+        document.getElementById('multiple-withdrawals-status').textContent =
+          j.allowMultipleWithdrawals ? '🟢 Retraits multiples ACTIVÉS' : '🔴 Limité à 1 retrait / cycle';
+        showToast(j.allowMultipleWithdrawals ? '✅ Retraits multiples activés' : '🔒 Limite 1 retrait / cycle rétablie', j.allowMultipleWithdrawals ? 'success' : 'error');
+      } catch (e) { showToast('Erreur : ' + e.message, 'error'); cb.checked = !cb.checked; }
+    }
+
     async function toggleMaintenance(cb) {
       try {
         const r = await fetch('/api/admin/maintenance', {

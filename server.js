@@ -528,6 +528,9 @@ async function initDB() {
   }
 
   // Paramètres email par défaut
+  await db.run("INSERT INTO settings (key, value) VALUES ('allow_multiple_withdrawals', '0') ON CONFLICT (key) DO NOTHING");
+
+  // Paramètres email par défaut
   const emailDefaults = {
     'email_reminder_hour': '9',
     'email_twofa_expiry': '10',
@@ -1260,7 +1263,8 @@ app.post('/api/withdraw', requireAuth, async (req, res) => {
     );
     if (!confirmedDeposit) return res.status(400).json({ error: "Aucun dépôt confirmé. Vous devez d'abord effectuer un dépôt." });
 
-    if (!hasInstantWithdraw) {
+    const allowMultipleWithdrawals = getSetting('allow_multiple_withdrawals') === '1';
+    if (!hasInstantWithdraw && !allowMultipleWithdrawals) {
       const period = getQuestPeriod();
       const existingWithdrawal = await db.get(
         "SELECT id FROM withdrawals WHERE user_id = ? AND created_at >= ? AND status != 'rejected'",
@@ -1413,7 +1417,8 @@ app.get('/api/admin/stats', requireAdmin, async (req, res) => {
       pendingKyc:          Number(pendingKyc.count),
       pendingRecovery:     Number(pendingRecovery.count),
       pendingTestimonials: Number(pendingTestimonials.count),
-      maintenanceMode:     getSetting('maintenance_mode') === '1'
+      maintenanceMode:            getSetting('maintenance_mode') === '1',
+      allowMultipleWithdrawals:   getSetting('allow_multiple_withdrawals') === '1'
     });
   } catch (err) {
     res.status(500).json({ error: 'Erreur serveur' });
@@ -1990,6 +1995,12 @@ app.post('/api/admin/maintenance', requireAdmin, async (req, res) => {
   const { enabled } = req.body;
   await setSetting('maintenance_mode', enabled ? '1' : '0');
   res.json({ success: true, maintenance: !!enabled });
+});
+
+app.post('/api/admin/multiple-withdrawals', requireAdmin, async (req, res) => {
+  const { enabled } = req.body;
+  await setSetting('allow_multiple_withdrawals', enabled ? '1' : '0');
+  res.json({ success: true, allowMultipleWithdrawals: !!enabled });
 });
 
 // ── BAN / UNBAN UTILISATEUR ────────────────────────────────────────────────────
