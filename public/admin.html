@@ -2530,6 +2530,12 @@
       const wBtn = u.can_withdraw
         ? `<button class="btn-ko" style="font-size:.75rem;padding:4px 10px" onclick="toggleWithdraw()">🚫 Bloquer les retraits</button>`
         : `<button class="btn-ok" style="font-size:.75rem;padding:4px 10px" onclick="toggleWithdraw()">✅ Autoriser les retraits</button>`;
+      const uwBadge = u.unlimited_withdrawals
+        ? '<span class="badge b-confirmed" style="font-size:.72rem">♾ Illimités</span>'
+        : '<span class="badge" style="font-size:.72rem;background:rgba(255,255,255,.06);color:var(--text3)">1 / cycle</span>';
+      const uwBtn = u.unlimited_withdrawals
+        ? `<button class="btn-ko" style="font-size:.75rem;padding:4px 10px" onclick="toggleUnlimitedWithdrawals()">🔒 Rétablir la limite</button>`
+        : `<button class="btn-ok" style="font-size:.75rem;padding:4px 10px;background:rgba(167,139,250,.15);border-color:rgba(167,139,250,.4);color:#a78bfa;" onclick="toggleUnlimitedWithdrawals()">♾ Retraits illimités</button>`;
       document.getElementById('modal-rows').innerHTML = `
         <div class="modal-row"><span class="modal-key">Email</span><span class="modal-val" style="font-family:sans-serif">${u.email}</span></div>
         <div class="modal-row"><span class="modal-key">Solde</span><span class="modal-val" style="color:var(--green)">$${parseFloat(u.balance).toFixed(2)}</span></div>
@@ -2541,9 +2547,10 @@
         <div class="modal-row"><span class="modal-key">IP inscription</span><span class="modal-val" style="font-family:monospace;font-size:.8rem;color:var(--yellow)">${u.registration_ip||'—'}</span></div>
         <div class="modal-row"><span class="modal-key">Dernière IP</span><span class="modal-val" style="font-family:monospace;font-size:.8rem;color:var(--text3)">${u.last_login_ip||'—'}</span></div>
         <div class="modal-row"><span class="modal-key">Statut retrait</span><span class="modal-val">${wBadge}</span></div>
+        <div class="modal-row"><span class="modal-key">Retraits multiples</span><span class="modal-val">${uwBadge}</span></div>
         <div class="modal-row"><span class="modal-key">Dernière connexion</span><span class="modal-val">${u.last_login ? fmt(u.last_login) : '—'}</span></div>
         <div class="modal-row"><span class="modal-key">Compte</span><span class="modal-val">${u.is_banned ? '<span class="badge b-rejected">🚫 Suspendu</span>' : '<span class="badge b-confirmed">✓ Actif</span>'}</span></div>
-        <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap">${wBtn}
+        <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap">${wBtn} ${uwBtn}
           <button class="${u.is_banned ? 'btn-ok' : 'btn-ko'}" style="font-size:.75rem;padding:4px 10px" onclick="toggleBan()">
             ${u.is_banned ? '✅ Réactiver le compte' : '🚫 Suspendre le compte'}
           </button>
@@ -2572,6 +2579,18 @@
       if (r.ok) { okEl.textContent=`✓ Nouveau solde : $${parseFloat(j.newBalance).toFixed(2)}`; okEl.style.display='block'; loadUsers(); }
       else { errEl.textContent=j.error; errEl.style.display='block'; }
     }
+    async function toggleUnlimitedWithdrawals() {
+      const u = allUsers.find(x => x.id === selUserId);
+      const action = u.unlimited_withdrawals ? 'rétablir la limite de retraits' : 'autoriser les retraits illimités';
+      if (!confirm(`Voulez-vous ${action} pour ${u.email} ?`)) return;
+      const r = await fetch(`/api/admin/users/${selUserId}/toggle-unlimited-withdrawals`, { method: 'POST' });
+      const j = await r.json();
+      if (r.ok) {
+        showToast(j.unlimited_withdrawals ? `♾ Retraits illimités pour ${u.email}` : `🔒 Limite rétablie pour ${u.email}`, j.unlimited_withdrawals ? 'success' : 'error');
+        await loadUsers(); openModal(selUserId);
+      } else { showToast(j.error || 'Erreur', 'error'); }
+    }
+
     async function toggleWithdraw() {
       const u = allUsers.find(x => x.id === selUserId);
       const action = u.can_withdraw ? 'bloquer' : 'autoriser';

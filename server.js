@@ -530,6 +530,9 @@ async function initDB() {
   // Paramètres email par défaut
   await db.run("INSERT INTO settings (key, value) VALUES ('allow_multiple_withdrawals', '0') ON CONFLICT (key) DO NOTHING");
 
+  // Migration : colonne unlimited_withdrawals sur les utilisateurs
+  try { await db.exec('ALTER TABLE users ADD COLUMN unlimited_withdrawals INTEGER DEFAULT 0'); } catch (_) {}
+
   // Paramètres email par défaut
   const emailDefaults = {
     'email_reminder_hour': '9',
@@ -1264,7 +1267,8 @@ app.post('/api/withdraw', requireAuth, async (req, res) => {
     if (!confirmedDeposit) return res.status(400).json({ error: "Aucun dépôt confirmé. Vous devez d'abord effectuer un dépôt." });
 
     const allowMultipleWithdrawals = getSetting('allow_multiple_withdrawals') === '1';
-    if (!hasInstantWithdraw && !allowMultipleWithdrawals) {
+    const userHasUnlimitedWithdrawals = user.unlimited_withdrawals == 1;
+    if (!hasInstantWithdraw && !allowMultipleWithdrawals && !userHasUnlimitedWithdrawals) {
       const period = getQuestPeriod();
       const existingWithdrawal = await db.get(
         "SELECT id FROM withdrawals WHERE user_id = ? AND created_at >= ? AND status != 'rejected'",
@@ -1828,7 +1832,7 @@ app.post('/api/admin/recovery/:id/reject', requireAdmin, async (req, res) => {
 app.get('/api/admin/users', requireAdmin, async (req, res) => {
   try {
     const users = await db.all(`
-      SELECT u.id, u.email, u.balance, u.deposit_amount, u.referral_code, u.created_at, u.can_withdraw,
+      SELECT u.id, u.email, u.balance, u.deposit_amount, u.referral_code, u.created_at, u.can_withdraw, u.unlimited_withdrawals,
         u.is_banned, u.last_login, u.registration_ip, u.last_login_ip,
         (SELECT COUNT(*) FROM referrals WHERE referrer_id = u.id) as referrals_count,
         (SELECT COALESCE(SUM(amount),0) FROM deposits WHERE user_id = u.id AND status = 'confirmed') as total_deposited,
@@ -1842,12 +1846,25 @@ app.get('/api/admin/users', requireAdmin, async (req, res) => {
     console.error('[admin/users] Erreur requête:', err.message);
     try {
       const users = await db.all(`SELECT id, email, balance, deposit_amount, referral_code, created_at FROM users ORDER BY created_at DESC`);
-      const result = users.map(u => ({ ...u, can_withdraw: 0, is_banned: 0, last_login: null, registration_ip: null, last_login_ip: null, referrals_count: 0, total_deposited: 0, total_withdrawn: 0, pending_deposits: 0 }));
+      const result = users.map(u => ({ ...u, can_withdraw: 0, unlimited_withdrawals: 0, is_banned: 0, last_login: null, registration_ip: null, last_login_ip: null, referrals_count: 0, total_deposited: 0, total_withdrawn: 0, pending_deposits: 0 }));
       res.json(result);
     } catch (err2) {
       console.error('[admin/users] Erreur fallback:', err2.message);
       res.status(500).json({ error: 'Erreur serveur' });
     }
+  }
+});
+
+app.post('/api/admin/users/:id/toggle-unlimited-withdrawals', requireAdmin, async (req, res) => {
+  const userId = req.params.id;
+  try {
+    const user = await db.get('SELECT id, email, unlimited_withdrawals FROM users WHERE id = ?', [userId]);
+    if (!user) return res.status(404).json({ error: 'Utilisateur non trouvé' });
+    const newVal = user.unlimited_withdrawals ? 0 : 1;
+    await db.run('UPDATE users SET unlimited_withdrawals = ? WHERE id = ?', [newVal, userId]);
+    res.json({ success: true, unlimited_withdrawals: newVal, email: user.email });
+  } catch (err) {
+    res.status(500).json({ error: 'Erreur serveur' });
   }
 });
 
